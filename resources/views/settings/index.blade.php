@@ -144,4 +144,39 @@ $groupIcons = [
         </form>
     </div>
 </div>
+
+{{-- Storage Diagnostics --}}
+<div class="card mt-4 border-info">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-hdd-network text-info"></i>
+        <span>Storage Diagnostics</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Recreates the <code>public/storage</code> symlink and reports on the server's file/storage
+            configuration. Run this if uploaded photos or files aren't displaying.
+        </p>
+        <form method="POST" action="{{ route('settings.storage-diagnostics') }}">
+            @csrf
+            <button type="submit" class="btn btn-info text-white">
+                <i class="bi bi-search me-2"></i>Run Storage Diagnostics
+            </button>
+        </form>
+
+        @if(session('storageReport'))
+        <div class="mt-3">
+            <table class="table table-sm table-bordered mb-0">
+                <tbody>
+                @foreach(session('storageReport') as $label => $value)
+                    <tr>
+                        <th class="text-nowrap" style="width:280px">{{ $label }}</th>
+                        <td class="text-break"><code>{{ $value }}</code></td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
+    </div>
+</div>
 @endsection

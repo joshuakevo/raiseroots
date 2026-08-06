@@ -72,6 +72,44 @@ class SettingsController extends Controller
         return back()->with('success', 'Logo removed.');
     }
 
+    public function storageDiagnostics()
+    {
+        Artisan::call('storage:link', ['--force' => true]);
+        $linkOutput = trim(Artisan::output());
+
+        $publicDir = public_path();
+        $storagePublic = storage_path('app/public');
+        $storageClients = $storagePublic . '/clients';
+        $symlinkPath = $publicDir . '/storage';
+        $htaccess = $publicDir . '/.htaccess';
+
+        $fileCount = 0;
+        $sample = [];
+        if (is_dir($storageClients)) {
+            $files = array_values(array_diff(scandir($storageClients) ?: [], ['.', '..']));
+            $fileCount = count($files);
+            $sample = array_slice($files, 0, 5);
+        }
+
+        $report = [
+            'PHP version'                          => PHP_VERSION,
+            'open_basedir'                         => ini_get('open_basedir') ?: '(not set)',
+            'Server software'                      => $_SERVER['SERVER_SOFTWARE'] ?? 'unknown',
+            'App root'                              => base_path(),
+            'storage/app/public exists'            => is_dir($storagePublic) ? 'YES' : 'NO',
+            'storage/app/public/clients exists'    => is_dir($storageClients) ? 'YES' : 'NO',
+            'clients/ file count'                  => $fileCount,
+            'clients/ sample files'                => $sample ? implode(', ', $sample) : '(none)',
+            'public/storage is_link()'             => is_link($symlinkPath) ? 'YES' : 'NO',
+            'public/storage readlink()'            => is_link($symlinkPath) ? readlink($symlinkPath) : 'n/a',
+            'public/storage is_dir() (resolves?)'  => is_dir($symlinkPath) ? 'YES' : 'NO',
+            '.htaccess has storage rewrite rule'   => (file_exists($htaccess) && str_contains(file_get_contents($htaccess), 'storage/app/public')) ? 'YES' : 'NO',
+            'storage:link command output'          => $linkOutput,
+        ];
+
+        return back()->with('storageReport', $report);
+    }
+
     public function reconcile()
     {
         Artisan::call('eltech:reconcile');
