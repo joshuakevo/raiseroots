@@ -123,6 +123,32 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- Database Migrations --}}
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-database-gear text-danger"></i>
+        <span>Database Migrations</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Runs <code>php artisan migrate</code> to apply any pending schema changes after a code deploy.
+            This host has no shell access and the cPanel deploy button doesn't run migrations, so this is
+            the only way to apply them. Safe to run any time — already-applied migrations are skipped.
+        </p>
+        <form method="POST" action="{{ route('settings.migrate') }}"
+              onsubmit="return confirm('Run pending database migrations now?')">
+            @csrf
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-play-fill me-2"></i>Run Migrations
+            </button>
+        </form>
+
+        @if(session('migrateOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('migrateOutput') }}</pre>
+        @endif
+    </div>
+</div>
+
 {{-- Data Integrity --}}
 <div class="card mt-4 border-warning">
     <div class="card-header d-flex align-items-center gap-2">

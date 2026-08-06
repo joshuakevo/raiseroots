@@ -72,6 +72,19 @@ class SettingsController extends Controller
         return back()->with('success', 'Logo removed.');
     }
 
+    /**
+     * Runs pending database migrations from the browser - this host has no
+     * shell/SSH access and the cPanel Git deploy button is unavailable, so
+     * there's no other way to apply schema changes after a deploy.
+     */
+    public function runMigrations()
+    {
+        Artisan::call('migrate', ['--force' => true]);
+        $output = trim(Artisan::output());
+
+        return back()->with('migrateOutput', $output);
+    }
+
     public function storageDiagnostics()
     {
         Artisan::call('storage:link', ['--force' => true]);
