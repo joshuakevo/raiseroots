@@ -59,14 +59,16 @@ class LoanController extends Controller
             'guarantors.*.address'          => 'nullable|string|max:200',
             'guarantors.*.employer'         => 'nullable|string|max:100',
             'guarantors.*.monthly_income'   => 'nullable|numeric|min:0',
+            'guarantors.*.photo'            => 'nullable|image|max:2048',
         ]);
 
         $loan = $this->loanService->createLoan($data);
 
         // Save guarantors
         if (!empty($data['guarantors'])) {
-            foreach ($data['guarantors'] as $g) {
+            foreach ($data['guarantors'] as $idx => $g) {
                 if (empty(trim($g['name'] ?? ''))) continue;
+                $photo = $request->file("guarantors.$idx.photo");
                 LoanGuarantor::create([
                     'loan_id'       => $loan->id,
                     'name'          => $g['name'],
@@ -76,6 +78,7 @@ class LoanController extends Controller
                     'address'       => $g['address'] ?? null,
                     'employer'      => $g['employer'] ?? null,
                     'monthly_income'=> $g['monthly_income'] ?? null,
+                    'photo'         => $photo ? $this->storeGuarantorPhoto($photo) : null,
                 ]);
             }
         }
@@ -85,13 +88,14 @@ class LoanController extends Controller
 
     public function show(Loan $loan)
     {
-        $loan->load('client', 'product', 'schedules', 'repayments.receivedBy', 'createdBy', 'guarantors');
-        $schedulePreview = $loan->status === 'pending'
+        $loan->load('client', 'product', 'schedules', 'repayments.receivedBy', 'createdBy', 'approvedBy', 'guarantors');
+        $notYetDisbursed = in_array($loan->status, ['pending', 'approved']);
+        $schedulePreview = $notYetDisbursed
             ? $this->loanService->previewSchedule($loan)
             : [];
 
         // Savings accounts for this client (for fee deduction)
-        $clientSavingsAccounts = $loan->status === 'pending'
+        $clientSavingsAccounts = $notYetDisbursed
             ? SavingsAccount::where('client_id', $loan->client_id)->where('status', 'active')->with('product')->get()
             : collect();
 
@@ -99,6 +103,21 @@ class LoanController extends Controller
         $penaltyBreakdown = $this->loanService->penaltyBreakdown($loan);
 
         return view('loans.show', compact('loan', 'schedulePreview', 'clientSavingsAccounts', 'currentPenalty', 'penaltyBreakdown'));
+    }
+
+    public function approve(Loan $loan)
+    {
+        if ($loan->status !== 'pending') {
+            return back()->with('error', 'Only pending loans can be approved.');
+        }
+
+        $loan->update([
+            'status'      => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
+        return back()->with('success', 'Loan approved. It can now be disbursed.');
     }
 
     public function disburse(Request $request, Loan $loan)
@@ -124,8 +143,8 @@ class LoanController extends Controller
             return back()->withErrors(['fee_savings_account_id' => 'A savings account is required when any fee is set to deduct from savings.'])->withInput();
         }
 
-        if ($loan->status !== 'pending') {
-            return back()->with('error', 'Only pending loans can be disbursed.');
+        if ($loan->status !== 'approved') {
+            return back()->with('error', 'Only approved loans can be disbursed. Get this loan approved first.');
         }
 
         try {
@@ -262,7 +281,12 @@ class LoanController extends Controller
             'address'       => 'nullable|string|max:200',
             'employer'      => 'nullable|string|max:100',
             'monthly_income'=> 'nullable|numeric|min:0',
+            'photo'         => 'nullable|image|max:2048',
         ]);
+
+        if ($request->hasFile('photo')) {
+            $data['photo'] = $this->storeGuarantorPhoto($request->file('photo'));
+        }
 
         LoanGuarantor::create(array_merge($data, ['loan_id' => $loan->id]));
 
@@ -272,14 +296,35 @@ class LoanController extends Controller
     public function destroyGuarantor(Loan $loan, LoanGuarantor $guarantor)
     {
         abort_if($guarantor->loan_id !== $loan->id, 403);
+        if ($guarantor->photo && file_exists(public_path($guarantor->photo))) {
+            @unlink(public_path($guarantor->photo));
+        }
         $guarantor->delete();
         return back()->with('success', 'Guarantor removed.');
+    }
+
+    /**
+     * Stores directly under public/uploads/guarantors rather than the
+     * storage/app/public disk - same reasoning as ClientController's
+     * storeClientPhoto: this host blocks the storage symlink from resolving.
+     */
+    private function storeGuarantorPhoto($file): string
+    {
+        $dir = public_path('uploads/guarantors');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $filename = 'uploads/guarantors/' . uniqid('guarantor_') . '.' . $file->getClientOriginalExtension();
+        $file->move($dir, basename($filename));
+
+        return $filename;
     }
 
     public function schedule(Loan $loan)
     {
         $loan->load('schedules', 'client', 'product');
-        $schedulePreview  = $loan->status === 'pending'
+        $schedulePreview  = in_array($loan->status, ['pending', 'approved'])
             ? $this->loanService->previewSchedule($loan)
             : [];
         $currentPenalty   = $this->loanService->calculatePenaltyPublic($loan);
@@ -308,7 +353,7 @@ class LoanController extends Controller
     public function schedulePdf(Loan $loan)
     {
         $loan->load('client', 'product', 'schedules');
-        $schedulePreview  = $loan->status === 'pending'
+        $schedulePreview  = in_array($loan->status, ['pending', 'approved'])
             ? $this->loanService->previewSchedule($loan)
             : [];
         $currentPenalty   = $this->loanService->calculatePenaltyPublic($loan);
@@ -320,11 +365,16 @@ class LoanController extends Controller
 
     public function destroy(Loan $loan)
     {
-        if ($loan->status !== 'pending') {
-            return back()->with('error', 'Only pending loans can be deleted.');
+        if (!in_array($loan->status, ['pending', 'approved'])) {
+            return back()->with('error', 'Only pending or approved (not yet disbursed) loans can be deleted.');
+        }
+        foreach ($loan->guarantors as $guarantor) {
+            if ($guarantor->photo && file_exists(public_path($guarantor->photo))) {
+                @unlink(public_path($guarantor->photo));
+            }
         }
         $loan->guarantors()->delete();
         $loan->delete();
-        return redirect()->route('loans.index')->with('success', 'Pending loan deleted.');
+        return redirect()->route('loans.index')->with('success', 'Loan deleted.');
     }
 }

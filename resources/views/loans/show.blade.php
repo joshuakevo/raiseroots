@@ -11,15 +11,25 @@
         <span class="text-muted">{{ $loan->client->name }} &bull; {{ $loan->product->name }}</span>
     </div>
     <div class="d-flex gap-2">
-        @can('disburse loans')
+        @can('approve loans')
         @if($loan->status === 'pending')
+            <form method="POST" action="{{ route('loans.approve', $loan) }}" onsubmit="return confirm('Approve this loan for disbursement?')">
+                @csrf
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-check2-circle me-1"></i>Approve Loan
+                </button>
+            </form>
+        @endif
+        @endcan
+        @can('disburse loans')
+        @if($loan->status === 'approved')
             <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#disburseModal">
                 <i class="bi bi-send me-1"></i>Disburse Loan
             </button>
         @endif
         @endcan
         @can('create loans')
-        @if($loan->status === 'pending')
+        @if(in_array($loan->status, ['pending', 'approved']))
             <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteLoanModal">
                 <i class="bi bi-trash me-1"></i>Delete
             </button>
@@ -59,6 +69,10 @@
                     <dt class="col-6 fw-normal text-muted">Maturity</dt><dd class="col-6">{{ $loan->maturity_date?->format('d M Y') ?? '—' }}</dd>
                     <dt class="col-6 fw-normal text-muted">Status</dt>
                     <dd class="col-6"><span class="badge badge-status-{{ $loan->status }}">{{ ucfirst($loan->status) }}</span></dd>
+                    @if($loan->approved_by)
+                    <dt class="col-6 fw-normal text-muted">Approved By</dt>
+                    <dd class="col-6">{{ $loan->approvedBy->name ?? '—' }} <span class="text-muted small">({{ $loan->approved_at?->format('d M Y') }})</span></dd>
+                    @endif
                     @if($loan->total_fees > 0)
                     @if($loan->application_fee > 0)
                     <dt class="col-6 fw-normal text-muted">Application Fee</dt>
@@ -167,7 +181,7 @@
         <table class="table table-hover mb-0 small">
             <thead class="table-light">
                 <tr>
-                    <th class="ps-3">Name</th><th>Phone</th><th>ID No.</th>
+                    <th class="ps-3">Photo</th><th>Name</th><th>Phone</th><th>ID No.</th>
                     <th>Relationship</th><th>Employer</th><th class="text-end">Monthly Income</th>
                     @can('create loans')<th></th>@endcan
                 </tr>
@@ -175,7 +189,16 @@
             <tbody>
             @forelse($loan->guarantors as $g)
                 <tr>
-                    <td class="ps-3 fw-semibold">{{ $g->name }}</td>
+                    <td class="ps-3">
+                        @if($g->photo)
+                        <img src="{{ asset($g->photo) }}" alt="Photo" class="rounded-circle" style="height:36px;width:36px;object-fit:cover;border:1px solid #dee2e6">
+                        @else
+                        <div class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center" style="height:36px;width:36px;color:#6c757d">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        @endif
+                    </td>
+                    <td class="fw-semibold">{{ $g->name }}</td>
                     <td>{{ $g->phone ?? '—' }}</td>
                     <td>{{ $g->id_number ?? '—' }}</td>
                     <td>{{ $g->relationship ?? '—' }}</td>
@@ -191,7 +214,7 @@
                     @endcan
                 </tr>
             @empty
-                <tr><td colspan="7" class="text-center text-muted py-3">No guarantors recorded.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-3">No guarantors recorded.</td></tr>
             @endforelse
             </tbody>
         </table>
@@ -203,7 +226,7 @@
 <div class="modal fade" id="addGuarantorModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ route('loans.guarantors.store', $loan) }}">
+            <form method="POST" action="{{ route('loans.guarantors.store', $loan) }}" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title">Add Guarantor</h5>
@@ -237,6 +260,10 @@
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Monthly Income</label>
                         <input type="number" name="monthly_income" class="form-control" step="0.01" min="0">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Photo</label>
+                        <input type="file" name="photo" class="form-control" accept="image/*">
                     </div>
                 </div>
                 <div class="modal-footer">

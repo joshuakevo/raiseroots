@@ -146,6 +146,24 @@ $groupIcons = [
         @if(session('migrateOutput'))
         <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('migrateOutput') }}</pre>
         @endif
+
+        <hr class="my-3">
+        <p class="text-muted small mb-3">
+            Re-runs the Roles &amp; Permissions seeder — adds any new permissions/roles introduced by a code
+            deploy (e.g. a new <code>manager</code> role) without touching existing users' role assignments.
+            Safe to run more than once.
+        </p>
+        <form method="POST" action="{{ route('settings.run-roles-seeder') }}"
+              onsubmit="return confirm('Re-run the Roles & Permissions seeder now?')">
+            @csrf
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-person-lock me-2"></i>Run Roles &amp; Permissions Seeder
+            </button>
+        </form>
+
+        @if(session('seederOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('seederOutput') }}</pre>
+        @endif
     </div>
 </div>
 

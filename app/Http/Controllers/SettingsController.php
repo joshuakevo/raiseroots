@@ -85,6 +85,24 @@ class SettingsController extends Controller
         return back()->with('migrateOutput', $output);
     }
 
+    /**
+     * Re-runs the roles & permissions seeder - same reasoning as
+     * runMigrations(): no shell access to run artisan db:seed directly.
+     * Uses firstOrCreate/syncPermissions throughout, so safe to re-run;
+     * it only adds new permissions/roles or updates a role's permission
+     * set, never deletes users' role assignments.
+     */
+    public function runRolesSeeder()
+    {
+        Artisan::call('db:seed', [
+            '--class' => \Database\Seeders\RolesAndPermissionsSeeder::class,
+            '--force' => true,
+        ]);
+        $output = trim(Artisan::output());
+
+        return back()->with('seederOutput', $output ?: 'Roles & permissions seeder ran successfully.');
+    }
+
     public function storageDiagnostics()
     {
         Artisan::call('storage:link', ['--force' => true]);

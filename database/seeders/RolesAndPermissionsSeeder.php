@@ -31,7 +31,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view loan-products', 'create loan-products', 'edit loan-products',
 
             // Loans
-            'view loans', 'create loans', 'disburse loans', 'repay loans',
+            'view loans', 'create loans', 'approve loans', 'disburse loans', 'repay loans',
 
             // Savings Products
             'view savings-products', 'create savings-products', 'edit savings-products',
@@ -107,6 +107,24 @@ class RolesAndPermissionsSeeder extends Seeder
             'view accounts',
             'view loan-products',
             'view loans',
+            'view savings-products',
+            'view savings',
+            'view fd-products',
+            'view fixed-deposits',
+            'view reports',
+            'view groups',
+            'view employees',
+        ]);
+
+        // Manager — reviews and approves loans before they can be disbursed,
+        // plus enough view access to make an informed approval decision
+        $manager = Role::firstOrCreate(['name' => 'manager']);
+        $manager->syncPermissions([
+            'view dashboard',
+            'view clients',
+            'view accounts',
+            'view loan-products',
+            'view loans', 'approve loans',
             'view savings-products',
             'view savings',
             'view fd-products',

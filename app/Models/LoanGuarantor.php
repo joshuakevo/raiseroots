@@ -11,7 +11,7 @@ class LoanGuarantor extends Model
 
     protected $fillable = [
         'loan_id', 'client_id', 'name', 'phone', 'id_number',
-        'relationship', 'address', 'employer', 'monthly_income',
+        'relationship', 'address', 'employer', 'monthly_income', 'photo',
     ];
 
     protected $casts = ['monthly_income' => 'float'];

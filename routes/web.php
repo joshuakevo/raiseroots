@@ -181,6 +181,8 @@ Route::middleware('auth')->group(function () {
         ->name('loans.show')->middleware('permission:view loans');
     Route::get('loans/{loan}/schedule', [LoanController::class, 'schedule'])
         ->name('loans.schedule')->middleware('permission:view loans');
+    Route::post('loans/{loan}/approve', [LoanController::class, 'approve'])
+        ->name('loans.approve')->middleware('permission:approve loans');
     Route::post('loans/{loan}/disburse', [LoanController::class, 'disburse'])
         ->name('loans.disburse')->middleware('permission:disburse loans');
     Route::get('loans/{loan}/repay', [LoanController::class, 'repayForm'])
@@ -326,6 +328,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('settings/logo', [SettingsController::class, 'removeLogo'])->name('settings.logo.remove');
         Route::post('settings/reconcile', [SettingsController::class, 'reconcile'])->name('settings.reconcile');
         Route::post('settings/migrate', [SettingsController::class, 'runMigrations'])->name('settings.migrate');
+        Route::post('settings/run-roles-seeder', [SettingsController::class, 'runRolesSeeder'])->name('settings.run-roles-seeder');
         Route::post('settings/storage-diagnostics', [SettingsController::class, 'storageDiagnostics'])->name('settings.storage-diagnostics');
         Route::post('settings/sync-legacy-uploads', [SettingsController::class, 'syncLegacyUploads'])->name('settings.sync-legacy-uploads');
     });

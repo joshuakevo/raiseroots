@@ -93,6 +93,7 @@
         .badge-status-active   {background:#d1fae5;color:#065f46;border-radius:20px;padding:.22em .7em;font-size:.7rem;font-weight:600}
         .badge-status-inactive {background:#f3f4f6;color:#6b7280;border-radius:20px;padding:.22em .7em;font-size:.7rem;font-weight:600}
         .badge-status-pending  {background:#fef3c7;color:#92400e;border-radius:20px;padding:.22em .7em;font-size:.7rem;font-weight:600}
+        .badge-status-approved {background:#dbeafe;color:#1e40af;border-radius:20px;padding:.22em .7em;font-size:.7rem;font-weight:600}
         .badge-status-closed   {background:#ede9fe;color:#5b21b6;border-radius:20px;padding:.22em .7em;font-size:.7rem;font-weight:600}
         .badge-status-defaulted{background:#fee2e2;color:#991b1b;border-radius:20px;padding:.22em .7em;font-size:.7rem;font-weight:600}
         .badge-status-matured  {background:#fef3c7;color:#92400e;border-radius:20px;padding:.22em .7em;font-size:.7rem;font-weight:600}

@@ -9,7 +9,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 class RoleController extends Controller
 {
-    private const SYSTEM_ROLES = ['super_admin', 'admin', 'cashier', 'staff', 'client', 'group_leader', 'group_member'];
+    private const SYSTEM_ROLES = ['super_admin', 'admin', 'manager', 'cashier', 'staff', 'client', 'group_leader', 'group_member'];
     public function index()
     {
         $roles = Role::withCount('permissions')->orderBy('name')->get();
@@ -77,7 +77,7 @@ class RoleController extends Controller
             'Loans' => [
                 'icon'  => 'bi-cash-coin',
                 'perms' => ['view loan-products', 'create loan-products', 'edit loan-products',
-                            'view loans', 'create loans', 'disburse loans', 'repay loans'],
+                            'view loans', 'create loans', 'approve loans', 'disburse loans', 'repay loans'],
             ],
             'Savings' => [
                 'icon'  => 'bi-piggy-bank-fill',

@@ -86,8 +86,6 @@ class LoanService
                 'insurance_fee_rate'       => $insuranceFeeRate,
                 'insurance_fee_method'     => $insuranceFeeMethod,
                 'fee_savings_account_id'   => $anySavings ? ($feeData['savings_account_id'] ?? null) : null,
-                'approved_by'              => auth()->id(),
-                'approved_at'              => now(),
             ]);
 
             $this->generateSchedule($loan);

@@ -10,7 +10,7 @@
     </div>
 </div>
 
-<form method="POST" action="{{ route('loans.store') }}" id="loanForm">
+<form method="POST" action="{{ route('loans.store') }}" id="loanForm" enctype="multipart/form-data">
 @csrf
 
 <div class="card">
@@ -267,6 +267,10 @@ function addGuarantor() {
             <div class="col-sm-4">
                 <label class="form-label small mb-1">Address</label>
                 <input type="text" name="guarantors[${i}][address]" class="form-control form-control-sm">
+            </div>
+            <div class="col-sm-4">
+                <label class="form-label small mb-1">Photo</label>
+                <input type="file" name="guarantors[${i}][photo]" class="form-control form-control-sm" accept="image/*">
             </div>
         </div>`;
     document.getElementById('guarantorList').appendChild(div);
