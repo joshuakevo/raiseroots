@@ -31,7 +31,7 @@ class LoanProductController extends Controller
             'name'                       => 'required|string|max:255',
             'interest_rate'              => 'required|numeric|min:0|max:100',
             'interest_method'            => 'required|in:flat,reducing',
-            'repayment_frequency'        => 'required|in:monthly,quarterly',
+            'repayment_frequency'        => 'required|in:daily,weekly,monthly,quarterly,annually',
             'term_months'                => 'required|integer|min:1',
             'penalty_rate'               => 'nullable|numeric|min:0',
             'min_amount'                 => 'nullable|numeric|min:0',
@@ -72,7 +72,7 @@ class LoanProductController extends Controller
             'name'                       => 'required|string|max:255',
             'interest_rate'              => 'required|numeric|min:0|max:100',
             'interest_method'            => 'required|in:flat,reducing',
-            'repayment_frequency'        => 'required|in:monthly,quarterly',
+            'repayment_frequency'        => 'required|in:daily,weekly,monthly,quarterly,annually',
             'term_months'                => 'required|integer|min:1',
             'penalty_rate'               => 'nullable|numeric|min:0',
             'min_amount'                 => 'nullable|numeric|min:0',
@@ -98,13 +98,16 @@ class LoanProductController extends Controller
             'principal'            => 'required|numeric|min:1',
             'interest_rate'        => 'required|numeric|min:0|max:100',
             'interest_method'      => 'required|in:flat,reducing',
-            'repayment_frequency'  => 'required|in:monthly,quarterly',
+            'repayment_frequency'  => 'required|in:daily,weekly,monthly,quarterly,annually',
             'term_months'          => 'required|integer|min:1|max:360',
         ]);
 
-        // For quarterly, term must be a multiple of 3
+        // For quarterly/annually, term must divide evenly into that many months
         if ($data['repayment_frequency'] === 'quarterly' && $data['term_months'] % 3 !== 0) {
             return response()->json(['error' => 'For quarterly repayments, the term in months must be a multiple of 3.'], 422);
+        }
+        if ($data['repayment_frequency'] === 'annually' && $data['term_months'] % 12 !== 0) {
+            return response()->json(['error' => 'For annual repayments, the term in months must be a multiple of 12.'], 422);
         }
 
         // Build a temporary unsaved Loan object to reuse buildScheduleRows()

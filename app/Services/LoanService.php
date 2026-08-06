@@ -178,9 +178,7 @@ class LoanService
     {
         $loan->schedules()->delete();
 
-        $rows      = $this->buildScheduleRows($loan, Carbon::parse($loan->disbursement_date));
-        $frequency = $loan->repayment_frequency ?? 'monthly';
-        $step      = $frequency === 'quarterly' ? 3 : 1;
+        $rows = $this->buildScheduleRows($loan, Carbon::parse($loan->disbursement_date));
 
         foreach ($rows as $row) {
             LoanSchedule::create([
@@ -219,10 +217,11 @@ class LoanService
         $rate      = $loan->interest_rate / 100;
         $months    = $loan->term_months;
         $frequency = $loan->repayment_frequency ?? 'monthly';
-        $step      = $frequency === 'quarterly' ? 3 : 1;   // months between installments
-        $periods   = intval($months / $step);               // number of installments
-        $balance   = $principal;
-        $rows      = [];
+
+        [$periods, $periodsPerYear, $step, $dueDateFor] = $this->resolveSchedulePlan($startDate, $months, $frequency);
+
+        $balance = $principal;
+        $rows    = [];
 
         if ($loan->interest_method === 'flat') {
             // Total interest over entire term (same regardless of frequency)
@@ -245,7 +244,7 @@ class LoanService
 
                 $principalSaved += $pDue;
                 $interestSaved  += $iDue;
-                $dueDate         = $startDate->copy()->addMonths($i * $step);
+                $dueDate         = $dueDateFor($i);
 
                 $rows[] = [
                     'installment_no'      => $i,
@@ -262,9 +261,8 @@ class LoanService
                 ];
             }
         } else {
-            // Reducing balance — use period rate (monthly or quarterly)
-            $periodsPerYear = 12 / $step;                       // 12 for monthly, 4 for quarterly
-            $periodRate     = $rate / $periodsPerYear;
+            // Reducing balance — use period rate for the chosen frequency
+            $periodRate = $rate / $periodsPerYear;
 
             if ($periodRate == 0) {
                 $periodInstallment = $principal / $periods;
@@ -291,7 +289,7 @@ class LoanService
 
                 $balance -= $principalDue;
                 $principalSaved += $pStored;
-                $dueDate = $startDate->copy()->addMonths($i * $step);
+                $dueDate = $dueDateFor($i);
 
                 $rows[] = [
                     'installment_no'    => $i,
@@ -309,6 +307,43 @@ class LoanService
         }
 
         return $rows;
+    }
+
+    /**
+     * Resolve, for a given repayment frequency and term (in months), how many
+     * installments there are, the periods-per-year used to convert the annual
+     * rate to a period rate, a "step" in months (only meaningful for monthly/
+     * quarterly/annually - used for the quarterly "monthly equivalent" preview
+     * breakdown), and a callback that returns the due date for installment $i.
+     *
+     * @return array{0:int,1:int,2:int,3:\Closure}
+     */
+    private function resolveSchedulePlan(Carbon $startDate, int $months, string $frequency): array
+    {
+        $termEnd = $startDate->copy()->addMonths($months);
+
+        switch ($frequency) {
+            case 'daily':
+                $periods = max(1, $startDate->diffInDays($termEnd));
+                return [$periods, 365, 1, fn (int $i) => $startDate->copy()->addDays($i)];
+
+            case 'weekly':
+                $periods = max(1, intdiv($startDate->diffInDays($termEnd), 7));
+                return [$periods, 52, 1, fn (int $i) => $startDate->copy()->addWeeks($i)];
+
+            case 'quarterly':
+                $periods = max(1, intval($months / 3));
+                return [$periods, 4, 3, fn (int $i) => $startDate->copy()->addMonths($i * 3)];
+
+            case 'annually':
+                $periods = max(1, intval($months / 12));
+                return [$periods, 1, 12, fn (int $i) => $startDate->copy()->addMonths($i * 12)];
+
+            case 'monthly':
+            default:
+                $periods = max(1, $months);
+                return [$periods, 12, 1, fn (int $i) => $startDate->copy()->addMonths($i)];
+        }
     }
 
     /**

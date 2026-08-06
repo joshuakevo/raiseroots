@@ -36,8 +36,11 @@
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Repayment Frequency <span class="text-danger">*</span></label>
                             <select name="repayment_frequency" id="pv_freq" class="form-select" required>
+                                <option value="daily"     @selected(old('repayment_frequency')==='daily')>Daily</option>
+                                <option value="weekly"    @selected(old('repayment_frequency')==='weekly')>Weekly</option>
                                 <option value="monthly"   @selected(old('repayment_frequency','monthly')==='monthly')>Monthly</option>
                                 <option value="quarterly" @selected(old('repayment_frequency')==='quarterly')>Quarterly (every 3 months)</option>
+                                <option value="annually"  @selected(old('repayment_frequency')==='annually')>Annually (every 12 months)</option>
                             </select>
                         </div>
                         <div class="col-md-6">
