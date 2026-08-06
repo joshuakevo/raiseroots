@@ -3,3 +3,4 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/eltexokn/public_html/raiseroots
     - /bin/cp -R . $DEPLOYPATH
+    - php $DEPLOYPATH/artisan storage:link --force
