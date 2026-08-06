@@ -110,6 +110,71 @@ class SettingsController extends Controller
         return back()->with('storageReport', $report);
     }
 
+    /**
+     * One-time migration helper for the raiseroots_clone -> raiseroots_clone_update
+     * cutover: copies any uploaded files (client photos, org logos) that exist in the
+     * old live folder but weren't carried over. Skips files that already exist here,
+     * so it's safe to run more than once. Remove this once the migration is confirmed
+     * complete on all clients/records.
+     */
+    public function syncLegacyUploads()
+    {
+        $sourceRoot = '/home/eltexokn/public_html/raiseroots_clone';
+        $targets = [
+            $sourceRoot . '/storage/app/public' => storage_path('app/public'),
+            $sourceRoot . '/public/logos'       => public_path('logos'),
+        ];
+
+        $copied = 0;
+        $skipped = 0;
+        $errors = [];
+
+        foreach ($targets as $source => $dest) {
+            if (!is_dir($source)) {
+                $errors[] = "Source not found: {$source}";
+                continue;
+            }
+            if (!is_dir($dest)) {
+                mkdir($dest, 0755, true);
+            }
+
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($source, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+
+            foreach ($iterator as $item) {
+                $relative = substr($item->getPathname(), strlen($source) + 1);
+                $destPath = $dest . '/' . $relative;
+
+                if ($item->isDir()) {
+                    if (!is_dir($destPath)) {
+                        mkdir($destPath, 0755, true);
+                    }
+                    continue;
+                }
+
+                if (file_exists($destPath)) {
+                    $skipped++;
+                    continue;
+                }
+
+                if (copy($item->getPathname(), $destPath)) {
+                    $copied++;
+                } else {
+                    $errors[] = "Failed to copy: {$relative}";
+                }
+            }
+        }
+
+        $msg = "Sync complete. Copied {$copied} missing file(s), skipped {$skipped} already present.";
+        if ($errors) {
+            $msg .= ' Issues: ' . implode(' | ', array_slice($errors, 0, 10));
+        }
+
+        return back()->with('success', $msg);
+    }
+
     public function reconcile()
     {
         Artisan::call('eltech:reconcile');

@@ -326,6 +326,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('settings/logo', [SettingsController::class, 'removeLogo'])->name('settings.logo.remove');
         Route::post('settings/reconcile', [SettingsController::class, 'reconcile'])->name('settings.reconcile');
         Route::post('settings/storage-diagnostics', [SettingsController::class, 'storageDiagnostics'])->name('settings.storage-diagnostics');
+        Route::post('settings/sync-legacy-uploads', [SettingsController::class, 'syncLegacyUploads'])->name('settings.sync-legacy-uploads');
     });
 
     // ── Audit Log ─────────────────────────────────────────────────────

@@ -177,6 +177,19 @@ $groupIcons = [
             </table>
         </div>
         @endif
+
+        <hr class="my-3">
+        <p class="text-muted small mb-3">
+            One-time helper for the raiseroots_clone → raiseroots_clone_update migration: copies over any
+            client photos or logos that exist on the old live folder but weren't carried across. Safe to run
+            more than once &mdash; it skips files that already exist here.
+        </p>
+        <form method="POST" action="{{ route('settings.sync-legacy-uploads') }}">
+            @csrf
+            <button type="submit" class="btn btn-outline-info">
+                <i class="bi bi-arrow-left-right me-2"></i>Sync Missing Uploads from raiseroots_clone
+            </button>
+        </form>
     </div>
 </div>
 @endsection
