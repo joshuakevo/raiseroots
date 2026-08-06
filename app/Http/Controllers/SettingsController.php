@@ -112,17 +112,20 @@ class SettingsController extends Controller
 
     /**
      * One-time migration helper for the raiseroots_clone -> raiseroots_clone_update
-     * cutover: copies any uploaded files (client photos, org logos) that exist in the
-     * old live folder but weren't carried over. Skips files that already exist here,
-     * so it's safe to run more than once. Remove this once the migration is confirmed
-     * complete on all clients/records.
+     * cutover, and for the move of client photos off the storage disk (blocked by
+     * this host's symlink restrictions) onto public/clients directly. Pulls from
+     * both the old live folder and this app's own now-obsolete storage/app/public
+     * path, landing everything in public/clients and public/logos. Skips files
+     * that already exist at the destination, so it's safe to run more than once.
+     * Remove this once the migration is confirmed complete on all clients/records.
      */
     public function syncLegacyUploads()
     {
         $sourceRoot = '/home/eltexokn/public_html/raiseroots_clone';
         $targets = [
-            $sourceRoot . '/storage/app/public' => storage_path('app/public'),
-            $sourceRoot . '/public/logos'       => public_path('logos'),
+            $sourceRoot . '/storage/app/public/clients' => public_path('clients'),
+            storage_path('app/public/clients')          => public_path('clients'),
+            $sourceRoot . '/public/logos'                => public_path('logos'),
         ];
 
         $copied = 0;

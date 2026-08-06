@@ -116,7 +116,7 @@
         <label class="form-label">Profile Photo</label>
         @if($client->photo)
         <div class="mb-2">
-            <img src="{{ asset('storage/' . $client->photo) }}" alt="Photo"
+            <img src="{{ asset($client->photo) }}" alt="Photo"
                  class="rounded" style="height:70px;width:70px;object-fit:cover;border:2px solid #dee2e6">
             <span class="text-muted small ms-2">Current photo</span>
         </div>

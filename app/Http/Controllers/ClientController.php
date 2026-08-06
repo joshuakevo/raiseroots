@@ -8,7 +8,6 @@ use App\Models\MemberShare;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Storage;
 
 class ClientController extends Controller
 {
@@ -125,7 +124,7 @@ class ClientController extends Controller
         $data['loan_interest'] = $request->boolean('loan_interest');
 
         if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('clients', 'public');
+            $data['photo'] = $this->storeClientPhoto($request->file('photo'));
         }
 
         $data['membership_fee']        = 50000;
@@ -214,10 +213,10 @@ class ClientController extends Controller
         $data['loan_interest'] = $request->boolean('loan_interest');
 
         if ($request->hasFile('photo')) {
-            if ($client->photo) {
-                Storage::disk('public')->delete($client->photo);
+            if ($client->photo && file_exists(public_path($client->photo))) {
+                @unlink(public_path($client->photo));
             }
-            $data['photo'] = $request->file('photo')->store('clients', 'public');
+            $data['photo'] = $this->storeClientPhoto($request->file('photo'));
         }
 
         $client->update($data);
@@ -355,6 +354,25 @@ class ClientController extends Controller
 
         $client->delete();
         return redirect()->route('clients.index')->with('success', 'Client deleted.');
+    }
+
+    /**
+     * Stores directly under public/clients rather than the storage/app/public
+     * disk, matching the org logo upload - this host blocks the web server
+     * from following the storage symlink, so anything served via the disk
+     * never resolves.
+     */
+    private function storeClientPhoto($file): string
+    {
+        $dir = public_path('clients');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $filename = 'clients/' . uniqid('client_') . '.' . $file->getClientOriginalExtension();
+        $file->move($dir, basename($filename));
+
+        return $filename;
     }
 
     private function generateClientNumber(): string

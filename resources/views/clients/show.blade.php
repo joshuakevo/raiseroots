@@ -16,7 +16,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center gap-3">
         @if($client->photo)
-        <img src="{{ asset('storage/' . $client->photo) }}" alt="Photo"
+        <img src="{{ asset($client->photo) }}" alt="Photo"
              class="rounded-circle" style="height:56px;width:56px;object-fit:cover;border:2px solid #dee2e6">
         @else
         <div class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center"
