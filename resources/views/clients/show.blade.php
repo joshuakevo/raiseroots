@@ -17,7 +17,16 @@
     <div class="d-flex align-items-center gap-3">
         @if($client->photo)
         <img src="{{ asset($client->photo) }}" alt="Photo"
-             class="rounded-circle" style="height:56px;width:56px;object-fit:cover;border:2px solid #dee2e6">
+             class="rounded-circle" style="height:56px;width:56px;object-fit:cover;border:2px solid #dee2e6;cursor:pointer"
+             role="button" data-bs-toggle="modal" data-bs-target="#clientPhotoModal">
+        <div class="modal fade" id="clientPhotoModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content bg-transparent border-0">
+                    <button type="button" class="btn-close btn-close-white ms-auto mb-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <img src="{{ asset($client->photo) }}" alt="Photo" class="img-fluid rounded shadow">
+                </div>
+            </div>
+        </div>
         @else
         <div class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center"
              style="height:56px;width:56px;font-size:1.4rem;color:#6c757d">
