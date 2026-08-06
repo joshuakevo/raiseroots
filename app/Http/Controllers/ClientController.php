@@ -357,19 +357,21 @@ class ClientController extends Controller
     }
 
     /**
-     * Stores directly under public/clients rather than the storage/app/public
-     * disk, matching the org logo upload - this host blocks the web server
-     * from following the storage symlink, so anything served via the disk
-     * never resolves.
+     * Stores directly under public/uploads/clients rather than the
+     * storage/app/public disk, matching the org logo upload - this host
+     * blocks the web server from following the storage symlink, so anything
+     * served via the disk never resolves. NOTE: must not be named "clients" -
+     * that collides with the /clients route itself (LiteSpeed tries to list
+     * the real directory instead of routing to Laravel, returning a 403).
      */
     private function storeClientPhoto($file): string
     {
-        $dir = public_path('clients');
+        $dir = public_path('uploads/clients');
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
-        $filename = 'clients/' . uniqid('client_') . '.' . $file->getClientOriginalExtension();
+        $filename = 'uploads/clients/' . uniqid('client_') . '.' . $file->getClientOriginalExtension();
         $file->move($dir, basename($filename));
 
         return $filename;

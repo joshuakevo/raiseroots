@@ -123,9 +123,11 @@ class SettingsController extends Controller
     {
         $sourceRoot = '/home/eltexokn/public_html/raiseroots_clone';
         $targets = [
-            $sourceRoot . '/storage/app/public/clients' => public_path('clients'),
-            storage_path('app/public/clients')          => public_path('clients'),
-            $sourceRoot . '/public/logos'                => public_path('logos'),
+            $sourceRoot . '/storage/app/public/clients' => public_path('uploads/clients'),
+            $sourceRoot . '/public/clients'              => public_path('uploads/clients'),
+            storage_path('app/public/clients')           => public_path('uploads/clients'),
+            public_path('clients')                       => public_path('uploads/clients'),
+            $sourceRoot . '/public/logos'                 => public_path('logos'),
         ];
 
         $copied = 0;
@@ -170,12 +172,44 @@ class SettingsController extends Controller
             }
         }
 
+        // The old public/clients directory collides with the /clients route
+        // (LiteSpeed 403s instead of routing to Laravel when it exists), so
+        // everything must be moved out of it and the directory itself removed.
+        $removedCollision = false;
+        $collisionDir = public_path('clients');
+        if (is_dir($collisionDir)) {
+            $removedCollision = $this->removeDirRecursive($collisionDir);
+        }
+
         $msg = "Sync complete. Copied {$copied} missing file(s), skipped {$skipped} already present.";
+        if (is_dir($collisionDir)) {
+            $msg .= $removedCollision
+                ? ' Removed the colliding public/clients directory.'
+                : ' WARNING: could not remove public/clients - it still collides with the /clients route, delete it manually via File Manager.';
+        }
         if ($errors) {
             $msg .= ' Issues: ' . implode(' | ', array_slice($errors, 0, 10));
         }
 
         return back()->with('success', $msg);
+    }
+
+    private function removeDirRecursive(string $dir): bool
+    {
+        $items = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($items as $item) {
+            if ($item->isDir()) {
+                @rmdir($item->getPathname());
+            } else {
+                @unlink($item->getPathname());
+            }
+        }
+
+        return @rmdir($dir);
     }
 
     public function reconcile()
