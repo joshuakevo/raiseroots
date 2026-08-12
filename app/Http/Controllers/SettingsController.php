@@ -6,6 +6,7 @@ use App\Models\SystemSetting;
 use App\Services\SmsSubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 class SettingsController extends Controller
@@ -140,6 +141,7 @@ class SettingsController extends Controller
             'Server date/time (app timezone)'      => now()->format('Y-m-d H:i:s T'),
             'Server date/time (UTC)'                => now('UTC')->format('Y-m-d H:i:s') . ' UTC',
             'PHP version'                          => PHP_VERSION,
+            'PHP max_execution_time'               => ini_get('max_execution_time') . 's (0 = unlimited)',
             'open_basedir'                         => ini_get('open_basedir') ?: '(not set)',
             'Server software'                      => $_SERVER['SERVER_SOFTWARE'] ?? 'unknown',
             'App root'                              => base_path(),
@@ -305,6 +307,38 @@ class SettingsController extends Controller
         $report = collect($keys)->mapWithKeys(fn ($value, $key) => [$key => $value ? 'SET' : 'MISSING'])->all();
 
         return back()->with('smsConfigReport', $report);
+    }
+
+    /**
+     * Times a plain GET to the MarzPay base URL (no payment side effects) to see how
+     * long outbound requests to it actually take from this host, and whether they
+     * complete at all before PHP's max_execution_time would kill the real request.
+     */
+    public function testMarzPayConnectivity()
+    {
+        $baseUrl = config('services.marzpay.base_url');
+        $start   = microtime(true);
+
+        try {
+            $response  = Http::timeout(25)->get($baseUrl);
+            $elapsedMs = round((microtime(true) - $start) * 1000);
+            $report = [
+                'Target'                 => $baseUrl,
+                'Result'                 => "Reached — HTTP {$response->status()}",
+                'Round-trip time'        => "{$elapsedMs} ms",
+                'PHP max_execution_time' => ini_get('max_execution_time') . 's (0 = unlimited)',
+            ];
+        } catch (\Throwable $e) {
+            $elapsedMs = round((microtime(true) - $start) * 1000);
+            $report = [
+                'Target'                 => $baseUrl,
+                'Result'                 => 'FAILED: ' . $e->getMessage(),
+                'Time before failure'    => "{$elapsedMs} ms",
+                'PHP max_execution_time' => ini_get('max_execution_time') . 's (0 = unlimited)',
+            ];
+        }
+
+        return back()->with('marzpayConnReport', $report);
     }
 
     public function resetSmsTrial()

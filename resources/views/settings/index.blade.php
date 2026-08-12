@@ -305,6 +305,34 @@ $groupIcons = [
             </table>
         </div>
         @endif
+
+        <hr class="my-3">
+        <p class="text-muted small mb-3">
+            Times a plain request to MarzPay's API from this server — no payment is triggered. Use this to
+            check whether outbound calls to MarzPay are slow/timing out, or whether this host's
+            <code>max_execution_time</code> would kill a real payment request before MarzPay responds.
+        </p>
+        <form method="POST" action="{{ route('settings.test-marzpay-connectivity') }}">
+            @csrf
+            <button type="submit" class="btn btn-outline-success">
+                <i class="bi bi-hdd-network me-2"></i>Test MarzPay Connectivity
+            </button>
+        </form>
+
+        @if(session('marzpayConnReport'))
+        <div class="mt-3">
+            <table class="table table-sm table-bordered mb-0">
+                <tbody>
+                @foreach(session('marzpayConnReport') as $label => $value)
+                    <tr>
+                        <th class="text-nowrap" style="width:280px">{{ $label }}</th>
+                        <td class="text-break"><code>{{ $value }}</code></td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
     </div>
 </div>
 @endsection

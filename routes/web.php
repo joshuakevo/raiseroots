@@ -344,6 +344,7 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/sync-legacy-uploads', [SettingsController::class, 'syncLegacyUploads'])->name('settings.sync-legacy-uploads');
         Route::post('settings/reset-sms-trial', [SettingsController::class, 'resetSmsTrial'])->name('settings.reset-sms-trial');
         Route::post('settings/sms-config-check', [SettingsController::class, 'smsConfigCheck'])->name('settings.sms-config-check');
+        Route::post('settings/test-marzpay-connectivity', [SettingsController::class, 'testMarzPayConnectivity'])->name('settings.test-marzpay-connectivity');
     });
 
     // ── SMS Messaging ────────────────────────────────────────────────
