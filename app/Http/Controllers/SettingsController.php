@@ -137,6 +137,8 @@ class SettingsController extends Controller
         }
 
         $report = [
+            'Server date/time (app timezone)'      => now()->format('Y-m-d H:i:s T'),
+            'Server date/time (UTC)'                => now('UTC')->format('Y-m-d H:i:s') . ' UTC',
             'PHP version'                          => PHP_VERSION,
             'open_basedir'                         => ini_get('open_basedir') ?: '(not set)',
             'Server software'                      => $_SERVER['SERVER_SOFTWARE'] ?? 'unknown',
