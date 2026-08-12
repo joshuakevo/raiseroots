@@ -356,6 +356,7 @@ Route::middleware('auth')->group(function () {
         Route::get('sms/deliveries', [SmsController::class, 'deliveries'])->name('sms.deliveries');
         Route::post('sms/subscribe', [SmsSubscriptionController::class, 'subscribe'])->name('sms.subscribe');
         Route::post('sms/subscribe/refresh', [SmsSubscriptionController::class, 'refresh'])->name('sms.subscribe.refresh');
+        Route::post('sms/subscribe/cancel', [SmsSubscriptionController::class, 'cancel'])->name('sms.subscribe.cancel');
     });
 
     // ── Audit Log ─────────────────────────────────────────────────────

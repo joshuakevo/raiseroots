@@ -34,12 +34,21 @@
             </div>
             <div class="col-md-7">
                 @if($pendingPayment)
-                    <form method="POST" action="{{ route('sms.subscribe.refresh') }}" class="d-flex justify-content-md-end">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-warning">
-                            <i class="bi bi-arrow-clockwise me-1"></i>Check Payment Status
-                        </button>
-                    </form>
+                    <div class="d-flex justify-content-md-end gap-2">
+                        <form method="POST" action="{{ route('sms.subscribe.refresh') }}">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Check Payment Status
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('sms.subscribe.cancel') }}"
+                              onsubmit="return confirm('Cancel this pending payment? Only do this if you actually declined/cancelled it on your phone.')">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </button>
+                        </form>
+                    </div>
                 @elseif(!$paidActive)
                     <form method="POST" action="{{ route('sms.subscribe') }}" class="row g-2 justify-content-md-end align-items-center">
                         @csrf

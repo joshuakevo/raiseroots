@@ -149,6 +149,25 @@ class SmsSubscriptionService
         return $subscription->fresh();
     }
 
+    /**
+     * Manually abandon a stuck pending payment (e.g. the user cancelled the mobile
+     * money prompt). MarzPay's status vocabulary for that case isn't confirmed, so
+     * applyRemoteStatus() may never see anything it recognizes as terminal and the
+     * payment would otherwise sit as "pending" indefinitely — this is the reliable
+     * escape hatch regardless of what MarzPay actually reports.
+     */
+    public function cancelPending(SmsSubscription $subscription): SmsSubscription
+    {
+        if ($subscription->status === 'pending') {
+            $subscription->update([
+                'status'       => 'failed',
+                'raw_response' => 'Cancelled manually from the SMS page.',
+            ]);
+        }
+
+        return $subscription->fresh();
+    }
+
     /** Safety-net poll for any subscription still pending — call from a scheduled command. */
     public function checkAllPending(): int
     {

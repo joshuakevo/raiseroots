@@ -48,4 +48,17 @@ class SmsSubscriptionController extends Controller
             default     => back()->with('success', 'Still processing — check again shortly.'),
         };
     }
+
+    /** Manually abandon a stuck pending payment — see SmsSubscriptionService::cancelPending(). */
+    public function cancel()
+    {
+        $pending = $this->subscriptions->latestPending();
+        if (!$pending) {
+            return back()->with('error', 'There is no pending SMS subscription payment to cancel.');
+        }
+
+        $this->subscriptions->cancelPending($pending);
+
+        return back()->with('success', 'Pending payment cancelled. You can subscribe again below.');
+    }
 }
