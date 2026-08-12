@@ -319,10 +319,23 @@ class SettingsController extends Controller
         $baseUrl = config('services.marzpay.base_url');
         $start   = microtime(true);
 
+        // MarzPay whitelists by the outbound IP it actually sees on its end — which,
+        // on shared hosting behind NAT, can differ from the site's own/inbound IP.
+        // Ask a public echo service from this same PHP process so it's the exact
+        // address to hand MarzPay, not a guess.
+        $outboundIp = 'unknown (lookup failed)';
+        try {
+            $ipResponse = Http::timeout(10)->get('https://api.ipify.org?format=json');
+            $outboundIp = $ipResponse->json('ip') ?? $outboundIp;
+        } catch (\Throwable $e) {
+            // Non-fatal — the MarzPay check below still runs regardless.
+        }
+
         try {
             $response  = Http::timeout(25)->get($baseUrl);
             $elapsedMs = round((microtime(true) - $start) * 1000);
             $report = [
+                'Outbound IP (whitelist this with MarzPay)' => $outboundIp,
                 'Target'                 => $baseUrl,
                 'Result'                 => "Reached — HTTP {$response->status()}",
                 'Round-trip time'        => "{$elapsedMs} ms",
@@ -331,6 +344,7 @@ class SettingsController extends Controller
         } catch (\Throwable $e) {
             $elapsedMs = round((microtime(true) - $start) * 1000);
             $report = [
+                'Outbound IP (whitelist this with MarzPay)' => $outboundIp,
                 'Target'                 => $baseUrl,
                 'Result'                 => 'FAILED: ' . $e->getMessage(),
                 'Time before failure'    => "{$elapsedMs} ms",
