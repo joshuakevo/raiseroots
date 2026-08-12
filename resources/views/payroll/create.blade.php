@@ -94,7 +94,7 @@ function addRow(empId = '', basic = 0, allow = 0, deduct = 0) {
     const used = selectedEmployeeIds(-1);
     const opts = employees.map(e => {
         const isUsed = used.has(String(e.id)) && String(e.id) !== String(empId);
-        return `<option value="${e.id}" data-salary="${e.basic_salary}" ${String(e.id) === String(empId) ? 'selected' : ''} ${isUsed ? 'disabled' : ''}>${e.client ? e.client.name : '?'} — ${e.employee_number}${isUsed ? ' (already added)' : ''}</option>`;
+        return `<option value="${e.id}" data-salary="${e.basic_salary}" ${String(e.id) === String(empId) ? 'selected' : ''} ${isUsed ? 'disabled' : ''}>${e.name} — ${e.employee_number}${isUsed ? ' (already added)' : ''}</option>`;
     }).join('');
     const row = `<tr id="row_${i}">
         <td>

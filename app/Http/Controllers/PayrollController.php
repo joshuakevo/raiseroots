@@ -21,7 +21,7 @@ class PayrollController extends Controller {
     }
 
     public function create() {
-        $employees = Employee::with('client', 'savingsAccount.product')->where('status', 'active')->get();
+        $employees = Employee::with('savingsAccount.product', 'paymentSourceAccount')->where('status', 'active')->get();
         return view('payroll.create', compact('employees'));
     }
 
@@ -79,7 +79,7 @@ class PayrollController extends Controller {
     }
 
     public function show(PayrollRun $payroll) {
-        $payroll->load('items.employee.client', 'items.savingsAccount.product', 'processedBy');
+        $payroll->load('items.employee.paymentSourceAccount', 'items.savingsAccount.product', 'processedBy');
         return view('payroll.show', compact('payroll'));
     }
 
@@ -91,7 +91,7 @@ class PayrollController extends Controller {
         $request->validate(['payment_date' => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()]]);
         $paymentDate = $request->payment_date;
 
-        $payroll->load('items.employee.client', 'items.savingsAccount.product');
+        $payroll->load('items.employee.paymentSourceAccount', 'items.savingsAccount.product');
 
         $salaryExpenseAccountId = Account::where('account_code', '5001')->value('id')
             ?: Account::where('account_code', '5003')->value('id');
@@ -105,15 +105,25 @@ class PayrollController extends Controller {
             if ($item->net_salary <= 0) {
                 continue;
             }
+            $name = $item->employee?->name ?? 'Employee #' . $item->employee_id;
+
+            if ($item->employee?->payment_method === 'cash') {
+                $payoutAccount = $item->employee->paymentSourceAccount;
+                if (!$payoutAccount || !$payoutAccount->is_active) {
+                    throw ValidationException::withMessages([
+                        'payment_date' => "Cannot process: {$name} has no active payout account. Edit the employee and assign one.",
+                    ]);
+                }
+                continue;
+            }
+
             if (!$item->savings_account_id) {
-                $name = $item->employee?->name ?? 'Employee #' . $item->employee_id;
                 throw ValidationException::withMessages([
                     'payment_date' => "Cannot process: {$name} has no payroll savings account linked. Edit the employee and assign an active savings account.",
                 ]);
             }
             $acc = $item->savingsAccount;
             if (!$acc || $acc->status !== 'active') {
-                $name = $item->employee?->name ?? 'Employee #' . $item->employee_id;
                 throw ValidationException::withMessages([
                     'payment_date' => "Cannot process: {$name}'s linked savings account is missing or not active.",
                 ]);
@@ -133,18 +143,24 @@ class PayrollController extends Controller {
 
             // 1) Totals + journal lines (no sub-ledger writes yet)
             foreach ($payroll->items as $item) {
-                if (!$item->savings_account_id || $item->net_salary <= 0) {
+                if ($item->net_salary <= 0) {
                     continue;
                 }
 
-                $savingsProduct = $item->savingsAccount->product;
                 $totalNet += $item->net_salary;
 
-                $liabilityAccId = $savingsProduct->savings_liability_account_id;
-                if (!isset($creditLines[$liabilityAccId])) {
-                    $creditLines[$liabilityAccId] = 0;
+                $creditAccountId = $item->employee?->payment_method === 'cash'
+                    ? $item->employee->payment_source_account_id
+                    : ($item->savings_account_id ? $item->savingsAccount->product->savings_liability_account_id : null);
+
+                if (!$creditAccountId) {
+                    continue;
                 }
-                $creditLines[$liabilityAccId] += $item->net_salary;
+
+                if (!isset($creditLines[$creditAccountId])) {
+                    $creditLines[$creditAccountId] = 0;
+                }
+                $creditLines[$creditAccountId] += $item->net_salary;
             }
 
             // 2) Post GL first so we have transaction.id for savings_transactions.transaction_id
@@ -163,7 +179,7 @@ class PayrollController extends Controller {
                         'account_id'  => $accountId,
                         'debit'       => 0,
                         'credit'      => $amount,
-                        'description' => "Salary credited to savings — {$payroll->run_number}",
+                        'description' => "Salary paid — {$payroll->run_number}",
                     ];
                 }
 
@@ -214,7 +230,7 @@ class PayrollController extends Controller {
             ]);
         });
 
-        return redirect()->route('payroll.show', $payroll)->with('success', 'Payroll processed. Salaries credited to employee savings accounts.');
+        return redirect()->route('payroll.show', $payroll)->with('success', 'Payroll processed. Salaries paid to employee savings accounts and payout accounts.');
     }
 
     public function destroy(PayrollRun $payroll) {

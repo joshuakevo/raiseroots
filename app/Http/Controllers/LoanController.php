@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Loan;
+use App\Models\LoanCollateral;
 use App\Models\LoanGuarantor;
 use App\Models\LoanProduct;
 use App\Models\SavingsAccount;
+use App\Services\LoanNotificationService;
 use App\Services\LoanService;
 use App\Services\SavingsService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -17,6 +19,7 @@ class LoanController extends Controller
     public function __construct(
         protected LoanService $loanService,
         protected SavingsService $savingsService,
+        protected LoanNotificationService $loanNotifier,
     ) {}
 
     public function index(Request $request)
@@ -60,6 +63,11 @@ class LoanController extends Controller
             'guarantors.*.employer'         => 'nullable|string|max:100',
             'guarantors.*.monthly_income'   => 'nullable|numeric|min:0',
             'guarantors.*.photo'            => 'nullable|image|max:2048',
+            // Collateral
+            'collaterals'                   => 'nullable|array',
+            'collaterals.*.category'        => 'required_with:collaterals|in:' . implode(',', array_keys(LoanCollateral::CATEGORIES)),
+            'collaterals.*.description'     => 'nullable|string|max:500',
+            'collaterals.*.attachment'      => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
         ]);
 
         $loan = $this->loanService->createLoan($data);
@@ -83,12 +91,28 @@ class LoanController extends Controller
             }
         }
 
+        // Save collateral
+        if (!empty($data['collaterals'])) {
+            foreach ($data['collaterals'] as $idx => $c) {
+                if (empty($c['category'])) continue;
+                $attachment = $request->file("collaterals.$idx.attachment");
+                LoanCollateral::create([
+                    'loan_id'     => $loan->id,
+                    'category'    => $c['category'],
+                    'description' => $c['description'] ?? null,
+                    'file_path'   => $attachment ? $this->storeCollateralFile($attachment) : null,
+                    'file_type'   => $attachment ? $this->classifyCollateralFile($attachment) : null,
+                    'created_by'  => auth()->id(),
+                ]);
+            }
+        }
+
         return redirect()->route('loans.show', $loan)->with('success', 'Loan application created. Pending disbursement.');
     }
 
     public function show(Loan $loan)
     {
-        $loan->load('client', 'product', 'schedules', 'repayments.receivedBy', 'createdBy', 'approvedBy', 'guarantors');
+        $loan->load('client', 'product', 'schedules', 'repayments.receivedBy', 'createdBy', 'approvedBy', 'guarantors', 'collaterals');
         $notYetDisbursed = in_array($loan->status, ['pending', 'approved']);
         $schedulePreview = $notYetDisbursed
             ? $this->loanService->previewSchedule($loan)
@@ -148,7 +172,7 @@ class LoanController extends Controller
         }
 
         try {
-            $this->loanService->disburseLoan($loan, $request->disbursement_date, [
+            $loan = $this->loanService->disburseLoan($loan, $request->disbursement_date, [
                 'savings_account_id'      => $request->fee_savings_account_id,
                 'application_fee_amount'  => $request->application_fee_amount,
                 'application_fee_method'  => $request->application_fee_method,
@@ -160,6 +184,8 @@ class LoanController extends Controller
         } catch (\InvalidArgumentException $e) {
             return back()->with('error', $e->getMessage());
         }
+
+        $this->loanNotifier->loanDisbursed($loan);
 
         return redirect()->route('loans.show', $loan)->with('success', 'Loan disbursed successfully. Schedule generated.');
     }
@@ -266,7 +292,14 @@ class LoanController extends Controller
             }
         }
 
-        $this->loanService->processRepayment($loan, $request->all());
+        $repayment = $this->loanService->processRepayment($loan, $request->all());
+
+        $loan = $loan->fresh();
+        if ($loan->status === 'closed') {
+            $this->loanNotifier->loanClosed($loan);
+        } else {
+            $this->loanNotifier->repaymentReceived($loan, $repayment);
+        }
 
         return redirect()->route('loans.show', $loan)->with('success', 'Repayment processed successfully.');
     }
@@ -303,6 +336,38 @@ class LoanController extends Controller
         return back()->with('success', 'Guarantor removed.');
     }
 
+    public function storeCollateral(Request $request, Loan $loan)
+    {
+        $data = $request->validate([
+            'category'    => 'required|in:' . implode(',', array_keys(LoanCollateral::CATEGORIES)),
+            'description' => 'nullable|string|max:500',
+            'attachment'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+        ]);
+
+        $attachment = $request->file('attachment');
+
+        LoanCollateral::create([
+            'loan_id'     => $loan->id,
+            'category'    => $data['category'],
+            'description' => $data['description'] ?? null,
+            'file_path'   => $attachment ? $this->storeCollateralFile($attachment) : null,
+            'file_type'   => $attachment ? $this->classifyCollateralFile($attachment) : null,
+            'created_by'  => auth()->id(),
+        ]);
+
+        return back()->with('success', 'Collateral added successfully.');
+    }
+
+    public function destroyCollateral(Loan $loan, LoanCollateral $collateral)
+    {
+        abort_if($collateral->loan_id !== $loan->id, 403);
+        if ($collateral->file_path && file_exists(public_path($collateral->file_path))) {
+            @unlink(public_path($collateral->file_path));
+        }
+        $collateral->delete();
+        return back()->with('success', 'Collateral removed.');
+    }
+
     /**
      * Stores directly under public/uploads/guarantors rather than the
      * storage/app/public disk - same reasoning as ClientController's
@@ -319,6 +384,28 @@ class LoanController extends Controller
         $file->move($dir, basename($filename));
 
         return $filename;
+    }
+
+    /** Same storage approach as storeGuarantorPhoto() - see its docblock. */
+    private function storeCollateralFile($file): string
+    {
+        $dir = public_path('uploads/collateral');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $filename = 'uploads/collateral/' . uniqid('collateral_') . '.' . $file->getClientOriginalExtension();
+        $file->move($dir, basename($filename));
+
+        return $filename;
+    }
+
+    private function classifyCollateralFile($file): string
+    {
+        $imageExtensions = ['jpg', 'jpeg', 'png'];
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        return in_array($extension, $imageExtensions) ? 'image' : 'document';
     }
 
     public function schedule(Loan $loan)

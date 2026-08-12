@@ -6,19 +6,43 @@ use App\Models\Client;
 use App\Models\Group;
 use App\Models\MemberShare;
 use App\Models\User;
+use App\Services\ClientNotificationService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 
 class ClientController extends Controller
 {
+    public function __construct(protected ClientNotificationService $clientNotifier) {}
+
     public function index(Request $request)
     {
-        $clients = Client::query()
-            ->when($request->search, fn($q) => $q->where('name', 'like', "%{$request->search}%")
-                ->orWhere('client_number', 'like', "%{$request->search}%")
-                ->orWhere('phone', 'like', "%{$request->search}%"))
-            ->when($request->status, fn($q) => $q->where('status', $request->status))
-            ->withCount('shares')
+        $query = Client::query()
+            ->when($request->search, fn($q) => $q->where(function ($q2) use ($request) {
+                $q2->where('name', 'like', "%{$request->search}%")
+                    ->orWhere('client_number', 'like', "%{$request->search}%")
+                    ->orWhere('phone', 'like', "%{$request->search}%");
+            }))
+            ->when($request->status, fn($q) => $q->where('status', $request->status));
+
+        if ($request->format === 'pdf') {
+            $clients = (clone $query)->with('branch')->latest()->get();
+
+            $summary = [
+                'total'       => $clients->count(),
+                'active'      => $clients->where('status', 'active')->count(),
+                'inactive'    => $clients->where('status', 'inactive')->count(),
+                'blacklisted' => $clients->where('status', 'blacklisted')->count(),
+                'groups'      => $clients->where('client_type', 'group')->count(),
+            ];
+
+            $pdf = Pdf::loadView('pdf.clients-list', compact('clients', 'summary'))
+                ->setPaper('a4', 'landscape');
+
+            return $pdf->download('clients-' . now()->format('Y-m-d') . '.pdf');
+        }
+
+        $clients = $query->withCount('shares')
             ->with(['shares' => fn($q) => $q->select('client_id', 'share_value', 'amount_paid', 'status')])
             ->latest()
             ->paginate(20);
@@ -78,6 +102,8 @@ class ClientController extends Controller
                 'status'                => 'active',
                 'created_by'            => auth()->id(),
             ]);
+
+            $this->clientNotifier->clientWelcomed($client);
 
             return redirect()->route('groups.show', $client->group)->with('success', 'Group client registered successfully.');
         }
@@ -141,6 +167,8 @@ class ClientController extends Controller
             'status'       => 'unpaid',
             'created_by'   => auth()->id(),
         ]);
+
+        $this->clientNotifier->clientWelcomed($client);
 
         return redirect()->route('clients.index')->with('success', 'Client created successfully.');
     }

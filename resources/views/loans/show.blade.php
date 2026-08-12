@@ -276,12 +276,121 @@
 </div>
 @endcan
 
+<!-- Collateral -->
+<div class="card mb-3">
+    <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-shield-check me-1"></i>Collateral</span>
+        @can('create loans')
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#addCollateralModal">
+            <i class="bi bi-plus-circle me-1"></i>Add Collateral
+        </button>
+        @endcan
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">Category</th><th>Description</th><th>Attachment</th>
+                    @can('create loans')<th></th>@endcan
+                </tr>
+            </thead>
+            <tbody>
+            @forelse($loan->collaterals as $c)
+                <tr>
+                    <td class="ps-3 fw-semibold">{{ $c->category_label }}</td>
+                    <td>{{ $c->description ?? '—' }}</td>
+                    <td>
+                        @if($c->file_path && $c->file_type === 'image')
+                            <img src="{{ asset($c->file_path) }}" alt="Attachment" class="rounded"
+                                 style="height:36px;width:36px;object-fit:cover;border:1px solid #dee2e6;cursor:pointer"
+                                 role="button" data-bs-toggle="modal" data-bs-target="#collateralPhoto{{ $c->id }}">
+                            <div class="modal fade" id="collateralPhoto{{ $c->id }}" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered modal-xl">
+                                    <div class="modal-content bg-transparent border-0">
+                                        <div class="d-flex justify-content-end gap-2 mb-2">
+                                            <a href="{{ asset($c->file_path) }}" download class="btn btn-sm btn-light">
+                                                <i class="bi bi-download me-1"></i>Download
+                                            </a>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <img src="{{ asset($c->file_path) }}" class="img-fluid rounded mx-auto d-block" style="max-height:85vh" alt="Attachment">
+                                    </div>
+                                </div>
+                            </div>
+                        @elseif($c->file_path)
+                            <a href="{{ asset($c->file_path) }}" target="_blank" class="text-decoration-none me-2">
+                                <i class="bi bi-file-earmark-text me-1"></i>View
+                            </a>
+                            <a href="{{ asset($c->file_path) }}" download class="text-decoration-none">
+                                <i class="bi bi-download me-1"></i>Download
+                            </a>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
+                    @can('create loans')
+                    <td class="text-end pe-3">
+                        <form method="POST" action="{{ route('loans.collaterals.destroy', [$loan, $c]) }}" onsubmit="return confirm('Remove this collateral?')">
+                            @csrf @method('DELETE')
+                            <button class="btn btn-sm btn-outline-danger py-0 px-2"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                    @endcan
+                </tr>
+            @empty
+                <tr><td colspan="4" class="text-center text-muted py-3">No collateral recorded.</td></tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Collateral Modal -->
+@can('create loans')
+<div class="modal fade" id="addCollateralModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('loans.collaterals.store', $loan) }}" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Collateral</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                        <select name="category" class="form-select ts-select" required>
+                            <option value="">— Select category —</option>
+                            @foreach(\App\Models\LoanCollateral::CATEGORIES as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Description</label>
+                        <input type="text" name="description" class="form-control" placeholder="e.g. Reg. no, plot no, cheque no...">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Attach Image or Document</label>
+                        <input type="file" name="attachment" class="form-control" accept="image/*,.pdf,.doc,.docx">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Save Collateral</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endcan
+
 <!-- Schedule preview (first 5 rows) -->
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>
             Repayment Schedule
-            @if($loan->status === 'pending')
+            @if(in_array($loan->status, ['pending', 'approved']))
                 <span class="badge bg-warning-subtle text-warning ms-1 small">Projected — assumes disbursement today</span>
             @endif
         </span>
@@ -292,13 +401,13 @@
             <thead><tr>
                 <th class="ps-3">#</th><th>Due Date</th><th class="text-end">Principal</th>
                 <th class="text-end">Interest</th>
-                @if($loan->status !== 'pending')<th class="text-end">Penalty</th>@endif
+                @if(!in_array($loan->status, ['pending', 'approved']))<th class="text-end">Penalty</th>@endif
                 <th class="text-end">Total</th>
                 <th class="text-end pe-3">Balance</th>
-                @if($loan->status !== 'pending')<th>Status</th>@endif
+                @if(!in_array($loan->status, ['pending', 'approved']))<th>Status</th>@endif
             </tr></thead>
             <tbody>
-            @if($loan->status === 'pending')
+            @if(in_array($loan->status, ['pending', 'approved']))
                 @forelse(array_slice($schedulePreview, 0, 5) as $s)
                 <tr>
                     <td class="ps-3">{{ $s['installment_no'] }}</td>
@@ -335,7 +444,7 @@
     </div>
 </div>
 
-@if($loan->status === 'pending')
+@if($loan->status === 'approved')
 @can('disburse loans')
 {{-- Disburse Modal --}}
 <div class="modal fade" id="disburseModal" tabindex="-1">
@@ -481,7 +590,7 @@
 
 {{-- Delete Loan Modal --}}
 @can('create loans')
-@if($loan->status === 'pending')
+@if(in_array($loan->status, ['pending', 'approved']))
 <div class="modal fade" id="deleteLoanModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <form method="POST" action="{{ route('loans.destroy', $loan) }}" class="modal-content">

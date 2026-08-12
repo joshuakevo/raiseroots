@@ -16,3 +16,16 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Local-only tooling / one-off scripts / dumps — never ship to production
+/.claude
+/.playwright-mcp
+/desktop-shortcut
+/diagnose-photo.php
+/storage-link-once.php
+*.sql
+/public/test.html
+
+# Runtime-generated / per-deployment content, not source
+/public/uploads
+/public/logos

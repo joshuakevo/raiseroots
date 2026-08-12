@@ -18,13 +18,23 @@
             <div class="card-body py-2">
                 <table class="table table-sm table-borderless mb-0 small">
                     <tr><td class="text-muted w-40">Name</td><td class="fw-semibold">{{ $employee->name }}</td></tr>
+                    <tr><td class="text-muted">Phone</td><td>{{ $employee->phone ?? '—' }}</td></tr>
+                    <tr><td class="text-muted">Email</td><td>{{ $employee->email ?? '—' }}</td></tr>
+                    <tr><td class="text-muted">ID Number</td><td>{{ $employee->id_number ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Position</td><td>{{ $employee->position ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Department</td><td>{{ $employee->department ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Basic Salary</td><td class="fw-semibold">{{ number_format($employee->basic_salary, 0) }}</td></tr>
                     <tr><td class="text-muted">Status</td><td>
                         <span class="badge {{ $employee->status === 'active' ? 'bg-success' : 'bg-secondary' }}">{{ ucfirst($employee->status) }}</span>
                     </td></tr>
-                    <tr><td class="text-muted">Savings Acct</td><td class="font-monospace">{{ $employee->savingsAccount?->account_number ?? '—' }}</td></tr>
+                    <tr><td class="text-muted">Salary Payout</td><td>
+                        @if($employee->payment_method === 'savings')
+                            <span class="font-monospace">{{ $employee->savingsAccount?->account_number ?? 'Not linked' }}</span>
+                            <span class="text-muted">({{ $employee->client?->name }})</span>
+                        @else
+                            {{ $employee->paymentSourceAccount?->account_name ?? 'Not set' }}
+                        @endif
+                    </td></tr>
                 </table>
             </div>
         </div>

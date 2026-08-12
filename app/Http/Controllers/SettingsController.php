@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
+use App\Services\SmsSubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
@@ -11,7 +12,7 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        $settings = SystemSetting::whereNotIn('key', ['org_logo'])
+        $settings = SystemSetting::whereNotIn('key', ['org_logo', 'sms_trial_used_count'])
             ->orderBy('group')->orderBy('label')->get()->groupBy('group');
         return view('settings.index', compact('settings'));
     }
@@ -268,5 +269,12 @@ class SettingsController extends Controller
         }
 
         return back()->with($fixed > 0 ? 'success' : 'success', $msg);
+    }
+
+    public function resetSmsTrial()
+    {
+        SystemSetting::set('sms_trial_used_count', 0);
+
+        return back()->with('success', 'Free SMS trial reset — ' . SmsSubscriptionService::TRIAL_LIMIT . ' free SMS are available again.');
     }
 }

@@ -31,4 +31,18 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'marzsms' => [
+        'base_url'  => env('MARZSMS_BASE_URL', 'https://sms.wearemarz.com/api/v1'),
+        'api_key'   => env('MARZSMS_API_KEY'),
+        'secret'    => env('MARZSMS_SECRET'),
+        'sender_id' => env('MARZSMS_SENDER_ID', 'ElTech'),
+    ],
+
+    'marzpay' => [
+        'base_url'       => env('MARZPAY_BASE_URL', 'https://wallet.wearemarz.com/api/v1'),
+        'api_key'        => env('MARZPAY_API_KEY'),
+        'api_secret'     => env('MARZPAY_API_SECRET'),
+        'webhook_secret' => env('MARZPAY_WEBHOOK_SECRET'),
+    ],
+
 ];

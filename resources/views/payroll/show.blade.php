@@ -84,7 +84,7 @@
                 <tr>
                     <th>#</th>
                     <th>Employee</th>
-                    <th>Savings Account</th>
+                    <th>Salary Payout</th>
                     <th class="text-end">Basic</th>
                     <th class="text-end">Allowances</th>
                     <th class="text-end">Deductions</th>
@@ -100,7 +100,11 @@
                     <div class="text-muted" style="font-size:.72rem">{{ $item->employee->position }} · {{ $item->employee->employee_number }}</div>
                 </td>
                 <td class="font-monospace">
-                    {{ $item->savingsAccount?->account_number ?? '<span class="text-danger">Not linked</span>' }}
+                    @if($item->employee?->payment_method === 'cash')
+                        <span class="font-sans">{{ $item->employee->paymentSourceAccount?->account_name ?? 'Not set' }}</span>
+                    @else
+                        {!! $item->savingsAccount?->account_number ?? '<span class="text-danger">Not linked</span>' !!}
+                    @endif
                 </td>
                 <td class="text-end">{{ number_format($item->basic_salary, 0) }}</td>
                 <td class="text-end text-success">{{ number_format($item->allowances, 0) }}</td>

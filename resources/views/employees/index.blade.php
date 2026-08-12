@@ -19,7 +19,7 @@
                 <th>Position</th>
                 <th>Department</th>
                 <th class="text-end">Basic Salary</th>
-                <th>Savings Account</th>
+                <th>Salary Payout</th>
                 <th>Status</th>
                 <th class="pe-3">Actions</th>
             </tr></thead>
@@ -32,10 +32,14 @@
                     <td>{{ $emp->department ?? '—' }}</td>
                     <td class="text-end">{{ number_format($emp->basic_salary, 0) }}</td>
                     <td class="small">
-                        @if($emp->savingsAccount)
+                        @if($emp->payment_method === 'savings' && $emp->savingsAccount)
                             <span class="font-monospace">{{ $emp->savingsAccount->account_number }}</span>
+                        @elseif($emp->payment_method === 'savings')
+                            <span class="text-danger small">Savings account not linked</span>
+                        @elseif($emp->paymentSourceAccount)
+                            <span>{{ $emp->paymentSourceAccount->account_name }}</span>
                         @else
-                            <span class="text-danger small">Not linked</span>
+                            <span class="text-danger small">Payout account not set</span>
                         @endif
                     </td>
                     <td>

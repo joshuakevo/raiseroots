@@ -260,6 +260,12 @@
         </a>
         @endcan
 
+        @can('send sms')
+        <a href="{{ route('sms.index') }}" class="nav-link-item {{ request()->routeIs('sms.*') ? 'active' : '' }}">
+            <i class="bi bi-chat-dots-fill"></i> Send SMS
+        </a>
+        @endcan
+
         @canany(['view savings-products', 'view savings'])
         <div class="sidebar-section">Savings</div>
         @can('view savings-products')

@@ -236,4 +236,27 @@ $groupIcons = [
         </form>
     </div>
 </div>
+
+{{-- SMS Free Trial --}}
+<div class="card mt-4 border-success">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-gift text-success"></i>
+        <span>SMS Free Trial</span>
+    </div>
+    <div class="card-body">
+        @php $usedTrial = (int) \App\Models\SystemSetting::get('sms_trial_used_count', 0); @endphp
+        <p class="text-muted small mb-3">
+            Every account gets {{ \App\Services\SmsSubscriptionService::TRIAL_LIMIT }} free SMS before a subscription
+            is required. Currently used: <strong>{{ $usedTrial }} of {{ \App\Services\SmsSubscriptionService::TRIAL_LIMIT }}</strong>.
+            Resetting sets this back to 0 — use for testing or to grant another free trial.
+        </p>
+        <form method="POST" action="{{ route('settings.reset-sms-trial') }}"
+              onsubmit="return confirm('Reset the free SMS trial back to {{ \App\Services\SmsSubscriptionService::TRIAL_LIMIT }} SMS?')">
+            @csrf
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-arrow-counterclockwise me-2"></i>Reset Free SMS Trial
+            </button>
+        </form>
+    </div>
+</div>
 @endsection

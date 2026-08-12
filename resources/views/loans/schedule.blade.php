@@ -19,7 +19,9 @@
     </div>
 </div>
 
-@if($loan->status === 'pending')
+@php $isPreview = in_array($loan->status, ['pending', 'approved']); @endphp
+
+@if($isPreview)
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
     <i class="bi bi-exclamation-triangle-fill"></i>
     <span>This is a <strong>projected schedule</strong> based on disbursement today ({{ today()->format('d M Y') }}). Actual dates will be set when you disburse the loan.</span>
@@ -27,8 +29,8 @@
 @endif
 
 @php
-    $rows = $loan->status === 'pending' ? $schedulePreview : $loan->schedules->toArray();
-    $totalInterestSum = $loan->status === 'pending'
+    $rows = $isPreview ? $schedulePreview : $loan->schedules->toArray();
+    $totalInterestSum = $isPreview
         ? array_sum(array_column($schedulePreview, 'interest_due'))
         : $loan->schedules->sum('interest_due');
 @endphp
@@ -60,17 +62,17 @@
                 <th>Due Date</th>
                 <th class="text-end">Principal</th>
                 <th class="text-end">Interest</th>
-                @if($loan->status !== 'pending')<th class="text-end">Penalty</th>@endif
+                @if(!$isPreview)<th class="text-end">Penalty</th>@endif
                 <th class="text-end">Total Due</th>
-                @if($loan->status !== 'pending')
+                @if(!$isPreview)
                 <th class="text-end">Paid</th>
                 @endif
                 <th class="text-end pe-3">Balance After</th>
-                @if($loan->status !== 'pending')<th>Status</th>@endif
+                @if(!$isPreview)<th>Status</th>@endif
             </tr></thead>
             <tbody>
             @php $totalPrincipal = 0; $totalInterest = 0; $totalDue = 0; $totalPenalty = 0; @endphp
-            @if($loan->status === 'pending')
+            @if($isPreview)
                 @forelse($schedulePreview as $s)
                 @php $totalPrincipal += $s['principal_due']; $totalInterest += $s['interest_due']; $totalDue += $s['total_due']; @endphp
                 <tr>
@@ -116,11 +118,11 @@
                     <td colspan="2" class="ps-3">Totals</td>
                     <td class="text-end">{{ number_format($totalPrincipal, $dp) }}</td>
                     <td class="text-end">{{ number_format($totalInterest, $dp) }}</td>
-                    @if($loan->status !== 'pending')
+                    @if(!$isPreview)
                     <td class="text-end text-danger">{{ $totalPenalty > 0 ? number_format($totalPenalty, $dp) : '—' }}</td>
                     @endif
                     <td class="text-end">{{ number_format($totalDue + $totalPenalty, $dp) }}</td>
-                    <td colspan="{{ $loan->status === 'pending' ? 2 : 3 }}"></td>
+                    <td colspan="{{ $isPreview ? 2 : 3 }}"></td>
                 </tr>
             </tfoot>
         </table>

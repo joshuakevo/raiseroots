@@ -65,6 +65,9 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // Groups
             'view groups', 'manage groups',
+
+            // SMS Messaging
+            'send sms',
         ];
 
         foreach ($permissions as $perm) {
@@ -97,6 +100,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view groups', 'manage groups',
             'manage shares',
             'view employees',
+            'send sms',
         ]);
 
         // Staff — view only, no create/edit/delete

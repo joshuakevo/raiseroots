@@ -17,6 +17,12 @@ class Kernel extends ConsoleKernel
     {
         // Post savings interest at midnight on the 1st of every month
         $schedule->command('eltech:post-interest')->monthlyOn(1, '00:00');
+
+        // SMS reminders for upcoming due installments and overdue/defaulting loans
+        $schedule->command('eltech:send-loan-reminders')->dailyAt('08:00');
+
+        // Safety-net poll for pending SMS subscription payments, alongside the MarzPay webhook
+        $schedule->command('eltech:check-sms-subscriptions')->everyTenMinutes();
     }
 
     /**

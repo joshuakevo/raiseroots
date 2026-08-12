@@ -17,6 +17,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SavingsAccountController;
 use App\Http\Controllers\SavingsProductController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SmsController;
 use App\Http\Controllers\TellerController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -27,12 +28,17 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\GroupPortalController;
 use App\Http\Controllers\ClientPortalController;
+use App\Http\Controllers\MarzPayWebhookController;
+use App\Http\Controllers\SmsSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 // ── Authentication (public) ───────────────────────────────────────
 Route::get('login', [LoginController::class, 'showLogin'])->name('login');
 Route::post('login', [LoginController::class, 'login']);
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
+
+// ── MarzPay webhook (public — called by MarzPay, no session/CSRF) ──
+Route::post('webhooks/marzpay', [MarzPayWebhookController::class, 'handle'])->name('webhooks.marzpay');
 
 // ── Password reset ────────────────────────────────────────────────
 Route::get('password/reset', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
@@ -193,6 +199,10 @@ Route::middleware('auth')->group(function () {
         ->name('loans.guarantors.store')->middleware('permission:create loans');
     Route::delete('loans/{loan}/guarantors/{guarantor}', [LoanController::class, 'destroyGuarantor'])
         ->name('loans.guarantors.destroy')->middleware('permission:create loans');
+    Route::post('loans/{loan}/collaterals', [LoanController::class, 'storeCollateral'])
+        ->name('loans.collaterals.store')->middleware('permission:create loans');
+    Route::delete('loans/{loan}/collaterals/{collateral}', [LoanController::class, 'destroyCollateral'])
+        ->name('loans.collaterals.destroy')->middleware('permission:create loans');
     Route::get('loans/{loan}/statement', [LoanController::class, 'statement'])
         ->name('loans.statement')->middleware('permission:view loans');
     Route::get('loans/{loan}/statement/pdf', [LoanController::class, 'statementPdf'])
@@ -331,6 +341,18 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/run-roles-seeder', [SettingsController::class, 'runRolesSeeder'])->name('settings.run-roles-seeder');
         Route::post('settings/storage-diagnostics', [SettingsController::class, 'storageDiagnostics'])->name('settings.storage-diagnostics');
         Route::post('settings/sync-legacy-uploads', [SettingsController::class, 'syncLegacyUploads'])->name('settings.sync-legacy-uploads');
+        Route::post('settings/reset-sms-trial', [SettingsController::class, 'resetSmsTrial'])->name('settings.reset-sms-trial');
+    });
+
+    // ── SMS Messaging ────────────────────────────────────────────────
+    Route::middleware('permission:send sms')->group(function () {
+        Route::get('sms', [SmsController::class, 'index'])->name('sms.index');
+        Route::get('sms/recipients', [SmsController::class, 'recipients'])->name('sms.recipients');
+        Route::post('sms', [SmsController::class, 'send'])->name('sms.send');
+        Route::post('sms/send-one', [SmsController::class, 'sendOne'])->name('sms.send-one');
+        Route::get('sms/deliveries', [SmsController::class, 'deliveries'])->name('sms.deliveries');
+        Route::post('sms/subscribe', [SmsSubscriptionController::class, 'subscribe'])->name('sms.subscribe');
+        Route::post('sms/subscribe/refresh', [SmsSubscriptionController::class, 'refresh'])->name('sms.subscribe.refresh');
     });
 
     // ── Audit Log ─────────────────────────────────────────────────────

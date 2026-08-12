@@ -32,6 +32,11 @@
             <div class="step-circle" id="sc3"><span>3</span><i class="bi bi-check-lg"></i></div>
             <div class="step-label" id="sl3">Guarantors</div>
         </div>
+        <div class="step-connector" id="cn3"></div>
+        <div class="step-item">
+            <div class="step-circle" id="sc4"><span>4</span><i class="bi bi-check-lg"></i></div>
+            <div class="step-label" id="sl4">Collateral</div>
+        </div>
     </div>
 </div>
 
@@ -138,6 +143,21 @@
     </div>
 </div>
 
+{{-- STEP 4: Collateral --}}
+<div class="step-pane" id="step-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-semibold mb-0"><i class="bi bi-shield-check me-1 text-primary"></i>Collateral <span class="text-muted fw-normal small">(optional)</span></h6>
+        <button type="button" class="btn btn-sm btn-outline-primary py-0" onclick="addCollateral()">
+            <i class="bi bi-plus-lg me-1"></i>Add Collateral
+        </button>
+    </div>
+    <div id="collateralList"></div>
+    <div id="noCollateralMsg" class="text-center text-muted py-3 small">
+        <i class="bi bi-shield-check d-block mb-1" style="font-size:1.8rem;opacity:.3"></i>
+        No collateral added. Click "Add Collateral" to add one.
+    </div>
+</div>
+
 </div>{{-- card-body --}}
 
 {{-- Navigation --}}
@@ -163,7 +183,7 @@
 <script>
 // ── Step navigation ───────────────────────────────────────────────────
 let loanStep = 1;
-const loanTotalSteps = 3;
+const loanTotalSteps = 4;
 
 function loanStepNav(dir) {
     if (dir === 1 && !loanValidateStep(loanStep)) return;
@@ -280,6 +300,48 @@ function removeGuarantor(i) {
     document.getElementById(`g-${i}`)?.remove();
     if (!document.getElementById('guarantorList').children.length) {
         document.getElementById('noGuarantorsMsg').style.display = '';
+    }
+}
+
+// ── Collateral ────────────────────────────────────────────────────────
+const collateralCategories = @json(\App\Models\LoanCollateral::CATEGORIES);
+let cIndex = 0;
+function addCollateral() {
+    const i = cIndex++;
+    document.getElementById('noCollateralMsg').style.display = 'none';
+    const options = Object.entries(collateralCategories)
+        .map(([key, label]) => `<option value="${key}">${label}</option>`).join('');
+    const div = document.createElement('div');
+    div.className = 'border rounded p-2 mb-2 position-relative';
+    div.id = `c-${i}`;
+    div.innerHTML = `
+        <button type="button" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-1 py-0"
+                onclick="removeCollateral(${i})" title="Remove"><i class="bi bi-trash"></i></button>
+        <div class="fw-semibold mb-2 small text-primary">Collateral #${i + 1}</div>
+        <div class="row g-2">
+            <div class="col-sm-4">
+                <label class="form-label small mb-1">Category <span class="text-danger">*</span></label>
+                <select name="collaterals[${i}][category]" class="form-select form-select-sm ts-select" required>
+                    <option value="">— Select category —</option>${options}
+                </select>
+            </div>
+            <div class="col-sm-4">
+                <label class="form-label small mb-1">Description</label>
+                <input type="text" name="collaterals[${i}][description]" class="form-control form-control-sm" placeholder="e.g. Reg. no, plot no, cheque no...">
+            </div>
+            <div class="col-sm-4">
+                <label class="form-label small mb-1">Attach Image or Document</label>
+                <input type="file" name="collaterals[${i}][attachment]" class="form-control form-control-sm" accept="image/*,.pdf,.doc,.docx">
+            </div>
+        </div>`;
+    document.getElementById('collateralList').appendChild(div);
+    div.querySelectorAll('select').forEach(s => initTomSelect(s));
+}
+
+function removeCollateral(i) {
+    document.getElementById(`c-${i}`)?.remove();
+    if (!document.getElementById('collateralList').children.length) {
+        document.getElementById('noCollateralMsg').style.display = '';
     }
 }
 </script>
