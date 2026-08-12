@@ -104,6 +104,19 @@ class SettingsController extends Controller
         return back()->with('seederOutput', $output ?: 'Roles & permissions seeder ran successfully.');
     }
 
+    /**
+     * Clears cached config/routes/views — this host has no shell access, so if a
+     * previous deploy ever ran `config:cache`, editing .env afterwards has no effect
+     * until this runs. Safe to run any time.
+     */
+    public function clearCache()
+    {
+        Artisan::call('optimize:clear');
+        $output = trim(Artisan::output());
+
+        return back()->with('cacheOutput', $output ?: 'Cache cleared successfully.');
+    }
+
     public function storageDiagnostics()
     {
         Artisan::call('storage:link', ['--force' => true]);
@@ -269,6 +282,27 @@ class SettingsController extends Controller
         }
 
         return back()->with($fixed > 0 ? 'success' : 'success', $msg);
+    }
+
+    /**
+     * Reports which MarzSMS/MarzPay env vars are actually loaded (present/blank only,
+     * never the values) — the fastest way to tell "not configured" apart from "configured
+     * but rejected by the gateway" without shell/log access.
+     */
+    public function smsConfigCheck()
+    {
+        $keys = [
+            'MARZSMS_API_KEY'        => config('services.marzsms.api_key'),
+            'MARZSMS_SECRET'         => config('services.marzsms.secret'),
+            'MARZSMS_SENDER_ID'      => config('services.marzsms.sender_id'),
+            'MARZPAY_API_KEY'        => config('services.marzpay.api_key'),
+            'MARZPAY_API_SECRET'     => config('services.marzpay.api_secret'),
+            'MARZPAY_WEBHOOK_SECRET' => config('services.marzpay.webhook_secret'),
+        ];
+
+        $report = collect($keys)->mapWithKeys(fn ($value, $key) => [$key => $value ? 'SET' : 'MISSING'])->all();
+
+        return back()->with('smsConfigReport', $report);
     }
 
     public function resetSmsTrial()

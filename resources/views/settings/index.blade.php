@@ -164,6 +164,23 @@ $groupIcons = [
         @if(session('seederOutput'))
         <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('seederOutput') }}</pre>
         @endif
+
+        <hr class="my-3">
+        <p class="text-muted small mb-3">
+            Clears cached config, routes, and views. If you've just edited <code>.env</code> (e.g. new API keys)
+            and the app still isn't picking up the change, run this — a cached config from an earlier deploy
+            can otherwise keep serving the old values indefinitely.
+        </p>
+        <form method="POST" action="{{ route('settings.clear-cache') }}">
+            @csrf
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-eraser-fill me-2"></i>Clear Config Cache
+            </button>
+        </form>
+
+        @if(session('cacheOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('cacheOutput') }}</pre>
+        @endif
     </div>
 </div>
 
@@ -257,6 +274,37 @@ $groupIcons = [
                 <i class="bi bi-arrow-counterclockwise me-2"></i>Reset Free SMS Trial
             </button>
         </form>
+
+        <hr class="my-3">
+        <p class="text-muted small mb-3">
+            Checks which MarzSMS/MarzPay <code>.env</code> keys are actually loaded (present or missing only —
+            never shows the values). Use this before assuming the gateway rejected a request; if a key shows
+            "MISSING" here, it either wasn't added to the server's <code>.env</code> or the config cache is
+            stale — try Clear Config Cache above afterwards.
+        </p>
+        <form method="POST" action="{{ route('settings.sms-config-check') }}">
+            @csrf
+            <button type="submit" class="btn btn-outline-success">
+                <i class="bi bi-clipboard2-check me-2"></i>Check MarzSMS / MarzPay Config
+            </button>
+        </form>
+
+        @if(session('smsConfigReport'))
+        <div class="mt-3">
+            <table class="table table-sm table-bordered mb-0">
+                <tbody>
+                @foreach(session('smsConfigReport') as $key => $status)
+                    <tr>
+                        <th class="text-nowrap" style="width:280px"><code>{{ $key }}</code></th>
+                        <td>
+                            <span class="badge bg-{{ $status === 'SET' ? 'success' : 'danger' }}">{{ $status }}</span>
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
     </div>
 </div>
 @endsection

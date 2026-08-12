@@ -339,9 +339,11 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/reconcile', [SettingsController::class, 'reconcile'])->name('settings.reconcile');
         Route::post('settings/migrate', [SettingsController::class, 'runMigrations'])->name('settings.migrate');
         Route::post('settings/run-roles-seeder', [SettingsController::class, 'runRolesSeeder'])->name('settings.run-roles-seeder');
+        Route::post('settings/clear-cache', [SettingsController::class, 'clearCache'])->name('settings.clear-cache');
         Route::post('settings/storage-diagnostics', [SettingsController::class, 'storageDiagnostics'])->name('settings.storage-diagnostics');
         Route::post('settings/sync-legacy-uploads', [SettingsController::class, 'syncLegacyUploads'])->name('settings.sync-legacy-uploads');
         Route::post('settings/reset-sms-trial', [SettingsController::class, 'resetSmsTrial'])->name('settings.reset-sms-trial');
+        Route::post('settings/sms-config-check', [SettingsController::class, 'smsConfigCheck'])->name('settings.sms-config-check');
     });
 
     // ── SMS Messaging ────────────────────────────────────────────────
