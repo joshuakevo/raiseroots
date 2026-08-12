@@ -223,14 +223,14 @@
         @php $orgLogo = \App\Models\SystemSetting::get('org_logo'); @endphp
         @if($orgLogo)
             <img src="{{ asset($orgLogo) }}" alt="Logo"
-                 style="height:40px;max-width:140px;object-fit:contain;flex-shrink:0">
+                 style="height:34px;width:34px;object-fit:contain;flex-shrink:0;border-radius:8px">
         @else
             <div class="brand-icon"><i class="bi bi-bank2"></i></div>
-            <div style="overflow:hidden">
-                <div class="brand-text">{{ \App\Models\SystemSetting::get('org_name','ElTech Finance') }}</div>
-                <div class="brand-sub">Financial Management</div>
-            </div>
         @endif
+        <div style="overflow:hidden">
+            <div class="brand-text">{{ \App\Models\SystemSetting::get('org_name','ElTech Finance') }}</div>
+            <div class="brand-sub">Financial Management</div>
+        </div>
     </div>
 
     <div class="sidebar-scroll">
