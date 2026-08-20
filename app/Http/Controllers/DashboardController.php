@@ -35,6 +35,7 @@ class DashboardController extends Controller
         $stats = [
             'total_loans_issued'    => Loan::whereIn('status', ['active', 'closed'])->count(),
             'total_outstanding'     => $totalOutstanding,
+            'outstanding_interest'  => Loan::where('status', 'active')->sum('outstanding_interest'),
             'total_interest_earned' => LoanRepayment::sum('interest_paid'),
             'overdue_loans'         => Loan::where('status', 'active')
                 ->whereHas('schedules', fn($q) => $q

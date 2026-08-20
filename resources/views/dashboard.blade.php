@@ -36,6 +36,17 @@
     <div class="col-6 col-md-3">
         <div class="stat-card">
             <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-percent"></i></div>
+                <div>
+                    <div class="text-muted small">Outstanding Interest</div>
+                    <div class="fw-bold fs-5">{{ number_format($stats['outstanding_interest'], $dp) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-graph-up-arrow"></i></div>
                 <div>
                     <div class="text-muted small">Total Interest Earned</div>
