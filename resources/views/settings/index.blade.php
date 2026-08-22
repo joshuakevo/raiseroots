@@ -335,4 +335,42 @@ $groupIcons = [
         @endif
     </div>
 </div>
+
+@role('super_admin')
+{{-- One-time: fix loan disbursements mis-posted to the wrong receivable account --}}
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-octagon text-danger"></i>
+        <span>Fix Loan Receivable Postings</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            One-time corrective fix for loan disbursements that posted their receivable leg to the wrong
+            GL account (Current Assets 1000, Loans Receivable — Emergency 1103, or Cash On Hand 1001) instead of
+            Loan Receivables (1100). Corrects the account directly on each affected journal line — no reversal
+            entry is created, nothing changes in Journal Entries, and the loan's schedule/history is untouched.
+            <strong>Preview first</strong> to confirm exactly what will change.
+        </p>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ route('settings.loan-receivable-fix-preview') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </button>
+            </form>
+            <form method="POST" action="{{ route('settings.loan-receivable-fix-apply') }}"
+                  onsubmit="return confirm('This will reverse 3 loan disbursement journals and re-post them to the correct account. Only proceed after reviewing the Preview output. Continue?')">
+                @csrf
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-check2-circle me-2"></i>Apply Fix
+                </button>
+            </form>
+        </div>
+
+        @if(session('loanFixOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('loanFixOutput') }}</pre>
+        @endif
+    </div>
+</div>
+@endrole
 @endsection

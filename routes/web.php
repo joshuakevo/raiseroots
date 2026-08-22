@@ -347,6 +347,12 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/test-marzpay-connectivity', [SettingsController::class, 'testMarzPayConnectivity'])->name('settings.test-marzpay-connectivity');
     });
 
+    // One-time loan-receivable GL correction — extra-gated beyond 'manage settings'.
+    Route::middleware('role:super_admin')->group(function () {
+        Route::post('settings/loan-receivable-fix-preview', [SettingsController::class, 'previewLoanReceivableFix'])->name('settings.loan-receivable-fix-preview');
+        Route::post('settings/loan-receivable-fix-apply', [SettingsController::class, 'runLoanReceivableFix'])->name('settings.loan-receivable-fix-apply');
+    });
+
     // ── SMS Messaging ────────────────────────────────────────────────
     Route::middleware('permission:send sms')->group(function () {
         Route::get('sms', [SmsController::class, 'index'])->name('sms.index');

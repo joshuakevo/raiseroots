@@ -361,4 +361,24 @@ class SettingsController extends Controller
 
         return back()->with('success', 'Free SMS trial reset — ' . SmsSubscriptionService::TRIAL_LIMIT . ' free SMS are available again.');
     }
+
+    /**
+     * Preview app\Console\Commands\FixLoanReceivablePostings.php without applying it.
+     * Remove this + runLoanReceivableFix() once the one-time fix is confirmed complete.
+     */
+    public function previewLoanReceivableFix()
+    {
+        Artisan::call('eltech:fix-loan-receivables');
+        $output = trim(Artisan::output());
+
+        return back()->with('loanFixOutput', $output);
+    }
+
+    public function runLoanReceivableFix()
+    {
+        Artisan::call('eltech:fix-loan-receivables', ['--commit' => true]);
+        $output = trim(Artisan::output());
+
+        return back()->with('loanFixOutput', $output);
+    }
 }
