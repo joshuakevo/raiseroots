@@ -80,17 +80,6 @@
     <div class="col-6 col-md-3">
         <div class="stat-card">
             <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon bg-secondary bg-opacity-10 text-secondary"><i class="bi bi-safe"></i></div>
-                <div>
-                    <div class="text-muted small">FD Principal</div>
-                    <div class="fw-bold fs-5">{{ number_format($stats['total_fd_principal'], $dp) }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-people"></i></div>
                 <div>
                     <div class="text-muted small">Active Clients</div>

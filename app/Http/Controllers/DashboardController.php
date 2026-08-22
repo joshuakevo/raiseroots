@@ -29,7 +29,6 @@ class DashboardController extends Controller
         // ── Core stats ──────────────────────────────────────────────────────
         $totalSavings      = SavingsAccount::where('status', 'active')->sum('balance');
         $totalOutstanding  = Loan::where('status', 'active')->sum('outstanding_principal');
-        $totalFdPrincipal  = FixedDeposit::where('status', 'active')->sum('principal');
         $totalClients      = Client::count();
 
         $stats = [
@@ -43,7 +42,6 @@ class DashboardController extends Controller
                     ->whereIn('status', ['pending', 'partial', 'overdue'])
                 )->count(),
             'total_savings_balance' => $totalSavings,
-            'total_fd_principal'    => $totalFdPrincipal,
             'active_clients'        => Client::where('status', 'active')->count(),
             'active_savings'        => SavingsAccount::where('status', 'active')->count(),
             'active_fds'            => FixedDeposit::where('status', 'active')->count(),
