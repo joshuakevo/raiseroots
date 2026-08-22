@@ -345,6 +345,8 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/reset-sms-trial', [SettingsController::class, 'resetSmsTrial'])->name('settings.reset-sms-trial');
         Route::post('settings/sms-config-check', [SettingsController::class, 'smsConfigCheck'])->name('settings.sms-config-check');
         Route::post('settings/test-marzpay-connectivity', [SettingsController::class, 'testMarzPayConnectivity'])->name('settings.test-marzpay-connectivity');
+        Route::post('settings/collateral-categories', [App\Http\Controllers\LoanCollateralCategoryController::class, 'store'])->name('settings.collateral-categories.store');
+        Route::post('settings/collateral-categories/{collateralCategory}/toggle', [App\Http\Controllers\LoanCollateralCategoryController::class, 'toggle'])->name('settings.collateral-categories.toggle');
     });
 
     // One-time loan-receivable GL correction — extra-gated beyond 'manage settings'.

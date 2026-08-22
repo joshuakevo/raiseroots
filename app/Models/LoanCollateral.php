@@ -9,15 +9,6 @@ class LoanCollateral extends Model
 {
     use HasFactory;
 
-    public const CATEGORIES = [
-        'household'               => 'Household',
-        'land_sale_agreement'     => 'Land Sale Agreement',
-        'lc1_introduction_letter' => 'LC1 Introduction Letter',
-        'land_titles'             => 'Land Titles',
-        'motor_vehicles'          => 'Motor Vehicles',
-        'post_dated_cheques'      => 'Post Dated Cheques',
-    ];
-
     protected $fillable = [
         'loan_id', 'category', 'description', 'file_path', 'file_type', 'created_by',
     ];
@@ -34,6 +25,6 @@ class LoanCollateral extends Model
 
     public function getCategoryLabelAttribute(): string
     {
-        return self::CATEGORIES[$this->category] ?? $this->category;
+        return LoanCollateralCategory::where('key', $this->category)->value('label') ?? $this->category;
     }
 }

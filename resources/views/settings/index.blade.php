@@ -336,6 +336,54 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- Loan Collateral Categories --}}
+<div class="card mt-4">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-shield-lock text-secondary"></i>
+        <span>Loan Collateral Categories</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Options offered on the "Add Collateral" dropdown when creating or updating a loan. Hiding a category
+            keeps it visible on loans that already used it — only new collateral won't be able to pick it anymore.
+        </p>
+
+        <table class="table table-sm align-middle mb-3">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th class="text-end">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            @forelse(\App\Models\LoanCollateralCategory::orderBy('label')->get() as $cat)
+                <tr class="{{ $cat->is_active ? '' : 'text-muted' }}">
+                    <td>{{ $cat->label }}</td>
+                    <td class="text-end">
+                        <form method="POST" action="{{ route('settings.collateral-categories.toggle', $cat) }}" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-sm {{ $cat->is_active ? 'btn-outline-success' : 'btn-outline-secondary' }}">
+                                {{ $cat->is_active ? 'Active' : 'Hidden' }}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="2" class="text-center text-muted py-3">No categories yet.</td></tr>
+            @endforelse
+            </tbody>
+        </table>
+
+        <form method="POST" action="{{ route('settings.collateral-categories.store') }}" class="d-flex gap-2">
+            @csrf
+            <input type="text" name="label" class="form-control form-control-sm" placeholder="e.g. Livestock" required maxlength="255">
+            <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+                <i class="bi bi-plus-lg me-1"></i>Add Category
+            </button>
+        </form>
+    </div>
+</div>
+
 @role('super_admin')
 {{-- One-time: fix loan disbursements mis-posted to the wrong receivable account --}}
 <div class="card mt-4 border-danger">

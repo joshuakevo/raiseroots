@@ -304,7 +304,7 @@ function removeGuarantor(i) {
 }
 
 // ── Collateral ────────────────────────────────────────────────────────
-const collateralCategories = @json(\App\Models\LoanCollateral::CATEGORIES);
+const collateralCategories = @json(\App\Models\LoanCollateralCategory::active()->orderBy('label')->pluck('label', 'key'));
 let cIndex = 0;
 function addCollateral() {
     const i = cIndex++;
