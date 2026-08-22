@@ -361,7 +361,7 @@
                         <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
                         <select name="category" class="form-select ts-select" required>
                             <option value="">— Select category —</option>
-                            @foreach(\App\Models\LoanCollateralCategory::active()->orderBy('label')->pluck('label', 'key') as $key => $label)
+                            @foreach(\App\Models\LoanCollateralCategory::activeOptions() as $key => $label)
                                 <option value="{{ $key }}">{{ $label }}</option>
                             @endforeach
                         </select>

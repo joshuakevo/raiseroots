@@ -66,7 +66,7 @@ class LoanController extends Controller
             'guarantors.*.photo'            => 'nullable|image|max:2048',
             // Collateral
             'collaterals'                   => 'nullable|array',
-            'collaterals.*.category'        => 'required_with:collaterals|in:' . implode(',', LoanCollateralCategory::active()->pluck('key')->all()),
+            'collaterals.*.category'        => 'required_with:collaterals|in:' . implode(',', LoanCollateralCategory::activeOptions()->keys()->all()),
             'collaterals.*.description'     => 'nullable|string|max:500',
             'collaterals.*.attachment'      => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
         ]);
@@ -340,7 +340,7 @@ class LoanController extends Controller
     public function storeCollateral(Request $request, Loan $loan)
     {
         $data = $request->validate([
-            'category'    => 'required|in:' . implode(',', LoanCollateralCategory::active()->pluck('key')->all()),
+            'category'    => 'required|in:' . implode(',', LoanCollateralCategory::activeOptions()->keys()->all()),
             'description' => 'nullable|string|max:500',
             'attachment'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
         ]);

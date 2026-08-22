@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LoanCollateralCategory;
 use App\Models\SystemSetting;
 use App\Services\SmsSubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class SettingsController extends Controller
@@ -15,7 +17,16 @@ class SettingsController extends Controller
     {
         $settings = SystemSetting::whereNotIn('key', ['org_logo', 'sms_trial_used_count'])
             ->orderBy('group')->orderBy('label')->get()->groupBy('group');
-        return view('settings.index', compact('settings'));
+
+        // Guarded: this table only exists after "Run Migrations" is clicked below, and
+        // that button lives on this same page — querying it unconditionally would 500
+        // the whole Settings page on any deploy where migrations haven't run yet.
+        $collateralCategoriesReady = Schema::hasTable('loan_collateral_categories');
+        $collateralCategories = $collateralCategoriesReady
+            ? LoanCollateralCategory::orderBy('label')->get()
+            : collect();
+
+        return view('settings.index', compact('settings', 'collateralCategoriesReady', 'collateralCategories'));
     }
 
     public function update(Request $request)

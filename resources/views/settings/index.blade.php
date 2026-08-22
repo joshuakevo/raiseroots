@@ -343,6 +343,7 @@ $groupIcons = [
         <span>Loan Collateral Categories</span>
     </div>
     <div class="card-body">
+        @if($collateralCategoriesReady)
         <p class="text-muted small mb-3">
             Options offered on the "Add Collateral" dropdown when creating or updating a loan. Hiding a category
             keeps it visible on loans that already used it — only new collateral won't be able to pick it anymore.
@@ -356,7 +357,7 @@ $groupIcons = [
                 </tr>
             </thead>
             <tbody>
-            @forelse(\App\Models\LoanCollateralCategory::orderBy('label')->get() as $cat)
+            @forelse($collateralCategories as $cat)
                 <tr class="{{ $cat->is_active ? '' : 'text-muted' }}">
                     <td>{{ $cat->label }}</td>
                     <td class="text-end">
@@ -381,6 +382,11 @@ $groupIcons = [
                 <i class="bi bi-plus-lg me-1"></i>Add Category
             </button>
         </form>
+        @else
+        <p class="text-muted small mb-0">
+            <i class="bi bi-info-circle me-1"></i>Run Migrations above first, then refresh this page to manage collateral categories.
+        </p>
+        @endif
     </div>
 </div>
 

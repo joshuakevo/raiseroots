@@ -25,6 +25,10 @@ class LoanCollateral extends Model
 
     public function getCategoryLabelAttribute(): string
     {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('loan_collateral_categories')) {
+            return $this->category;
+        }
+
         return LoanCollateralCategory::where('key', $this->category)->value('label') ?? $this->category;
     }
 }
