@@ -353,6 +353,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:super_admin')->group(function () {
         Route::post('settings/loan-receivable-fix-preview', [SettingsController::class, 'previewLoanReceivableFix'])->name('settings.loan-receivable-fix-preview');
         Route::post('settings/loan-receivable-fix-apply', [SettingsController::class, 'runLoanReceivableFix'])->name('settings.loan-receivable-fix-apply');
+        Route::post('settings/reset-production-preview', [SettingsController::class, 'previewResetProductionData'])->name('settings.reset-production-preview');
+        Route::post('settings/reset-production-apply', [SettingsController::class, 'runResetProductionData'])->name('settings.reset-production-apply');
     });
 
     // ── SMS Messaging ────────────────────────────────────────────────
