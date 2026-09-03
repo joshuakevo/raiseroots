@@ -29,7 +29,8 @@ class LoanController extends Controller
             ->when($request->status, fn($q) => $q->where('status', $request->status))
             ->when($request->search, fn($q) => $q->where('loan_number', 'like', "%{$request->search}%")
                 ->orWhereHas('client', fn($q2) => $q2->where('name', 'like', "%{$request->search}%")))
-            ->latest()
+            ->orderByDesc('disbursement_date')
+            ->orderByDesc('created_at')
             ->paginate(20);
 
         return view('loans.index', compact('loans'));
