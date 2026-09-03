@@ -60,7 +60,7 @@
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-circle"></i></div>
                 <div>
-                    <div class="text-muted small">Overdue Loans</div>
+                    <div class="text-muted small">Defaulted Loans</div>
                     <div class="fw-bold fs-5 {{ $stats['overdue_loans'] > 0 ? 'text-danger' : '' }}">{{ number_format($stats['overdue_loans']) }}</div>
                 </div>
             </div>
