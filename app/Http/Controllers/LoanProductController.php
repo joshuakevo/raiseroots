@@ -55,7 +55,7 @@ class LoanProductController extends Controller
             'total_loans'       => $loanProduct->loans()->count(),
             'active_loans'      => $loanProduct->loans()->where('status', 'active')->count(),
             'total_disbursed'   => $loanProduct->loans()->where('status', '!=', 'pending')->sum('principal'),
-            'total_outstanding' => $loanProduct->loans()->where('status', 'active')->sum('outstanding_principal'),
+            'total_outstanding' => $loanProduct->loans()->whereIn('status', ['active', 'defaulted'])->sum('outstanding_principal'),
         ];
         return view('loan-products.show', compact('loanProduct', 'stats'));
     }

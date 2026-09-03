@@ -41,7 +41,7 @@ class SendLoanReminders extends Command
 
     protected function sendOverdueNotices(LoanNotificationService $notifier, LoanService $loanService): void
     {
-        $loans = Loan::where('status', 'active')
+        $loans = Loan::whereIn('status', ['active', 'defaulted'])
             ->whereHas('schedules', fn ($q) => $q->where('due_date', '<', now()->toDateString())->where('status', '!=', 'paid'))
             ->with('client', 'product')
             ->get();

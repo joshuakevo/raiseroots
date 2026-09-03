@@ -192,8 +192,8 @@ class ReportController extends Controller
 
         $summary = [
             'total_loans'       => $loans->count(),
-            'total_disbursed'   => $loans->whereIn('status', ['active', 'closed'])->sum('principal'),
-            'total_outstanding' => $loans->where('status', 'active')->sum(fn($l) => $l->outstanding_principal + $l->outstanding_interest),
+            'total_disbursed'   => $loans->whereIn('status', ['active', 'closed', 'defaulted'])->sum('principal'),
+            'total_outstanding' => $loans->whereIn('status', ['active', 'defaulted'])->sum(fn($l) => $l->outstanding_principal + $l->outstanding_interest),
             'active_loans'      => $loans->where('status', 'active')->count(),
             'closed_loans'      => $loans->where('status', 'closed')->count(),
             'defaulted_loans'   => $loans->where('status', 'defaulted')->count(),
@@ -293,7 +293,7 @@ class ReportController extends Controller
             $loan = Loan::with('client', 'product', 'schedules')->findOrFail($request->loan_id);
         }
 
-        $loans = Loan::with('client')->where('status', 'active')->get();
+        $loans = Loan::with('client')->whereIn('status', ['active', 'defaulted'])->get();
 
         if ($loan && $request->format === 'pdf') {
             $pdf = Pdf::loadView('pdf.reports.repayment-schedule', compact('loan'))

@@ -66,11 +66,11 @@ class ClientPortalController extends Controller
 
         $totalSavings  = SavingsAccount::where('client_id', $client->id)->sum('balance');
         $totalLoanDebt = Loan::where('client_id', $client->id)
-            ->whereIn('status', ['active', 'disbursed', 'overdue'])
+            ->whereIn('status', ['active', 'defaulted'])
             ->selectRaw('SUM(outstanding_principal + outstanding_interest + outstanding_penalty) as total')
             ->value('total') ?? 0;
         $totalFdValue  = FixedDeposit::where('client_id', $client->id)->where('status', 'active')->sum('principal');
-        $activeLoans   = Loan::where('client_id', $client->id)->whereIn('status', ['active', 'disbursed', 'overdue'])->count();
+        $activeLoans   = Loan::where('client_id', $client->id)->whereIn('status', ['active', 'defaulted'])->count();
 
         // Monthly savings trend — last 6 months
         $savingsAccountIds = SavingsAccount::where('client_id', $client->id)->pluck('id');
@@ -117,7 +117,7 @@ class ClientPortalController extends Controller
 
         // Active loans list
         $activeLoansData = Loan::where('client_id', $client->id)
-            ->whereIn('status', ['active', 'disbursed', 'overdue'])->with('product')->get();
+            ->whereIn('status', ['active', 'defaulted'])->with('product')->get();
 
         return view('client-portal.overview', compact(
             'client', 'clients', 'totalSavings', 'totalLoanDebt', 'totalFdValue',

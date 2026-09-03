@@ -28,13 +28,13 @@ class DashboardController extends Controller
 
         // ── Core stats ──────────────────────────────────────────────────────
         $totalSavings      = SavingsAccount::where('status', 'active')->sum('balance');
-        $totalOutstanding  = Loan::where('status', 'active')->sum('outstanding_principal');
+        $totalOutstanding  = Loan::whereIn('status', ['active', 'defaulted'])->sum('outstanding_principal');
         $totalClients      = Client::count();
 
         $stats = [
-            'total_loans_issued'    => Loan::whereIn('status', ['active', 'closed'])->count(),
+            'total_loans_issued'    => Loan::whereIn('status', ['active', 'closed', 'defaulted'])->count(),
             'total_outstanding'     => $totalOutstanding,
-            'outstanding_interest'  => Loan::where('status', 'active')->sum('outstanding_interest'),
+            'outstanding_interest'  => Loan::whereIn('status', ['active', 'defaulted'])->sum('outstanding_interest'),
             'total_interest_earned' => LoanRepayment::sum('interest_paid'),
             'overdue_loans'         => Loan::where('status', 'defaulted')->count(),
             'total_savings_balance' => $totalSavings,
@@ -94,14 +94,14 @@ class DashboardController extends Controller
         $monthlyLoanDisbursements = $months->map(function ($m) {
             return (float) Loan::whereYear('disbursement_date', $m->year)
                 ->whereMonth('disbursement_date', $m->month)
-                ->whereIn('status', ['active', 'closed'])
+                ->whereIn('status', ['active', 'closed', 'defaulted'])
                 ->sum('principal');
         });
 
         // ── Liquidity & Risk ─────────────────────────────────────────────────
         $loanToSavingsRatio = $totalSavings > 0 ? round($totalOutstanding / $totalSavings, 2) : 0;
 
-        $parLoans = Loan::where('status', 'active')
+        $parLoans = Loan::whereIn('status', ['active', 'defaulted'])
             ->whereHas('schedules', fn($q) => $q
                 ->where('due_date', '<', now()->subDays(30)->toDateString())
                 ->whereIn('status', ['pending', 'partial', 'overdue'])
@@ -109,7 +109,7 @@ class DashboardController extends Controller
         $par30 = $totalOutstanding > 0 ? round(($parLoans / $totalOutstanding) * 100, 1) : 0;
 
         // ── Client Activity ──────────────────────────────────────────────────
-        $activeBorrowers = Loan::where('status', 'active')->distinct('client_id')->count('client_id');
+        $activeBorrowers = Loan::whereIn('status', ['active', 'defaulted'])->distinct('client_id')->count('client_id');
         $activeSavers    = SavingsAccount::where('status', 'active')->where('balance', '>', 0)->distinct('client_id')->count('client_id');
 
         $dormantAccounts = SavingsAccount::where('status', 'active')
@@ -142,7 +142,7 @@ class DashboardController extends Controller
 
         $lastMonthLoans = Loan::whereYear('disbursement_date', now()->subMonth()->year)
             ->whereMonth('disbursement_date', now()->subMonth()->month)
-            ->whereIn('status', ['active', 'closed'])
+            ->whereIn('status', ['active', 'closed', 'defaulted'])
             ->sum('principal');
 
         $savingsGrowth = $lastMonthSavings > 0

@@ -58,7 +58,7 @@ class Client extends Model
 
     public function activeLoans()
     {
-        return $this->hasMany(Loan::class)->where('status', 'active');
+        return $this->hasMany(Loan::class)->whereIn('status', ['active', 'defaulted']);
     }
 
     public function activeSavingsAccounts()
