@@ -33,6 +33,7 @@ class ReconcileData extends Command
         $this->reconcileSavingsBalances();
         $this->reconcileLoanScheduleStatuses();
         $this->reconcileLoanOutstandingBalances();
+        $this->reconcileLoanDefaultStatus();
         $this->reconcileMemberShareStatuses();
         $this->reconcileClientMembershipStatuses();
 
@@ -150,6 +151,35 @@ class ReconcileData extends Command
 
             if ($updates && !$this->dryRun) {
                 $loan->update($updates);
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // 3b. Loan default status — source of truth: any unpaid installment 1+ day overdue
+    // -----------------------------------------------------------------------
+    private function reconcileLoanDefaultStatus(): void
+    {
+        $this->info('Checking loan default status...');
+
+        $today = Carbon::today()->toDateString();
+
+        Loan::whereIn('status', ['active', 'defaulted'])->each(function (Loan $loan) use ($today) {
+            $isOverdue = $loan->schedules()
+                ->where('due_date', '<', $today)
+                ->where('status', '!=', 'paid')
+                ->exists();
+
+            $correct = $isOverdue ? 'defaulted' : 'active';
+
+            if ($loan->status !== $correct) {
+                $this->warn("  [LOAN] #{$loan->loan_number} status: stored={$loan->status}  correct={$correct}");
+                if (!$this->dryRun) {
+                    $loan->update(['status' => $correct]);
+                }
+                $this->fixed++;
+            } else {
+                $this->ok++;
             }
         });
     }

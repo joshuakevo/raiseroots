@@ -36,11 +36,7 @@ class DashboardController extends Controller
             'total_outstanding'     => $totalOutstanding,
             'outstanding_interest'  => Loan::where('status', 'active')->sum('outstanding_interest'),
             'total_interest_earned' => LoanRepayment::sum('interest_paid'),
-            'overdue_loans'         => Loan::where('status', 'active')
-                ->whereHas('schedules', fn($q) => $q
-                    ->where('due_date', '<', now()->toDateString())
-                    ->whereIn('status', ['pending', 'partial', 'overdue'])
-                )->count(),
+            'overdue_loans'         => Loan::where('status', 'defaulted')->count(),
             'total_savings_balance' => $totalSavings,
             'active_clients'        => Client::where('status', 'active')->count(),
             'active_savings'        => SavingsAccount::where('status', 'active')->count(),
