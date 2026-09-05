@@ -3,15 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
-use App\Models\FixedDeposit;
 use App\Models\Loan;
 use App\Models\LoanRepayment;
-use App\Models\SavingsAccount;
-use App\Models\SavingsTransaction;
-use App\Models\Transaction;
+use App\Models\LoanSchedule;
 use App\Models\TransactionLine;
 use App\Models\Account;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -27,28 +23,35 @@ class DashboardController extends Controller
         }
 
         // ── Core stats ──────────────────────────────────────────────────────
-        $totalSavings      = SavingsAccount::where('status', 'active')->sum('balance');
-        $totalOutstanding  = Loan::whereIn('status', ['active', 'defaulted'])->sum('outstanding_principal');
-        $totalClients      = Client::count();
+        $totalOutstanding = Loan::whereIn('status', ['active', 'defaulted'])->sum('outstanding_principal');
+        $issuedLoans      = Loan::whereIn('status', ['active', 'closed', 'defaulted']);
+        $totalLoansIssued = (clone $issuedLoans)->count();
 
         $stats = [
-            'total_loans_issued'    => Loan::whereIn('status', ['active', 'closed', 'defaulted'])->count(),
+            'total_loans_issued'    => $totalLoansIssued,
+            'active_loans'          => Loan::where('status', 'active')->count(),
             'total_outstanding'     => $totalOutstanding,
             'outstanding_interest'  => Loan::whereIn('status', ['active', 'defaulted'])->sum('outstanding_interest'),
             'total_interest_earned' => LoanRepayment::sum('interest_paid'),
             'overdue_loans'         => Loan::where('status', 'defaulted')->count(),
-            'total_savings_balance' => $totalSavings,
-            'active_clients'        => Client::where('status', 'active')->count(),
-            'active_savings'        => SavingsAccount::where('status', 'active')->count(),
-            'active_fds'            => FixedDeposit::where('status', 'active')->count(),
             'pending_loans'         => Loan::where('status', 'pending')->count(),
+            'average_loan_size'     => $totalLoansIssued > 0 ? (clone $issuedLoans)->avg('principal') : 0,
         ];
 
-        // ── Upcoming FD Maturities ───────────────────────────────────────────
-        $upcomingMaturities = FixedDeposit::with('client', 'product')
-            ->where('status', 'active')
-            ->where('maturity_date', '<=', now()->addDays(30)->toDateString())
-            ->orderBy('maturity_date')
+        // ── Loan Portfolio by Status ─────────────────────────────────────────
+        $loanStatusCounts = Loan::select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $loanStatusBreakdown = collect(['pending', 'active', 'closed', 'defaulted'])
+            ->mapWithKeys(fn ($status) => [$status => (int) ($loanStatusCounts[$status] ?? 0)]);
+
+        // ── Upcoming Installments Due ─────────────────────────────────────────
+        $upcomingInstallments = LoanSchedule::whereIn('status', ['pending', 'partial'])
+            ->whereBetween('due_date', [now()->toDateString(), now()->addDays(30)->toDateString()])
+            ->whereHas('loan', fn ($q) => $q->whereIn('status', ['active', 'defaulted']))
+            ->with('loan.client')
+            ->orderBy('due_date')
             ->take(5)
             ->get();
 
@@ -83,14 +86,6 @@ class DashboardController extends Controller
 
         $monthlyProfit = $monthlyIncome->zip($monthlyExpenses)->map(fn($pair) => round($pair[0] - $pair[1], 2));
 
-        // Cumulative savings & loans
-        $monthlySavingsDeposits = $months->map(function ($m) {
-            return (float) SavingsTransaction::where('transaction_type', 'deposit')
-                ->whereYear('transaction_date', $m->year)
-                ->whereMonth('transaction_date', $m->month)
-                ->sum('amount');
-        });
-
         $monthlyLoanDisbursements = $months->map(function ($m) {
             return (float) Loan::whereYear('disbursement_date', $m->year)
                 ->whereMonth('disbursement_date', $m->month)
@@ -98,9 +93,7 @@ class DashboardController extends Controller
                 ->sum('principal');
         });
 
-        // ── Liquidity & Risk ─────────────────────────────────────────────────
-        $loanToSavingsRatio = $totalSavings > 0 ? round($totalOutstanding / $totalSavings, 2) : 0;
-
+        // ── Risk ───────────────────────────────────────────────────────────────
         $parLoans = Loan::whereIn('status', ['active', 'defaulted'])
             ->whereHas('schedules', fn($q) => $q
                 ->where('due_date', '<', now()->subDays(30)->toDateString())
@@ -108,46 +101,19 @@ class DashboardController extends Controller
             )->sum('outstanding_principal');
         $par30 = $totalOutstanding > 0 ? round(($parLoans / $totalOutstanding) * 100, 1) : 0;
 
+        $defaultRate = $totalLoansIssued > 0
+            ? round(($loanStatusBreakdown['defaulted'] / $totalLoansIssued) * 100, 1)
+            : 0;
+
         // ── Client Activity ──────────────────────────────────────────────────
+        $totalClients    = Client::count();
         $activeBorrowers = Loan::whereIn('status', ['active', 'defaulted'])->distinct('client_id')->count('client_id');
-        $activeSavers    = SavingsAccount::where('status', 'active')->where('balance', '>', 0)->distinct('client_id')->count('client_id');
-
-        $dormantAccounts = SavingsAccount::where('status', 'active')
-            ->whereDoesntHave('transactions', fn($q) => $q
-                ->where('transaction_date', '>=', now()->subMonths(6)->toDateString())
-            )->count();
-
-        // ── Savings Insights ─────────────────────────────────────────────────
-        $newSavingsThisMonth = SavingsAccount::whereYear('opened_date', now()->year)
-            ->whereMonth('opened_date', now()->month)
-            ->count();
-
-        $depositsThisMonth = SavingsTransaction::where('transaction_type', 'deposit')
-            ->whereYear('transaction_date', now()->year)
-            ->whereMonth('transaction_date', now()->month)
-            ->sum('amount');
-
-        $withdrawalsThisMonth = SavingsTransaction::where('transaction_type', 'withdrawal')
-            ->whereYear('transaction_date', now()->year)
-            ->whereMonth('transaction_date', now()->month)
-            ->sum('amount');
-
-        $netCashFlow = $depositsThisMonth - $withdrawalsThisMonth;
 
         // ── Portfolio Insights ────────────────────────────────────────────────
-        $lastMonthSavings = SavingsTransaction::where('transaction_type', 'deposit')
-            ->whereYear('transaction_date', now()->subMonth()->year)
-            ->whereMonth('transaction_date', now()->subMonth()->month)
-            ->sum('amount');
-
         $lastMonthLoans = Loan::whereYear('disbursement_date', now()->subMonth()->year)
             ->whereMonth('disbursement_date', now()->subMonth()->month)
             ->whereIn('status', ['active', 'closed', 'defaulted'])
             ->sum('principal');
-
-        $savingsGrowth = $lastMonthSavings > 0
-            ? round((($depositsThisMonth - $lastMonthSavings) / $lastMonthSavings) * 100, 1)
-            : 0;
 
         $thisMonthLoans = $monthlyLoanDisbursements->last() ?? 0;
         $loanGrowth = $lastMonthLoans > 0
@@ -156,14 +122,6 @@ class DashboardController extends Controller
 
         // ── Strategic Recommendations ─────────────────────────────────────────
         $recommendations = [];
-        if ($loanToSavingsRatio > 1) {
-            $recommendations[] = ['type' => 'danger', 'icon' => 'bi-exclamation-triangle-fill',
-                'text' => 'High Risk: Loan portfolio exceeds savings balance. Focus on increasing member savings and consider loan restructuring.'];
-        }
-        if ($savingsGrowth > 0) {
-            $recommendations[] = ['type' => 'success', 'icon' => 'bi-check-circle-fill',
-                'text' => 'Positive Growth: Savings balance growing steadily. Maintain current savings mobilisation strategies.'];
-        }
         if ($par30 == 0) {
             $recommendations[] = ['type' => 'success', 'icon' => 'bi-shield-fill-check',
                 'text' => 'Clean Portfolio: No loans past due 30+ days. Excellent credit risk management.'];
@@ -171,9 +129,19 @@ class DashboardController extends Controller
             $recommendations[] = ['type' => 'danger', 'icon' => 'bi-exclamation-triangle-fill',
                 'text' => "High PAR30 ({$par30}%): Over 10% of loan portfolio is at risk. Intensify collections and review lending criteria."];
         }
-        if ($loanGrowth == 0 && $savingsGrowth > 0) {
+        if ($defaultRate > 15) {
+            $recommendations[] = ['type' => 'danger', 'icon' => 'bi-exclamation-triangle-fill',
+                'text' => "High Default Rate ({$defaultRate}%): A large share of loans ever issued are currently defaulted. Review lending criteria and intensify collections."];
+        } elseif ($defaultRate == 0 && $totalLoansIssued > 0) {
+            $recommendations[] = ['type' => 'success', 'icon' => 'bi-check-circle-fill',
+                'text' => 'No defaults on record: Every loan issued is either performing or fully closed.'];
+        }
+        if ($loanGrowth > 0) {
             $recommendations[] = ['type' => 'info', 'icon' => 'bi-lightbulb-fill',
-                'text' => 'Savings Focus: Strong savings growth with controlled lending. Consider expanding loan products to balance portfolio.'];
+                'text' => "Growing Portfolio: Disbursements are up {$loanGrowth}% versus last month."];
+        } elseif ($loanGrowth < 0) {
+            $recommendations[] = ['type' => 'warning', 'icon' => 'bi-graph-down-arrow',
+                'text' => "Slower Disbursements: Down " . abs($loanGrowth) . "% versus last month — worth checking demand or approval pipeline."];
         }
         if (empty($recommendations)) {
             $recommendations[] = ['type' => 'secondary', 'icon' => 'bi-info-circle-fill',
@@ -181,13 +149,11 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', compact(
-            'stats', 'upcomingMaturities',
-            'monthLabels', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit',
-            'monthlySavingsDeposits', 'monthlyLoanDisbursements',
-            'loanToSavingsRatio', 'par30',
-            'activeBorrowers', 'activeSavers', 'dormantAccounts', 'totalClients',
-            'newSavingsThisMonth', 'depositsThisMonth', 'withdrawalsThisMonth', 'netCashFlow',
-            'savingsGrowth', 'loanGrowth', 'recommendations'
+            'stats', 'loanStatusBreakdown', 'upcomingInstallments',
+            'monthLabels', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit', 'monthlyLoanDisbursements',
+            'par30', 'defaultRate',
+            'activeBorrowers', 'totalClients',
+            'loanGrowth', 'recommendations'
         ));
     }
 }
