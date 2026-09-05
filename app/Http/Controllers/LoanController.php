@@ -26,7 +26,8 @@ class LoanController extends Controller
     public function index(Request $request)
     {
         $loans = Loan::with('client', 'product')
-            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when($request->status === 'issued', fn($q) => $q->whereIn('status', ['active', 'closed', 'defaulted']))
+            ->when($request->status && $request->status !== 'issued', fn($q) => $q->where('status', $request->status))
             ->when($request->search, fn($q) => $q->where('loan_number', 'like', "%{$request->search}%")
                 ->orWhereHas('client', fn($q2) => $q2->where('name', 'like', "%{$request->search}%")))
             ->orderByDesc('disbursement_date')

@@ -19,6 +19,7 @@
             <div class="col-md-3">
                 <select name="status" class="form-select">
                     <option value="">All Statuses</option>
+                    <option value="issued" @selected(request('status')=='issued')>Issued (Active/Closed/Defaulted)</option>
                     <option value="pending" @selected(request('status')=='pending')>Pending</option>
                     <option value="approved" @selected(request('status')=='approved')>Approved</option>
                     <option value="active" @selected(request('status')=='active')>Active</option>

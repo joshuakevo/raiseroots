@@ -266,20 +266,6 @@
         </a>
         @endcan
 
-        @canany(['view savings-products', 'view savings'])
-        <div class="sidebar-section">Savings</div>
-        @can('view savings-products')
-        <a href="{{ route('savings-products.index') }}" class="nav-link-item {{ request()->routeIs('savings-products.*') ? 'active' : '' }}">
-            <i class="bi bi-grid-3x3-gap"></i> Savings Products
-        </a>
-        @endcan
-        @can('view savings')
-        <a href="{{ route('savings.index') }}" class="nav-link-item {{ request()->routeIs('savings.*') ? 'active' : '' }}">
-            <i class="bi bi-piggy-bank-fill"></i> Savings Accounts
-        </a>
-        @endcan
-        @endcanany
-
         @canany(['view loan-products', 'view loans'])
         <div class="sidebar-section">Loans</div>
         @can('view loan-products')
@@ -293,24 +279,6 @@
             @php $pendingLoans = \App\Models\Loan::where('status','pending')->count(); @endphp
             @if($pendingLoans > 0)
                 <span class="badge bg-warning text-dark ms-auto rounded-pill" style="font-size:.62rem">{{ $pendingLoans }}</span>
-            @endif
-        </a>
-        @endcan
-        @endcanany
-
-        @canany(['view fd-products', 'view fixed-deposits'])
-        <div class="sidebar-section">Fixed Deposits</div>
-        @can('view fd-products')
-        <a href="{{ route('fd-products.index') }}" class="nav-link-item {{ request()->routeIs('fd-products.*') ? 'active' : '' }}">
-            <i class="bi bi-grid-3x3-gap"></i> FD Products
-        </a>
-        @endcan
-        @can('view fixed-deposits')
-        <a href="{{ route('fixed-deposits.index') }}" class="nav-link-item {{ request()->routeIs('fixed-deposits.*') ? 'active' : '' }}">
-            <i class="bi bi-safe-fill"></i> Fixed Deposits
-            @php $maturedFDs = \App\Models\FixedDeposit::where('status','active')->where('maturity_date','<=',now()->toDateString())->count(); @endphp
-            @if($maturedFDs > 0)
-                <span class="badge bg-warning text-dark ms-auto rounded-pill" style="font-size:.62rem">{{ $maturedFDs }}</span>
             @endif
         </a>
         @endcan

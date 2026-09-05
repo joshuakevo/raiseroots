@@ -12,7 +12,7 @@
 {{-- ── Stat Cards ─────────────────────────────────────────────────────────── --}}
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('loans.index', ['status' => 'issued']) }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-cash-stack"></i></div>
                 <div>
@@ -20,10 +20,10 @@
                     <div class="fw-bold fs-5">{{ number_format($stats['total_loans_issued']) }}</div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('loans.index', ['status' => 'active']) }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-check-circle"></i></div>
                 <div>
@@ -31,10 +31,10 @@
                     <div class="fw-bold fs-5">{{ number_format($stats['active_loans']) }}</div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('loans.index', ['status' => 'defaulted']) }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-circle"></i></div>
                 <div>
@@ -42,10 +42,10 @@
                     <div class="fw-bold fs-5 {{ $stats['overdue_loans'] > 0 ? 'text-danger' : '' }}">{{ number_format($stats['overdue_loans']) }}</div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('loans.index', ['status' => 'pending']) }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-clock-history"></i></div>
                 <div>
@@ -53,10 +53,10 @@
                     <div class="fw-bold fs-5">{{ number_format($stats['pending_loans']) }}</div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('reports.loan-portfolio') }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-hourglass-split"></i></div>
                 <div>
@@ -64,10 +64,10 @@
                     <div class="fw-bold fs-5">{{ number_format($stats['total_outstanding'], $dp) }}</div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('reports.loan-portfolio') }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-percent"></i></div>
                 <div>
@@ -75,10 +75,10 @@
                     <div class="fw-bold fs-5">{{ number_format($stats['outstanding_interest'], $dp) }}</div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('reports.interest-income') }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-graph-up-arrow"></i></div>
                 <div>
@@ -86,10 +86,10 @@
                     <div class="fw-bold fs-5">{{ number_format($stats['total_interest_earned'], $dp) }}</div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('reports.loan-portfolio') }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-calculator"></i></div>
                 <div>
@@ -97,7 +97,7 @@
                     <div class="fw-bold fs-5">{{ number_format($stats['average_loan_size'], $dp) }}</div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 
