@@ -311,6 +311,46 @@
     </div>
 </div>
 
+{{-- ── Row 4: Top Repeat Borrowers ─────────────────────────────────────────── --}}
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold"><i class="bi bi-trophy-fill text-warning me-2"></i>Top Repeat Borrowers</span>
+                <span class="text-muted small">By number of loans taken</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr>
+                        <th class="ps-3">Client</th>
+                        <th class="text-end">Loans Taken</th>
+                        <th class="text-end">Total Borrowed</th>
+                        <th class="text-end pe-3">Current Outstanding</th>
+                    </tr></thead>
+                    <tbody>
+                    @forelse($topBorrowers as $row)
+                        <tr>
+                            <td class="ps-3">
+                                @if($row->client)
+                                    <a href="{{ route('clients.show', $row->client) }}" class="text-decoration-none">{{ $row->client->name }}</a>
+                                @else
+                                    <span class="text-muted fst-italic">Deleted client</span>
+                                @endif
+                            </td>
+                            <td class="text-end"><span class="badge bg-primary">{{ $row->loan_count }}</span></td>
+                            <td class="text-end">{{ number_format($row->total_borrowed, $dp) }}</td>
+                            <td class="text-end pe-3 {{ $row->current_outstanding > 0 ? 'text-warning fw-semibold' : 'text-success' }}">{{ number_format($row->current_outstanding, $dp) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="text-center text-muted py-3 small">No loans issued yet.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>

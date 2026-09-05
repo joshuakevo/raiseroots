@@ -109,6 +109,19 @@ class DashboardController extends Controller
         $totalClients    = Client::count();
         $activeBorrowers = Loan::whereIn('status', ['active', 'defaulted'])->distinct('client_id')->count('client_id');
 
+        // ── Top Repeat Borrowers ─────────────────────────────────────────────
+        $topBorrowers = Loan::select('client_id')
+            ->selectRaw('COUNT(*) as loan_count')
+            ->selectRaw('SUM(principal) as total_borrowed')
+            ->selectRaw("SUM(CASE WHEN status IN ('active','defaulted') THEN outstanding_principal ELSE 0 END) as current_outstanding")
+            ->whereIn('status', ['active', 'closed', 'defaulted'])
+            ->groupBy('client_id')
+            ->orderByDesc('loan_count')
+            ->orderByDesc('total_borrowed')
+            ->with('client')
+            ->take(5)
+            ->get();
+
         // ── Portfolio Insights ────────────────────────────────────────────────
         $lastMonthLoans = Loan::whereYear('disbursement_date', now()->subMonth()->year)
             ->whereMonth('disbursement_date', now()->subMonth()->month)
@@ -149,7 +162,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', compact(
-            'stats', 'loanStatusBreakdown', 'upcomingInstallments',
+            'stats', 'loanStatusBreakdown', 'upcomingInstallments', 'topBorrowers',
             'monthLabels', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit', 'monthlyLoanDisbursements',
             'par30', 'defaultRate',
             'activeBorrowers', 'totalClients',
