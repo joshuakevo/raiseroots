@@ -136,6 +136,51 @@ class AccountingService
     }
 
     /**
+     * Display-only grouping of expense accounts for the Income Statement — not part of
+     * the real chart of accounts hierarchy (every expense account's actual parent is
+     * the single '5000 Expenses' header). Any expense account code not listed here
+     * falls into "Other Expenses" so newly added accounts never silently disappear.
+     */
+    private const EXPENSE_CATEGORIES = [
+        'Personnel Costs'       => ['5001', '5003'],
+        'Financial Charges'     => ['5002', '5010', '5008'],
+        'Operating Expenses'    => ['5004', '5005', '5009'],
+        'Provisions & Non-Cash' => ['5006', '5007'],
+    ];
+
+    /**
+     * Group already-computed expense rows into the categories above, preserving
+     * category order and skipping empty ones. Uncategorized accounts land in a
+     * trailing "Other Expenses" group.
+     */
+    private function groupExpenseRows(array $expenseRows): array
+    {
+        $groups = [];
+        $categorized = [];
+
+        foreach (self::EXPENSE_CATEGORIES as $label => $codes) {
+            $rows = array_values(array_filter(
+                $expenseRows,
+                fn ($row) => in_array($row['account']->account_code, $codes, true)
+            ));
+            if (empty($rows)) continue;
+
+            $groups[] = ['label' => $label, 'rows' => $rows, 'subtotal' => array_sum(array_column($rows, 'balance'))];
+            array_push($categorized, ...$codes);
+        }
+
+        $otherRows = array_values(array_filter(
+            $expenseRows,
+            fn ($row) => !in_array($row['account']->account_code, $categorized, true)
+        ));
+        if (!empty($otherRows)) {
+            $groups[] = ['label' => 'Other Expenses', 'rows' => $otherRows, 'subtotal' => array_sum(array_column($otherRows, 'balance'))];
+        }
+
+        return $groups;
+    }
+
+    /**
      * Generate income statement (Revenue - Expense).
      */
     public function getIncomeStatement(?string $fromDate = null, ?string $toDate = null): array
@@ -164,11 +209,12 @@ class AccountingService
         }
 
         return [
-            'revenue_rows'  => $revenueRows,
-            'expense_rows'  => $expenseRows,
-            'total_revenue' => $totalRevenue,
-            'total_expense' => $totalExpense,
-            'net_income'    => $totalRevenue - $totalExpense,
+            'revenue_rows'   => $revenueRows,
+            'expense_rows'   => $expenseRows,
+            'expense_groups' => $this->groupExpenseRows($expenseRows),
+            'total_revenue'  => $totalRevenue,
+            'total_expense'  => $totalExpense,
+            'net_income'     => $totalRevenue - $totalExpense,
         ];
     }
 

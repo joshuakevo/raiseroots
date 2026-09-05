@@ -55,11 +55,17 @@
             <div class="card-header">Expenses</div>
             <table class="table mb-0">
                 <tbody>
-                @forelse($data['expense_rows'] as $row)
+                @forelse($data['expense_groups'] as $group)
+                    <tr class="table-light">
+                        <td class="ps-3 small fw-semibold text-uppercase text-muted">{{ $group['label'] }}</td>
+                        <td class="text-end pe-3 small fw-semibold text-muted">{{ number_format($group['subtotal'], $dp) }}</td>
+                    </tr>
+                    @foreach($group['rows'] as $row)
                     <tr>
-                        <td class="ps-3">{{ $row['account']->account_code }} — {{ $row['account']->account_name }}</td>
+                        <td class="ps-4">{{ $row['account']->account_code }} — {{ $row['account']->account_name }}</td>
                         <td class="text-end pe-3 text-danger fw-semibold">{{ number_format($row['balance'], $dp) }}</td>
                     </tr>
+                    @endforeach
                 @empty
                     <tr><td class="text-center text-muted py-3">No expenses.</td></tr>
                 @endforelse

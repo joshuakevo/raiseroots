@@ -23,6 +23,7 @@
     tbody tr:nth-child(even) td { background:#f9fafb; }
     tfoot td { padding:6px; font-weight:bold; font-size:9px; background:#e5e7eb; border-top:2px solid #374151; }
     tfoot td.r { text-align:right; }
+    .group-row td { background:#f3f4f6; font-weight:bold; text-transform:uppercase; font-size:8px; color:#4b5563; }
     .net-income { border:2px solid #0f2444; padding:10px 14px; text-align:center; margin-top:8px; }
     .net-income .lbl { font-size:9px; color:#6b7280; }
     .net-income .val { font-size:16px; font-weight:bold; }
@@ -70,12 +71,18 @@
 <table>
     <thead><tr><th>Code</th><th>Account Name</th><th class="r">Amount</th></tr></thead>
     <tbody>
-    @forelse($data['expense_rows'] as $row)
+    @forelse($data['expense_groups'] as $group)
+    <tr class="group-row">
+        <td colspan="2">{{ $group['label'] }}</td>
+        <td class="r">{{ number_format($group['subtotal'], 2) }}</td>
+    </tr>
+    @foreach($group['rows'] as $row)
     <tr>
         <td style="font-family:monospace">{{ $row['account']->account_code }}</td>
         <td>{{ $row['account']->account_name }}</td>
         <td class="r text-danger">{{ number_format($row['balance'], 2) }}</td>
     </tr>
+    @endforeach
     @empty
     <tr><td colspan="3" style="text-align:center;color:#9ca3af">No expenses.</td></tr>
     @endforelse

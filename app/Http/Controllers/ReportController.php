@@ -71,8 +71,11 @@ class ReportController extends Controller
             }
             $rows[] = ['Revenue', '', 'Total Revenue', $data['total_revenue']];
             $rows[] = [];
-            foreach ($data['expense_rows'] as $row) {
-                $rows[] = ['Expenses', $row['account']->account_code, $row['account']->account_name, $row['balance']];
+            foreach ($data['expense_groups'] as $group) {
+                $rows[] = ['Expenses', '', $group['label'], $group['subtotal']];
+                foreach ($group['rows'] as $row) {
+                    $rows[] = ['Expenses', $row['account']->account_code, $row['account']->account_name, $row['balance']];
+                }
             }
             $rows[] = ['Expenses', '', 'Total Expenses', $data['total_expense']];
             $rows[] = [];
