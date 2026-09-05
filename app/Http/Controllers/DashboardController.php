@@ -29,13 +29,18 @@ class DashboardController extends Controller
 
         $stats = [
             'total_loans_issued'    => $totalLoansIssued,
+            'total_loans_issued_amount' => (clone $issuedLoans)->sum('principal'),
             'active_loans'          => Loan::where('status', 'active')->count(),
+            'active_loans_amount'   => Loan::where('status', 'active')->sum('principal'),
             'total_outstanding'     => $totalOutstanding,
             'outstanding_interest'  => Loan::whereIn('status', ['active', 'defaulted'])->sum('outstanding_interest'),
             'total_interest_earned' => LoanRepayment::sum('interest_paid'),
             'overdue_loans'         => Loan::where('status', 'defaulted')->count(),
+            'overdue_loans_amount'  => Loan::where('status', 'defaulted')->sum('principal'),
             'pending_loans'         => Loan::where('status', 'pending')->count(),
+            'pending_loans_amount'  => Loan::where('status', 'pending')->sum('principal'),
             'approved_loans'        => Loan::where('status', 'approved')->count(),
+            'approved_loans_amount' => Loan::where('status', 'approved')->sum('principal'),
             'average_loan_size'     => $totalLoansIssued > 0 ? (clone $issuedLoans)->avg('principal') : 0,
         ];
 

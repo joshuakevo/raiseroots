@@ -18,6 +18,7 @@
                 <div>
                     <div class="text-muted small">Loans Disbursed</div>
                     <div class="fw-bold fs-5">{{ number_format($stats['total_loans_issued']) }}</div>
+                    <div class="text-muted" style="font-size:.7rem">{{ number_format($stats['total_loans_issued_amount'], $dp) }}</div>
                 </div>
             </div>
         </a>
@@ -29,6 +30,7 @@
                 <div>
                     <div class="text-muted small">Active Loans</div>
                     <div class="fw-bold fs-5">{{ number_format($stats['active_loans']) }}</div>
+                    <div class="text-muted" style="font-size:.7rem">{{ number_format($stats['active_loans_amount'], $dp) }}</div>
                 </div>
             </div>
         </a>
@@ -40,6 +42,7 @@
                 <div>
                     <div class="text-muted small">Defaulted Loans</div>
                     <div class="fw-bold fs-5 {{ $stats['overdue_loans'] > 0 ? 'text-danger' : '' }}">{{ number_format($stats['overdue_loans']) }}</div>
+                    <div class="text-muted" style="font-size:.7rem">{{ number_format($stats['overdue_loans_amount'], $dp) }}</div>
                 </div>
             </div>
         </a>
@@ -51,6 +54,7 @@
                 <div>
                     <div class="text-muted small">Pending Loans — Awaiting Approval</div>
                     <div class="fw-bold fs-5">{{ number_format($stats['pending_loans']) }}</div>
+                    <div class="text-muted" style="font-size:.7rem">{{ number_format($stats['pending_loans_amount'], $dp) }}</div>
                 </div>
             </div>
         </a>
@@ -62,6 +66,7 @@
                 <div>
                     <div class="text-muted small">Approved — Awaiting Disbursement</div>
                     <div class="fw-bold fs-5 {{ $stats['approved_loans'] > 0 ? 'text-info' : '' }}">{{ number_format($stats['approved_loans']) }}</div>
+                    <div class="text-muted" style="font-size:.7rem">{{ number_format($stats['approved_loans_amount'], $dp) }}</div>
                 </div>
             </div>
         </a>
