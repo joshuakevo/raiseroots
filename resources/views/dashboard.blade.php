@@ -49,7 +49,7 @@
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-clock-history"></i></div>
                 <div>
-                    <div class="text-muted small">Pending Loans - Awaiting Approval</div>
+                    <div class="text-muted small">Pending Loans — Awaiting Approval</div>
                     <div class="fw-bold fs-5">{{ number_format($stats['pending_loans']) }}</div>
                 </div>
             </div>
