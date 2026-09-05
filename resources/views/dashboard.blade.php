@@ -16,7 +16,7 @@
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-cash-stack"></i></div>
                 <div>
-                    <div class="text-muted small">Total Loans Issued</div>
+                    <div class="text-muted small">Loans Disbursed</div>
                     <div class="fw-bold fs-5">{{ number_format($stats['total_loans_issued']) }}</div>
                 </div>
             </div>
