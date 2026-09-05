@@ -49,7 +49,7 @@
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-clock-history"></i></div>
                 <div>
-                    <div class="text-muted small">Pending Loans</div>
+                    <div class="text-muted small">Pending Loans - Awaiting Approval</div>
                     <div class="fw-bold fs-5">{{ number_format($stats['pending_loans']) }}</div>
                 </div>
             </div>
@@ -215,7 +215,7 @@
                     <span class="badge bg-secondary">{{ $totalClients }}</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center mt-2">
-                    <span class="small text-muted">Pending Loans (awaiting disbursement)</span>
+                    <span class="small text-muted">Pending Loans (awaiting approval)</span>
                     <span class="badge {{ $stats['pending_loans'] > 0 ? 'bg-warning text-dark' : 'bg-success' }}">{{ $stats['pending_loans'] }}</span>
                 </div>
             </div>
