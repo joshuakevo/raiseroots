@@ -284,6 +284,7 @@
         @endcan
         @endcanany
 
+        @canany(['view employees', 'view payroll'])
         <div class="sidebar-section">HR &amp; Payroll</div>
         @can('view employees')
         <a href="{{ route('employees.index') }}" class="nav-link-item {{ request()->routeIs('employees.*') ? 'active' : '' }}">
@@ -295,6 +296,7 @@
             <i class="bi bi-cash-coin me-1"></i> Payroll
         </a>
         @endcan
+        @endcanany
 
         @canany(['view accounts', 'view transactions'])
         <div class="sidebar-section">Accounting</div>
