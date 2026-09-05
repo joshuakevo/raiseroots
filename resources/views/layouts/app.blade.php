@@ -276,9 +276,9 @@
         @can('view loans')
         <a href="{{ route('loans.index') }}" class="nav-link-item {{ request()->routeIs('loans.*') ? 'active' : '' }}">
             <i class="bi bi-cash-stack"></i> Loans
-            @php $pendingLoans = \App\Models\Loan::where('status','pending')->count(); @endphp
-            @if($pendingLoans > 0)
-                <span class="badge bg-warning text-dark ms-auto rounded-pill" style="font-size:.62rem">{{ $pendingLoans }}</span>
+            @php $actionNeededLoans = \App\Models\Loan::whereIn('status', ['pending', 'approved'])->count(); @endphp
+            @if($actionNeededLoans > 0)
+                <span class="badge bg-warning text-dark ms-auto rounded-pill" style="font-size:.62rem" title="Pending approval or approved and awaiting disbursement">{{ $actionNeededLoans }}</span>
             @endif
         </a>
         @endcan

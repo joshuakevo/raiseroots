@@ -35,6 +35,7 @@ class DashboardController extends Controller
             'total_interest_earned' => LoanRepayment::sum('interest_paid'),
             'overdue_loans'         => Loan::where('status', 'defaulted')->count(),
             'pending_loans'         => Loan::where('status', 'pending')->count(),
+            'approved_loans'        => Loan::where('status', 'approved')->count(),
             'average_loan_size'     => $totalLoansIssued > 0 ? (clone $issuedLoans)->avg('principal') : 0,
         ];
 

@@ -56,6 +56,17 @@
         </a>
     </div>
     <div class="col-6 col-md-3">
+        <a href="{{ route('loans.index', ['status' => 'approved']) }}" class="stat-card text-decoration-none text-reset d-block">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon bg-info bg-opacity-10 text-info"><i class="bi bi-clipboard-check"></i></div>
+                <div>
+                    <div class="text-muted small">Approved — Awaiting Disbursement</div>
+                    <div class="fw-bold fs-5 {{ $stats['approved_loans'] > 0 ? 'text-info' : '' }}">{{ number_format($stats['approved_loans']) }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
         <a href="{{ route('reports.loan-portfolio') }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-hourglass-split"></i></div>
