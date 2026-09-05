@@ -136,48 +136,30 @@ class AccountingService
     }
 
     /**
-     * Display-only grouping of expense accounts for the Income Statement — not part of
-     * the real chart of accounts hierarchy (every expense account's actual parent is
-     * the single '5000 Expenses' header). Any expense account code not listed here
-     * falls into "Other Expenses" so newly added accounts never silently disappear.
-     */
-    private const EXPENSE_CATEGORIES = [
-        'Personnel Costs'       => ['5001', '5003'],
-        'Financial Charges'     => ['5002', '5010', '5008'],
-        'Operating Expenses'    => ['5004', '5005', '5009'],
-        'Provisions & Non-Cash' => ['5006', '5007'],
-    ];
-
-    /**
-     * Group already-computed expense rows into the categories above, preserving
-     * category order and skipping empty ones. Uncategorized accounts land in a
-     * trailing "Other Expenses" group.
+     * Group expense rows by each account's real Chart of Accounts parent (e.g.
+     * "Personnel Costs", "Financial Charges") — ordered by the parent's account_code.
+     * An expense account with no parent (or whose parent wasn't loaded) falls into a
+     * trailing "Other Expenses" group rather than disappearing.
      */
     private function groupExpenseRows(array $expenseRows): array
     {
         $groups = [];
-        $categorized = [];
 
-        foreach (self::EXPENSE_CATEGORIES as $label => $codes) {
-            $rows = array_values(array_filter(
-                $expenseRows,
-                fn ($row) => in_array($row['account']->account_code, $codes, true)
-            ));
-            if (empty($rows)) continue;
+        foreach ($expenseRows as $row) {
+            $parent = $row['account']->parent;
+            $key    = $parent->account_code ?? '~other';
+            $label  = $parent->account_name ?? 'Other Expenses';
 
-            $groups[] = ['label' => $label, 'rows' => $rows, 'subtotal' => array_sum(array_column($rows, 'balance'))];
-            array_push($categorized, ...$codes);
+            if (! isset($groups[$key])) {
+                $groups[$key] = ['label' => $label, 'rows' => [], 'subtotal' => 0];
+            }
+            $groups[$key]['rows'][] = $row;
+            $groups[$key]['subtotal'] += $row['balance'];
         }
 
-        $otherRows = array_values(array_filter(
-            $expenseRows,
-            fn ($row) => !in_array($row['account']->account_code, $categorized, true)
-        ));
-        if (!empty($otherRows)) {
-            $groups[] = ['label' => 'Other Expenses', 'rows' => $otherRows, 'subtotal' => array_sum(array_column($otherRows, 'balance'))];
-        }
+        ksort($groups);
 
-        return $groups;
+        return array_values($groups);
     }
 
     /**
@@ -186,7 +168,7 @@ class AccountingService
     public function getIncomeStatement(?string $fromDate = null, ?string $toDate = null): array
     {
         $revenues = Account::where('account_type', 'revenue')->where('is_active', true)->get();
-        $expenses = Account::where('account_type', 'expense')->where('is_active', true)->get();
+        $expenses = Account::with('parent')->where('account_type', 'expense')->where('is_active', true)->get();
 
         $revenueRows = [];
         $totalRevenue = 0;
