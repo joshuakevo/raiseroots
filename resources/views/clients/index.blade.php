@@ -43,7 +43,7 @@
                 <th class="ps-3">#</th>
                 <th>Client Number</th>
                 <th>Name</th>
-                <th>Type</th>
+                <th>Relationship Manager</th>
                 <th>Phone</th>
                 <th>Email</th>
                 <th>Status</th>
@@ -58,13 +58,7 @@
                     <td class="ps-3 text-muted">{{ $loop->iteration }}</td>
                     <td><span class="font-monospace">{{ $client->client_number }}</span></td>
                     <td class="fw-semibold">{{ $client->name }}</td>
-                    <td>
-                        @if(($client->client_type ?? 'individual') === 'group')
-                            <span class="badge bg-primary bg-opacity-10 text-primary">Group</span>
-                        @else
-                            <span class="text-muted small">Individual</span>
-                        @endif
-                    </td>
+                    <td class="small">{{ $client->relationship_manager_name ?? '—' }}</td>
                     <td>{{ $client->phone ?? '—' }}</td>
                     <td>{{ $client->email ?? '—' }}</td>
                     <td>

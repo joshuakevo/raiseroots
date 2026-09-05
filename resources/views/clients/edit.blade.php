@@ -292,6 +292,16 @@
             <input type="date" name="joining_date" class="form-control"
                    value="{{ old('joining_date', $client->joining_date?->toDateString()) }}">
         </div>
+        <div class="col-md-6">
+            <label class="form-label">Relationship Manager</label>
+            <select name="relationship_manager_id" class="form-select">
+                <option value="">— Default: {{ $client->createdBy->name ?? 'whoever created this client' }} —</option>
+                @foreach($employees as $employee)
+                <option value="{{ $employee->id }}" @selected(old('relationship_manager_id', $client->relationship_manager_id) == $employee->id)>{{ $employee->name }}</option>
+                @endforeach
+            </select>
+            <div class="form-text">Leave as default to keep it assigned to whoever created this client.</div>
+        </div>
     </div>
 </div>
 

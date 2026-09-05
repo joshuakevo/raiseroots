@@ -43,7 +43,10 @@ class ClientController extends Controller
         }
 
         $clients = $query->withCount('shares')
-            ->with(['shares' => fn($q) => $q->select('client_id', 'share_value', 'amount_paid', 'status')])
+            ->with([
+                'shares' => fn($q) => $q->select('client_id', 'share_value', 'amount_paid', 'status'),
+                'relationshipManager', 'createdBy',
+            ])
             ->latest()
             ->paginate(20);
 
@@ -181,6 +184,7 @@ class ClientController extends Controller
             'fixedDeposits.product',
             'shares',
             'createdBy',
+            'relationshipManager',
             'branch',
             'group',
         ]);
@@ -195,8 +199,9 @@ class ClientController extends Controller
 
     public function edit(Client $client)
     {
-        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
-        return view('clients.edit', compact('client', 'branches'));
+        $branches  = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
+        $employees = \App\Models\Employee::where('status', 'active')->orderBy('name')->get();
+        return view('clients.edit', compact('client', 'branches', 'employees'));
     }
 
     public function update(Request $request, Client $client)
@@ -233,6 +238,7 @@ class ClientController extends Controller
             // Preferences
             'preferred_communication'  => 'nullable|in:sms,email,whatsapp,phone_call',
             'branch_id'                => 'nullable|exists:branches,id',
+            'relationship_manager_id'  => 'nullable|exists:employees,id',
             'status'                   => 'required|in:active,inactive,blacklisted',
             'joining_date'             => 'nullable|date',
         ]);

@@ -11,7 +11,7 @@ class Client extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'client_number', 'client_type', 'name', 'branch_id', 'created_by',
+        'client_number', 'client_type', 'name', 'branch_id', 'created_by', 'relationship_manager_id',
         'first_name', 'middle_name', 'last_name',
         'gender', 'date_of_birth', 'marital_status', 'nationality', 'id_number', 'photo',
         'phone', 'alt_phone', 'email', 'address', 'district', 'village', 'postal_address',
@@ -29,6 +29,17 @@ class Client extends Model
     public function createdBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'created_by');
+    }
+
+    public function relationshipManager()
+    {
+        return $this->belongsTo(\App\Models\Employee::class, 'relationship_manager_id');
+    }
+
+    /** Falls back to whoever created the client until an RM is explicitly assigned. */
+    public function getRelationshipManagerNameAttribute(): ?string
+    {
+        return $this->relationshipManager?->name ?? $this->createdBy?->name;
     }
 
     public function portalUsers()

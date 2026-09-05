@@ -249,17 +249,24 @@
     <div class="card-header">Preferences &amp; Registration Info</div>
     <div class="card-body">
         <div class="row small">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <span class="text-muted">Preferred Communication</span><br>
                 <strong>{{ $client->preferred_communication ? ucfirst(str_replace('_',' ',$client->preferred_communication)) : '—' }}</strong>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <span class="text-muted">Date Joined</span><br>
                 <strong>{{ $client->joining_date ? $client->joining_date->format('d M Y') : $client->created_at->format('d M Y') }}</strong>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <span class="text-muted">Registered By</span><br>
                 <strong>{{ $client->createdBy->name ?? '—' }}</strong>
+            </div>
+            <div class="col-md-3">
+                <span class="text-muted">Relationship Manager</span><br>
+                <strong>{{ $client->relationship_manager_name ?? '—' }}</strong>
+                @if(!$client->relationship_manager_id)
+                    <span class="badge bg-light text-muted border ms-1" style="font-size:.65rem">default</span>
+                @endif
             </div>
         </div>
     </div>
