@@ -195,8 +195,8 @@ class LoanController extends Controller
 
     public function repayForm(Loan $loan)
     {
-        if ($loan->status !== 'active') {
-            return back()->with('error', 'Only active loans can accept repayments.');
+        if (!in_array($loan->status, ['active', 'defaulted'])) {
+            return back()->with('error', 'Only active or defaulted loans can accept repayments.');
         }
 
         $loan->load('client', 'product', 'schedules');
@@ -269,8 +269,8 @@ class LoanController extends Controller
             'payment_source_account_id' => $isSavings ? null : (int) $request->payment_source_account_id,
         ]);
 
-        if ($loan->status !== 'active') {
-            return back()->with('error', 'Only active loans can accept repayments.');
+        if (!in_array($loan->status, ['active', 'defaulted'])) {
+            return back()->with('error', 'Only active or defaulted loans can accept repayments.');
         }
 
         $total = $loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_penalty;

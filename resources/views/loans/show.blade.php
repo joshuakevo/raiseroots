@@ -36,11 +36,11 @@
         @endif
         @endcan
         @can('repay loans')
-        @if($loan->status === 'active')
+        @if(in_array($loan->status, ['active', 'defaulted']))
             <a href="{{ route('loans.repay-form', $loan) }}" class="btn btn-success btn-sm"><i class="bi bi-cash"></i> Record Repayment</a>
         @endif
         @endcan
-        @if($loan->status === 'active')
+        @if(in_array($loan->status, ['active', 'defaulted']))
             <a href="{{ route('loans.schedule', $loan) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-calendar3"></i> Schedule</a>
         @endif
         <div class="dropdown">
