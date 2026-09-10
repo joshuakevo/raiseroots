@@ -41,7 +41,6 @@ class DashboardController extends Controller
             'pending_loans_amount'  => Loan::where('status', 'pending')->sum('principal'),
             'approved_loans'        => Loan::where('status', 'approved')->count(),
             'approved_loans_amount' => Loan::where('status', 'approved')->sum('principal'),
-            'average_loan_size'     => $totalLoansIssued > 0 ? (clone $issuedLoans)->avg('principal') : 0,
         ];
 
         // ── Loan Portfolio by Status ─────────────────────────────────────────

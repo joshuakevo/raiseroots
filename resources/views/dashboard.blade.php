@@ -104,17 +104,6 @@
             </div>
         </a>
     </div>
-    <div class="col-6 col-md-4">
-        <a href="{{ route('reports.loan-portfolio') }}" class="stat-card text-decoration-none text-reset d-block">
-            <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-calculator"></i></div>
-                <div>
-                    <div class="text-muted small">Average Loan Size</div>
-                    <div class="fw-bold fs-5">{{ number_format($stats['average_loan_size'], $dp) }}</div>
-                </div>
-            </div>
-        </a>
-    </div>
 </div>
 
 {{-- ── Row 1: Profitability + Loan Portfolio Risk ─────────────────────────── --}}
