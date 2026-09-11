@@ -41,6 +41,8 @@ class DashboardController extends Controller
             'pending_loans_amount'  => Loan::where('status', 'pending')->sum('principal'),
             'approved_loans'        => Loan::where('status', 'approved')->count(),
             'approved_loans_amount' => Loan::where('status', 'approved')->sum('principal'),
+            'closed_loans'          => Loan::where('status', 'closed')->count(),
+            'closed_loans_amount'   => Loan::where('status', 'closed')->sum('principal'),
         ];
 
         // ── Loan Portfolio by Status ─────────────────────────────────────────

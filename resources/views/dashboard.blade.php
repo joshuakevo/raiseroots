@@ -72,6 +72,18 @@
         </a>
     </div>
     <div class="col-6 col-md-4">
+        <a href="{{ route('loans.index', ['status' => 'closed']) }}" class="stat-card text-decoration-none text-reset d-block">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon bg-secondary bg-opacity-10 text-secondary"><i class="bi bi-archive-fill"></i></div>
+                <div>
+                    <div class="text-muted small">Closed Loans</div>
+                    <div class="fw-bold fs-5">{{ number_format($stats['closed_loans']) }}</div>
+                    <div class="text-muted" style="font-size:.7rem">{{ number_format($stats['closed_loans_amount'], $dp) }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4">
         <a href="{{ route('reports.loan-portfolio') }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-hourglass-split"></i></div>
