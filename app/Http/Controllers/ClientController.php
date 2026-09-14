@@ -59,6 +59,130 @@ class ClientController extends Controller
         return view('clients.create', compact('branches'));
     }
 
+    public function importForm()
+    {
+        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
+        return view('clients.import', compact('branches'));
+    }
+
+    /**
+     * Bulk-create clients from an uploaded CSV. Deliberately bypasses the full
+     * store() validation (gender, DOB, next of kin, etc.) — legacy member lists
+     * only ever have a handful of columns, so this only requires a name and
+     * fills in whatever else the file has. Recognizes a few header aliases per
+     * field so exports from different systems don't need to be reformatted first.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file'      => 'required|file|mimes:csv,txt|max:5120',
+            'branch_id' => 'nullable|exists:branches,id',
+        ]);
+
+        $columnAliases = [
+            'client_number' => ['reference number', 'client number', 'client_number', 'reference', 'ref no', 'ref'],
+            'name'          => ['name of client', 'client name', 'name', 'full name'],
+            'phone'         => ['telephone number', 'telephone', 'phone number', 'phone', 'mobile'],
+            'id_number'     => ['nin number', 'nin', 'id number', 'id_number', 'national id'],
+        ];
+
+        $handle = fopen($request->file('file')->getRealPath(), 'r');
+        $header = array_map(fn($h) => strtolower(trim((string) $h)), fgetcsv($handle) ?: []);
+
+        $col = [];
+        foreach ($columnAliases as $field => $aliases) {
+            foreach ($aliases as $alias) {
+                $idx = array_search($alias, $header, true);
+                if ($idx !== false) {
+                    $col[$field] = $idx;
+                    break;
+                }
+            }
+        }
+
+        if (!isset($col['name'])) {
+            fclose($handle);
+            return back()->with('error', 'Could not find a "Name" column in the uploaded file. Expected a header like "Name" or "Name of Client".');
+        }
+
+        $created  = 0;
+        $skippedDuplicateInFile = [];
+        $skippedExisting        = [];
+        $flaggedPhones          = [];
+        $seenNumbers            = [];
+        $rowNum                 = 1;
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            while (($row = fgetcsv($handle)) !== false) {
+                $rowNum++;
+                if (!array_filter($row, fn($v) => trim((string) $v) !== '')) {
+                    continue; // blank row
+                }
+
+                $name = trim((string) ($row[$col['name']] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+
+                $clientNumber = isset($col['client_number']) ? trim((string) ($row[$col['client_number']] ?? '')) : '';
+                $phone        = isset($col['phone']) ? trim((string) ($row[$col['phone']] ?? '')) : '';
+                $idNumber     = isset($col['id_number']) ? trim((string) ($row[$col['id_number']] ?? '')) : '';
+
+                if ($clientNumber !== '') {
+                    if (isset($seenNumbers[$clientNumber])) {
+                        $skippedDuplicateInFile[] = "Row {$rowNum}: {$name} ({$clientNumber}) — duplicate reference number in file";
+                        continue;
+                    }
+                    $seenNumbers[$clientNumber] = true;
+
+                    if (Client::where('client_number', $clientNumber)->exists()) {
+                        $skippedExisting[] = "Row {$rowNum}: {$name} ({$clientNumber}) — client number already exists";
+                        continue;
+                    }
+                }
+
+                if ($phone !== '') {
+                    $digitsOnly = preg_replace('/\D/', '', $phone);
+                    if (str_contains($phone, '/') || strlen($digitsOnly) < 9 || strlen($digitsOnly) > 10) {
+                        $flaggedPhones[] = "Row {$rowNum}: {$name} — phone \"{$phone}\" looks off, check manually";
+                    }
+                }
+
+                Client::create([
+                    'client_number' => $clientNumber !== '' ? $clientNumber : $this->generateClientNumber(),
+                    'client_type'   => 'individual',
+                    'name'          => $name,
+                    'phone'         => $phone !== '' ? $phone : null,
+                    'id_number'     => $idNumber !== '' ? $idNumber : null,
+                    'branch_id'     => $request->branch_id,
+                    'status'        => 'active',
+                    'created_by'    => auth()->id(),
+                ]);
+
+                $created++;
+            }
+            \Illuminate\Support\Facades\DB::commit();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            fclose($handle);
+            return back()->with('error', 'Import failed, nothing was saved: ' . $e->getMessage());
+        }
+        fclose($handle);
+
+        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
+
+        return view('clients.import', [
+            'branches' => $branches,
+            'result'   => [
+                'created'                  => $created,
+                'skipped_duplicate_in_file'=> $skippedDuplicateInFile,
+                'skipped_existing'         => $skippedExisting,
+                'flagged_phones'           => $flaggedPhones,
+            ],
+        ]);
+    }
+
     public function store(Request $request)
     {
         if ($request->input('client_type') === 'group') {

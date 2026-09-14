@@ -24,6 +24,8 @@ yarn-error.log
 /diagnose-photo.php
 /storage-link-once.php
 *.sql
+*.xlsx
+*.csv
 /public/test.html
 
 # Runtime-generated / per-deployment content, not source

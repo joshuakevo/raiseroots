@@ -95,6 +95,10 @@ Route::middleware('auth')->group(function () {
     });
 
     // ── Clients ───────────────────────────────────────────────────────
+    Route::get('clients/import', [ClientController::class, 'importForm'])
+        ->name('clients.import')->middleware('permission:create clients');
+    Route::post('clients/import', [ClientController::class, 'import'])
+        ->name('clients.import.store')->middleware('permission:create clients');
     Route::resource('clients', ClientController::class)->middleware('permission:view clients');
     Route::post('clients/{client}/invite', [ClientController::class, 'invite'])
         ->name('clients.invite')->middleware('permission:edit clients');
