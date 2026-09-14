@@ -361,6 +361,22 @@ $groupIcons = [
                 <i class="bi bi-person-check me-2"></i>Set for All Clients
             </button>
         </form>
+
+        <hr class="my-3">
+        <p class="text-muted small mb-2">
+            Bulk-imported clients only get a single Name field, but the Edit Client form needs First Name and
+            Last Name to move past step 1 — blocking editing (including relationship manager) entirely. This
+            splits each client's Name on the first space into First Name / Last Name. Only affects clients
+            missing a First Name, so it's safe to run more than once; a few multi-word names may need manual
+            correction afterward.
+        </p>
+        <form method="POST" action="{{ route('settings.backfill-client-names') }}"
+              onsubmit="return confirm('Backfill First/Last Name for clients missing one?')">
+            @csrf
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="bi bi-person-lines-fill me-2"></i>Backfill Client First/Last Name
+            </button>
+        </form>
     </div>
 </div>
 

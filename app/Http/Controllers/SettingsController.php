@@ -440,6 +440,37 @@ class SettingsController extends Controller
         return back()->with('success', "Set {$user->name} as relationship manager for {$affected} client(s).");
     }
 
+    /**
+     * One-off data fix: bulk-imported clients only ever get the single `name` field
+     * populated, but the multi-step Edit Client form requires first_name/last_name to
+     * advance past step 1 — blocking editing (including relationship manager) entirely.
+     * Splits name on the first space (first word -> first_name, remainder -> last_name;
+     * single-word names duplicate into both). Only touches clients with no first_name
+     * yet, so it's safe to run more than once.
+     */
+    public function backfillClientNames()
+    {
+        $affected = 0;
+
+        \App\Models\Client::where(fn ($q) => $q->whereNull('first_name')->orWhere('first_name', ''))
+            ->get()
+            ->each(function ($client) use (&$affected) {
+                $name = trim(preg_replace('/\s+/', ' ', $client->name));
+                if ($name === '') {
+                    return;
+                }
+
+                $parts = explode(' ', $name, 2);
+                $client->update([
+                    'first_name' => $parts[0],
+                    'last_name'  => $parts[1] ?? $parts[0],
+                ]);
+                $affected++;
+            });
+
+        return back()->with('success', "Backfilled first/last name for {$affected} client(s).");
+    }
+
     public function resetSmsTrial()
     {
         SystemSetting::set('sms_trial_used_count', 0);
