@@ -415,4 +415,36 @@ class SettingsController extends Controller
 
         return back()->with('loanFixOutput', $output);
     }
+
+    /**
+     * "Go-live wipe" — clears client/transaction data, keeps setup (chart of
+     * accounts, products, branches, collateral categories, financial periods,
+     * settings) and exactly one superadmin: whoever is running this.
+     */
+    public function previewResetProductionData()
+    {
+        Artisan::call('eltech:reset-production-data', ['--keep-user' => auth()->id()]);
+        $output = trim(Artisan::output());
+
+        return back()->with('resetProductionOutput', $output);
+    }
+
+    public function runResetProductionData(Request $request)
+    {
+        $request->validate([
+            'confirm_phrase' => 'required|string',
+        ]);
+
+        if ($request->input('confirm_phrase') !== 'RESET PRODUCTION DATA') {
+            return back()->with('resetProductionOutput', 'Confirmation phrase did not match — nothing was deleted.');
+        }
+
+        Artisan::call('eltech:reset-production-data', [
+            '--keep-user' => auth()->id(),
+            '--commit'    => true,
+        ]);
+        $output = trim(Artisan::output());
+
+        return back()->with('resetProductionOutput', $output);
+    }
 }

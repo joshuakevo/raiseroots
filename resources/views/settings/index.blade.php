@@ -487,5 +487,48 @@ $groupIcons = [
         @endif
     </div>
 </div>
+
+{{-- Go-live wipe: clears client/transaction data, keeps setup + one superadmin --}}
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-octagon text-danger"></i>
+        <span>Reset Production Data</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Permanently deletes all clients, loans, savings, fixed deposits, shares, groups, employees, payroll,
+            journal entries, and other users. <strong>Kept untouched:</strong> chart of accounts, loan/savings/FD
+            products, branches, loan collateral categories, financial periods, system settings, and your own
+            login (guaranteed super_admin afterwards). There is no undo and no backup step available from this
+            screen — <strong>Preview first</strong> to see exactly what will be removed.
+        </p>
+        <div class="d-flex gap-2 mb-3">
+            <form method="POST" action="{{ route('settings.reset-production-preview') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </button>
+            </form>
+        </div>
+
+        <form method="POST" action="{{ route('settings.reset-production-apply') }}"
+              onsubmit="return confirm('This permanently deletes all client and transaction data. This cannot be undone. Continue?')">
+            @csrf
+            <label class="form-label small">Type <code>RESET PRODUCTION DATA</code> to enable the button below:</label>
+            <div class="d-flex gap-2">
+                <input type="text" name="confirm_phrase" class="form-control" style="max-width: 320px"
+                       oninput="document.getElementById('resetProductionApplyBtn').disabled = (this.value !== 'RESET PRODUCTION DATA')"
+                       autocomplete="off" placeholder="RESET PRODUCTION DATA">
+                <button type="submit" id="resetProductionApplyBtn" class="btn btn-danger" disabled>
+                    <i class="bi bi-trash3 me-2"></i>Wipe Production Data
+                </button>
+            </div>
+        </form>
+
+        @if(session('resetProductionOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('resetProductionOutput') }}</pre>
+        @endif
+    </div>
+</div>
 @endrole
 @endsection
