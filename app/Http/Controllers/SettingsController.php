@@ -407,6 +407,22 @@ class SettingsController extends Controller
         return back()->with('clientImportResult', $result);
     }
 
+    /**
+     * One-off data fix: prepend a leading 0 to every client phone number stored without
+     * one (the sipmart import landed 9-digit numbers like 787356969 instead of the local
+     * 0787356969 format). Skips numbers already starting with 0, blank, or null, so it's
+     * safe to run more than once.
+     */
+    public function prependZeroToClientPhones()
+    {
+        $affected = \App\Models\Client::whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->where('phone', 'not like', '0%')
+            ->update(['phone' => \Illuminate\Support\Facades\DB::raw("CONCAT('0', phone)")]);
+
+        return back()->with('success', "Added a leading 0 to {$affected} client phone number(s).");
+    }
+
     public function resetSmsTrial()
     {
         SystemSetting::set('sms_trial_used_count', 0);

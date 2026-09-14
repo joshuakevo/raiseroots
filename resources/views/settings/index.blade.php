@@ -328,6 +328,20 @@ $groupIcons = [
             @endif
         </div>
         @endif
+
+        <hr class="my-3">
+        <p class="text-muted small mb-2">
+            One-off fix: prepend a leading 0 to any client phone number missing one (e.g.
+            <code>787356969</code> → <code>0787356969</code>). Skips numbers already starting with 0 and
+            blank/null ones, so it's safe to run more than once.
+        </p>
+        <form method="POST" action="{{ route('settings.fix-client-phones') }}"
+              onsubmit="return confirm('Add a leading 0 to every client phone number missing one?')">
+            @csrf
+            <button type="submit" class="btn btn-outline-warning">
+                <i class="bi bi-telephone-plus me-2"></i>Fix Client Phone Numbers
+            </button>
+        </form>
     </div>
 </div>
 
