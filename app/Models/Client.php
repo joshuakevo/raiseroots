@@ -33,7 +33,7 @@ class Client extends Model
 
     public function relationshipManager()
     {
-        return $this->belongsTo(\App\Models\Employee::class, 'relationship_manager_id');
+        return $this->belongsTo(\App\Models\User::class, 'relationship_manager_id');
     }
 
     /** Falls back to whoever created the client until an RM is explicitly assigned. */

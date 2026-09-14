@@ -199,9 +199,15 @@ class ClientController extends Controller
 
     public function edit(Client $client)
     {
-        $branches  = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
-        $employees = \App\Models\Employee::where('status', 'active')->orderBy('name')->get();
-        return view('clients.edit', compact('client', 'branches', 'employees'));
+        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
+
+        // Relationship managers are any active staff user — excludes client-portal-only logins.
+        $relationshipManagers = \App\Models\User::where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
+            ->orderBy('name')
+            ->get();
+
+        return view('clients.edit', compact('client', 'branches', 'relationshipManagers'));
     }
 
     public function update(Request $request, Client $client)
@@ -238,7 +244,7 @@ class ClientController extends Controller
             // Preferences
             'preferred_communication'  => 'nullable|in:sms,email,whatsapp,phone_call',
             'branch_id'                => 'nullable|exists:branches,id',
-            'relationship_manager_id'  => 'nullable|exists:employees,id',
+            'relationship_manager_id'  => 'nullable|exists:users,id',
             'status'                   => 'required|in:active,inactive,blacklisted',
             'joining_date'             => 'nullable|date',
         ]);
@@ -264,7 +270,7 @@ class ClientController extends Controller
 
     public function updateRelationshipManager(Request $request, Client $client)
     {
-        $request->validate(['relationship_manager_id' => 'nullable|exists:employees,id']);
+        $request->validate(['relationship_manager_id' => 'nullable|exists:users,id']);
 
         $client->update(['relationship_manager_id' => $request->relationship_manager_id ?: null]);
 

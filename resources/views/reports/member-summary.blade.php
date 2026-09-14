@@ -113,8 +113,8 @@
                         <select name="relationship_manager_id" class="form-select form-select-sm"
                                 onchange="this.form.submit()" style="min-width:160px">
                             <option value="">— Unassigned —</option>
-                            @foreach($employees as $employee)
-                            <option value="{{ $employee->id }}" @selected($row->client->relationship_manager_id == $employee->id)>{{ $employee->name }}</option>
+                            @foreach($relationshipManagers as $user)
+                            <option value="{{ $user->id }}" @selected($row->client->relationship_manager_id == $user->id)>{{ $user->name }} — {{ ucfirst(str_replace('_',' ',$user->role_name)) }}</option>
                             @endforeach
                         </select>
                     </form>

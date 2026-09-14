@@ -489,7 +489,11 @@ class ReportController extends Controller
             'loan_interest'  => $members->sum('loan_interest'),
         ];
 
-        $employees = \App\Models\Employee::where('status', 'active')->orderBy('name')->get();
+        // Relationship managers are any active staff user — excludes client-portal-only logins.
+        $relationshipManagers = \App\Models\User::where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
+            ->orderBy('name')
+            ->get();
 
         if ($request->format === 'pdf') {
             $pdf = Pdf::loadView('pdf.member-summary', compact('members', 'totals', 'asOf'))
@@ -514,7 +518,7 @@ class ReportController extends Controller
             return $this->csvDownload($rows, 'member-summary-' . $asOf);
         }
 
-        return view('reports.member-summary', compact('members', 'totals', 'asOf', 'employees'));
+        return view('reports.member-summary', compact('members', 'totals', 'asOf', 'relationshipManagers'));
     }
 
     /**

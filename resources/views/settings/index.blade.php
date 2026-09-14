@@ -345,16 +345,16 @@ $groupIcons = [
 
         <hr class="my-3">
         <p class="text-muted small mb-2">
-            Bulk-assign one employee as the relationship manager for every client, overwriting any existing
+            Bulk-assign one system user as the relationship manager for every client, overwriting any existing
             assignment.
         </p>
         <form method="POST" action="{{ route('settings.default-relationship-manager') }}" class="d-flex gap-2"
-              onsubmit="return confirm('Set the selected employee as relationship manager for every client? This overwrites any existing assignment.')">
+              onsubmit="return confirm('Set the selected user as relationship manager for every client? This overwrites any existing assignment.')">
             @csrf
             <select name="relationship_manager_id" class="form-select" required style="max-width:320px">
-                <option value="">— Select employee —</option>
-                @foreach($employees as $employee)
-                <option value="{{ $employee->id }}">{{ $employee->name }}{{ $employee->position ? ' — ' . $employee->position : '' }}</option>
+                <option value="">— Select user —</option>
+                @foreach($relationshipManagers as $user)
+                <option value="{{ $user->id }}">{{ $user->name }} — {{ ucfirst(str_replace('_',' ',$user->role_name)) }}</option>
                 @endforeach
             </select>
             <button type="submit" class="btn btn-outline-primary text-nowrap">

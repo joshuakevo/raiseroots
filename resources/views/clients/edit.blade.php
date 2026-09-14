@@ -296,8 +296,8 @@
             <label class="form-label">Relationship Manager</label>
             <select name="relationship_manager_id" class="form-select">
                 <option value="">— Default: {{ $client->createdBy->name ?? 'whoever created this client' }} —</option>
-                @foreach($employees as $employee)
-                <option value="{{ $employee->id }}" @selected(old('relationship_manager_id', $client->relationship_manager_id) == $employee->id)>{{ $employee->name }}</option>
+                @foreach($relationshipManagers as $user)
+                <option value="{{ $user->id }}" @selected(old('relationship_manager_id', $client->relationship_manager_id) == $user->id)>{{ $user->name }}</option>
                 @endforeach
             </select>
             <div class="form-text">Leave as default to keep it assigned to whoever created this client.</div>
