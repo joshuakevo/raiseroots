@@ -331,8 +331,6 @@
             <a href="{{ route('reports.general-ledger') }}"    class="nav-link-item {{ request()->routeIs('reports.general-ledger') ? 'active' : '' }}"><i class="bi bi-journal-text"></i> General Ledger</a>
             <a href="{{ route('reports.loan-portfolio') }}"    class="nav-link-item {{ request()->routeIs('reports.loan-portfolio') ? 'active' : '' }}"><i class="bi bi-cash-stack"></i> Loan Portfolio</a>
             <a href="{{ route('reports.loan-aging') }}"        class="nav-link-item {{ request()->routeIs('reports.loan-aging') ? 'active' : '' }}"><i class="bi bi-clock-history"></i> Loan Aging</a>
-            <a href="{{ route('reports.savings-balances') }}"  class="nav-link-item {{ request()->routeIs('reports.savings-balances') ? 'active' : '' }}"><i class="bi bi-piggy-bank"></i> Savings Balances</a>
-            <a href="{{ route('reports.fd-maturity') }}"       class="nav-link-item {{ request()->routeIs('reports.fd-maturity') ? 'active' : '' }}"><i class="bi bi-safe"></i> FD Maturity</a>
             <a href="{{ route('reports.member-summary') }}"    class="nav-link-item {{ request()->routeIs('reports.member-summary') ? 'active' : '' }}"><i class="bi bi-people-fill"></i> Member Summary</a>
         </div>
         @endcan
