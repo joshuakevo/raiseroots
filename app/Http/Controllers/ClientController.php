@@ -262,6 +262,15 @@ class ClientController extends Controller
         return redirect()->route('clients.show', $client)->with('success', 'Client updated successfully.');
     }
 
+    public function updateRelationshipManager(Request $request, Client $client)
+    {
+        $request->validate(['relationship_manager_id' => 'nullable|exists:employees,id']);
+
+        $client->update(['relationship_manager_id' => $request->relationship_manager_id ?: null]);
+
+        return back()->with('success', 'Relationship manager updated for ' . $client->name . '.');
+    }
+
     public function invite(Client $client)
     {
         if (!$client->email) {

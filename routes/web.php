@@ -100,6 +100,8 @@ Route::middleware('auth')->group(function () {
         ->name('clients.invite')->middleware('permission:edit clients');
     Route::post('clients/{client}/invite-members', [ClientController::class, 'inviteGroupMembers'])
         ->name('clients.invite-members')->middleware('permission:edit clients');
+    Route::post('clients/{client}/relationship-manager', [ClientController::class, 'updateRelationshipManager'])
+        ->name('clients.relationship-manager')->middleware('permission:assign relationship manager');
     Route::post('clients/{client}/membership-payment', [MemberShareController::class, 'payMembership'])
         ->name('clients.membership-payment')->middleware('permission:manage shares');
     Route::post('clients/{client}/shares', [MemberShareController::class, 'addShare'])

@@ -19,7 +19,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view dashboard',
 
             // Clients
-            'view clients', 'create clients', 'edit clients', 'delete clients',
+            'view clients', 'create clients', 'edit clients', 'delete clients', 'assign relationship manager',
 
             // Accounts / Chart of Accounts
             'view accounts', 'create accounts', 'edit accounts',
@@ -90,7 +90,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $cashier = Role::firstOrCreate(['name' => 'cashier']);
         $cashier->syncPermissions([
             'view dashboard',
-            'view clients', 'create clients', 'edit clients', 'delete clients',
+            'view clients', 'create clients', 'edit clients', 'delete clients', 'assign relationship manager',
             'view accounts', 'view transactions', 'create transactions', 'reverse transactions',
             'view loans', 'create loans', 'disburse loans', 'repay loans',
             'view savings', 'create savings', 'deposit savings', 'withdraw savings', 'transfer savings',

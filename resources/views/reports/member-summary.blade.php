@@ -53,14 +53,6 @@
         </div>
     </div>
     <div class="col">
-        <div class="card text-center border-0 bg-primary bg-opacity-10">
-            <div class="card-body py-2">
-                <div class="text-muted small">Total Savings</div>
-                <div class="fw-bold fs-6 text-primary">{{ number_format($totals['savings'], 0) }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col">
         <div class="card text-center border-0 bg-danger bg-opacity-10">
             <div class="card-body py-2">
                 <div class="text-muted small">Loan Principal</div>
@@ -76,30 +68,6 @@
             </div>
         </div>
     </div>
-    <div class="col">
-        <div class="card text-center border-0 bg-info bg-opacity-10">
-            <div class="card-body py-2">
-                <div class="text-muted small">Fixed Deposits</div>
-                <div class="fw-bold fs-6 text-info">{{ number_format($totals['fd_amount'], 0) }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card text-center border-0 bg-success bg-opacity-10">
-            <div class="card-body py-2">
-                <div class="text-muted small">Share Capital</div>
-                <div class="fw-bold fs-6 text-success">{{ number_format($totals['share_total'], 0) }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card text-center border-0 bg-secondary bg-opacity-10">
-            <div class="card-body py-2">
-                <div class="text-muted small">Group Balance</div>
-                <div class="fw-bold fs-6 text-secondary">{{ number_format($totals['group_balance'], 0) }}</div>
-            </div>
-        </div>
-    </div>
 </div>
 
 {{-- Main table --}}
@@ -111,13 +79,9 @@
                     <th class="ps-3">#</th>
                     <th>Member</th>
                     <th>Client #</th>
-                    <th class="text-end">Savings Balance</th>
                     <th class="text-end">Loan Principal</th>
                     <th class="text-end">Loan Interest</th>
-                    <th class="text-end">Fixed Deposits</th>
-                    <th class="text-end">Group Bal.</th>
-                    <th class="text-end">Shares</th>
-                    <th class="text-end pe-3">Share Value</th>
+                    <th class="pe-3">Relationship Manager</th>
                 </tr>
             </thead>
             <tbody>
@@ -136,51 +100,45 @@
                     </div>
                 </td>
                 <td class="font-monospace text-muted">{{ $row->client->client_number }}</td>
-                <td class="text-end {{ $row->savings_balance > 0 ? 'text-primary fw-semibold' : 'text-muted' }}">
-                    {{ number_format($row->savings_balance, 0) }}
-                </td>
                 <td class="text-end {{ $row->loan_principal > 0 ? 'text-danger fw-semibold' : 'text-muted' }}">
                     {{ $row->loan_principal > 0 ? number_format($row->loan_principal, 0) : '—' }}
                 </td>
                 <td class="text-end {{ $row->loan_interest > 0 ? 'text-warning' : 'text-muted' }}">
                     {{ $row->loan_interest > 0 ? number_format($row->loan_interest, 0) : '—' }}
                 </td>
-                <td class="text-end {{ $row->fd_amount > 0 ? 'text-info fw-semibold' : 'text-muted' }}">
-                    {{ $row->fd_amount > 0 ? number_format($row->fd_amount, 0) : '—' }}
-                </td>
-                <td class="text-end {{ $row->group_balance > 0 ? 'text-secondary fw-semibold' : 'text-muted' }}">
-                    {{ $row->group_balance > 0 ? number_format($row->group_balance, 0) : '—' }}
-                </td>
-                <td class="text-end text-muted">
-                    {{ $row->share_units > 0 ? $row->share_units . ' shr' : '—' }}
-                </td>
-                <td class="text-end pe-3 {{ $row->share_total > 0 ? 'text-success fw-semibold' : 'text-muted' }}">
-                    {{ $row->share_total > 0 ? number_format($row->share_total, 0) : '—' }}
+                <td class="pe-3">
+                    @can('assign relationship manager')
+                    <form method="POST" action="{{ route('clients.relationship-manager', $row->client) }}">
+                        @csrf
+                        <select name="relationship_manager_id" class="form-select form-select-sm"
+                                onchange="this.form.submit()" style="min-width:160px">
+                            <option value="">— Unassigned —</option>
+                            @foreach($employees as $employee)
+                            <option value="{{ $employee->id }}" @selected($row->client->relationship_manager_id == $employee->id)>{{ $employee->name }}</option>
+                            @endforeach
+                        </select>
+                    </form>
+                    @else
+                        {{ $row->client->relationshipManager?->name ?? '—' }}
+                    @endcan
                 </td>
             </tr>
             @empty
-            <tr><td colspan="10" class="text-center text-muted py-4">No members found.</td></tr>
+            <tr><td colspan="6" class="text-center text-muted py-4">No members found.</td></tr>
             @endforelse
             </tbody>
             <tfoot class="table-secondary fw-bold small">
                 <tr>
                     <td colspan="3" class="ps-3">Totals ({{ $members->count() }} members)</td>
-                    <td class="text-end text-primary">{{ number_format($totals['savings'], 0) }}</td>
                     <td class="text-end text-danger">{{ number_format($totals['loan_principal'], 0) }}</td>
                     <td class="text-end text-warning">{{ number_format($totals['loan_interest'], 0) }}</td>
-                    <td class="text-end text-info">{{ number_format($totals['fd_amount'], 0) }}</td>
-                    <td class="text-end text-secondary">{{ number_format($totals['group_balance'], 0) }}</td>
-                    <td class="text-end">{{ number_format($totals['share_units'], 0) }} shr</td>
-                    <td class="text-end pe-3 text-success">{{ number_format($totals['share_total'], 0) }}</td>
+                    <td class="pe-3"></td>
                 </tr>
             </tfoot>
         </table>
     </div>
     <div class="card-footer text-muted small">
-        1 share = UGX {{ number_format($shareValue, 0) }} &nbsp;&bull;&nbsp;
-        Savings shows active accounts only &nbsp;&bull;&nbsp;
-        Loans shows active outstanding balances only &nbsp;&bull;&nbsp;
-        Fixed Deposits shows active principal only
+        Loans shows active outstanding balances only
     </div>
 </div>
 @endsection

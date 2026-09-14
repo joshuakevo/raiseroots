@@ -436,25 +436,9 @@ class ReportController extends Controller
 
     public function memberSummary(Request $request)
     {
-        $asOf       = $request->as_of ?? now()->toDateString();
-        $shareValue = 100000;
+        $asOf = $request->as_of ?? now()->toDateString();
 
         // --- Bulk precompute financial metrics as of $asOf to avoid N+1 queries ---
-
-        // Savings: balance_after of the last transaction on or before $asOf, per client
-        $savingsBalances = \DB::table('savings_accounts as sa')
-            ->leftJoinSub(
-                \DB::table('savings_transactions')
-                    ->where('transaction_date', '<=', $asOf)
-                    ->select('savings_account_id', \DB::raw('MAX(id) as last_id'))
-                    ->groupBy('savings_account_id'),
-                'latest',
-                'latest.savings_account_id', '=', 'sa.id'
-            )
-            ->leftJoin('savings_transactions as st', 'st.id', '=', 'latest.last_id')
-            ->groupBy('sa.client_id')
-            ->select('sa.client_id', \DB::raw('COALESCE(SUM(st.balance_after), 0) as balance'))
-            ->pluck('balance', 'client_id');
 
         // Loans: outstanding principal = principal − repayments up to $asOf
         $loanPrincipals = \DB::table('loans as l')
@@ -486,97 +470,51 @@ class ReportController extends Controller
             ->select('l.client_id', \DB::raw('COALESCE(SUM(sched.interest_os), 0) as interest'))
             ->pluck('interest', 'client_id');
 
-        // Fixed Deposits: principal of FDs that started on or before $asOf and mature after $asOf
-        $fdAmounts = \DB::table('fixed_deposits')
-            ->where('start_date', '<=', $asOf)
-            ->where('maturity_date', '>=', $asOf)
-            ->whereNull('deleted_at')
-            ->groupBy('client_id')
-            ->select('client_id', \DB::raw('SUM(principal) as amount'))
-            ->pluck('amount', 'client_id');
-
-        // Shares: amount paid on shares created on or before $asOf
-        $shareAmounts = \DB::table('member_shares')
-            ->whereDate('created_at', '<=', $asOf)
-            ->groupBy('client_id')
-            ->select('client_id', \DB::raw('SUM(amount_paid) as paid'))
-            ->pluck('paid', 'client_id');
-
-        // Group balance: for group-type clients, sum of their group members' balances
-        $groupBalances = \DB::table('groups as g')
-            ->join('group_members as gm', 'gm.group_id', '=', 'g.id')
-            ->whereNotNull('g.client_id')
-            ->where('gm.status', 'active')
-            ->groupBy('g.client_id')
-            ->select('g.client_id', \DB::raw('SUM(gm.balance) as balance'))
-            ->pluck('balance', 'client_id');
-
         // Fetch clients registered on or before $asOf
-        $members = Client::whereDate('created_at', '<=', $asOf)
+        $members = Client::with('relationshipManager')
+            ->whereDate('created_at', '<=', $asOf)
             ->when($request->status, fn($q) => $q->where('status', $request->status))
             ->orderBy('name')
             ->get()
-            ->map(function ($client) use ($savingsBalances, $loanPrincipals, $loanInterests, $fdAmounts, $shareAmounts, $groupBalances, $shareValue) {
-                $savingsBalance = (float) ($savingsBalances[$client->id] ?? 0);
-                $loanPrincipal  = (float) ($loanPrincipals[$client->id]  ?? 0);
-                $loanInterest   = (float) ($loanInterests[$client->id]   ?? 0);
-                $fdAmount       = (float) ($fdAmounts[$client->id]        ?? 0);
-                $sharePaid      = (float) ($shareAmounts[$client->id]     ?? 0);
-                $groupBalance   = (float) ($groupBalances[$client->id]    ?? 0);
-                $shareUnits     = $shareValue > 0 ? floor($sharePaid / $shareValue) : 0;
-
+            ->map(function ($client) use ($loanPrincipals, $loanInterests) {
                 return (object) [
                     'client'         => $client,
-                    'savings_balance'=> $savingsBalance,
-                    'loan_principal' => $loanPrincipal,
-                    'loan_interest'  => $loanInterest,
-                    'fd_amount'      => $fdAmount,
-                    'group_balance'  => $groupBalance,
-                    'share_units'    => $shareUnits,
-                    'share_total'    => $sharePaid,
-                    'total_assets'   => $savingsBalance + $fdAmount + $sharePaid + $groupBalance,
-                    'total_liability'=> $loanPrincipal + $loanInterest,
+                    'loan_principal' => (float) ($loanPrincipals[$client->id] ?? 0),
+                    'loan_interest'  => (float) ($loanInterests[$client->id]  ?? 0),
                 ];
             });
 
         $totals = [
-            'savings'        => $members->sum('savings_balance'),
             'loan_principal' => $members->sum('loan_principal'),
             'loan_interest'  => $members->sum('loan_interest'),
-            'fd_amount'      => $members->sum('fd_amount'),
-            'group_balance'  => $members->sum('group_balance'),
-            'share_units'    => $members->sum('share_units'),
-            'share_total'    => $members->sum('share_total'),
         ];
 
+        $employees = \App\Models\Employee::where('status', 'active')->orderBy('name')->get();
+
         if ($request->format === 'pdf') {
-            $pdf = Pdf::loadView('pdf.member-summary', compact('members', 'totals', 'shareValue', 'asOf'))
+            $pdf = Pdf::loadView('pdf.member-summary', compact('members', 'totals', 'asOf'))
                 ->setPaper('a4', 'landscape');
             return $pdf->download('member-summary-' . $asOf . '.pdf');
         }
 
         if ($request->format === 'excel') {
             $rows = [];
-            $rows[] = ['#', 'Member Name', 'Client #', 'Savings Balance', 'Loan Principal', 'Loan Interest', 'Fixed Deposits', 'Group Balance', 'Share Units', 'Share Value'];
+            $rows[] = ['#', 'Member Name', 'Client #', 'Loan Principal', 'Loan Interest', 'Relationship Manager'];
             foreach ($members as $i => $row) {
                 $rows[] = [
                     $i + 1,
                     $row->client->name,
                     $row->client->client_number,
-                    $row->savings_balance,
                     $row->loan_principal,
                     $row->loan_interest,
-                    $row->fd_amount,
-                    $row->group_balance,
-                    $row->share_units,
-                    $row->share_total,
+                    $row->client->relationshipManager?->name ?? '',
                 ];
             }
-            $rows[] = ['', 'TOTALS', '', $totals['savings'], $totals['loan_principal'], $totals['loan_interest'], $totals['fd_amount'], $totals['group_balance'], $totals['share_units'], $totals['share_total']];
+            $rows[] = ['', 'TOTALS', '', $totals['loan_principal'], $totals['loan_interest'], ''];
             return $this->csvDownload($rows, 'member-summary-' . $asOf);
         }
 
-        return view('reports.member-summary', compact('members', 'totals', 'shareValue', 'asOf'));
+        return view('reports.member-summary', compact('members', 'totals', 'asOf', 'employees'));
     }
 
     /**

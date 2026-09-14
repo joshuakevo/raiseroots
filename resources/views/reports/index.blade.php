@@ -18,7 +18,7 @@
         ['title'=>'Interest Income','icon'=>'bi-currency-dollar','desc'=>'Interest earned over a period','route'=>'reports.interest-income','color'=>'success'],
         ['title'=>'Savings Balances','icon'=>'bi-piggy-bank','desc'=>'All active savings account balances','route'=>'reports.savings-balances','color'=>'info'],
         ['title'=>'FD Maturity','icon'=>'bi-safe','desc'=>'Fixed deposits maturing in a period','route'=>'reports.fd-maturity','color'=>'secondary'],
-        ['title'=>'Member Summary','icon'=>'bi-people-fill','desc'=>'Savings, loans, FD & shares per member','route'=>'reports.member-summary','color'=>'primary'],
+        ['title'=>'Member Summary','icon'=>'bi-people-fill','desc'=>'Outstanding loans & relationship manager per member','route'=>'reports.member-summary','color'=>'primary'],
     ];
     @endphp
     @foreach($reports as $r)
