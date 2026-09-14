@@ -254,6 +254,67 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- Bulk Client Import --}}
+<div class="card mt-4 border-success">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-people-fill text-success"></i>
+        <span>Bulk Client Import</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            One-click import of a legacy member list. Upload your CSV to
+            <code>storage/app/imports/clients.csv</code> on this server first (via File Manager), then click
+            below. Recognizes a Name column plus optional Reference/Client Number, Phone, and NIN/ID Number
+            columns (matched by header text, case-insensitive). New clients are created as
+            <code>individual</code> / <code>active</code> — everything else (gender, next of kin, etc.) is left
+            blank for staff to fill in later. A row whose reference number already exists, or repeats within
+            the file, is skipped and listed below rather than overwriting anything. Safe to run more than once —
+            already-imported rows are simply skipped.
+        </p>
+        <form method="POST" action="{{ route('settings.import-clients') }}"
+              onsubmit="return confirm('Import clients from storage/app/imports/clients.csv now?')">
+            @csrf
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-upload me-2"></i>Import Clients from clients.csv
+            </button>
+        </form>
+
+        @if(session('clientImportResult'))
+        @php $r = session('clientImportResult'); @endphp
+        <div class="mt-3">
+            <p class="mb-2"><strong>{{ $r['created'] }}</strong> client(s) created.</p>
+
+            @if(count($r['skipped_duplicate_in_file']))
+            <div class="mb-2">
+                <div class="fw-semibold text-danger small mb-1">Skipped — duplicate reference number within the file ({{ count($r['skipped_duplicate_in_file']) }})</div>
+                <ul class="small text-muted mb-0">
+                    @foreach($r['skipped_duplicate_in_file'] as $line)<li>{{ $line }}</li>@endforeach
+                </ul>
+            </div>
+            @endif
+
+            @if(count($r['skipped_existing']))
+            <div class="mb-2">
+                <div class="fw-semibold text-warning small mb-1">Skipped — client number already exists ({{ count($r['skipped_existing']) }})</div>
+                <ul class="small text-muted mb-0">
+                    @foreach($r['skipped_existing'] as $line)<li>{{ $line }}</li>@endforeach
+                </ul>
+            </div>
+            @endif
+
+            @if(count($r['flagged_phones']))
+            <div class="mb-0">
+                <div class="fw-semibold text-info small mb-1">Created but phone number looks off — check manually ({{ count($r['flagged_phones']) }})</div>
+                <ul class="small text-muted mb-0">
+                    @foreach($r['flagged_phones'] as $line)<li>{{ $line }}</li>@endforeach
+                </ul>
+            </div>
+            @endif
+        </div>
+        @endif
+    </div>
+</div>
+
 {{-- SMS Free Trial --}}
 <div class="card mt-4 border-success">
     <div class="card-header d-flex align-items-center gap-2">

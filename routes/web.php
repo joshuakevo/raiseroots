@@ -95,10 +95,6 @@ Route::middleware('auth')->group(function () {
     });
 
     // ── Clients ───────────────────────────────────────────────────────
-    Route::get('clients/import', [ClientController::class, 'importForm'])
-        ->name('clients.import')->middleware('permission:create clients');
-    Route::post('clients/import', [ClientController::class, 'import'])
-        ->name('clients.import.store')->middleware('permission:create clients');
     Route::resource('clients', ClientController::class)->middleware('permission:view clients');
     Route::post('clients/{client}/invite', [ClientController::class, 'invite'])
         ->name('clients.invite')->middleware('permission:edit clients');
@@ -346,6 +342,7 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/clear-cache', [SettingsController::class, 'clearCache'])->name('settings.clear-cache');
         Route::post('settings/storage-diagnostics', [SettingsController::class, 'storageDiagnostics'])->name('settings.storage-diagnostics');
         Route::post('settings/sync-legacy-uploads', [SettingsController::class, 'syncLegacyUploads'])->name('settings.sync-legacy-uploads');
+        Route::post('settings/import-clients', [SettingsController::class, 'importClients'])->name('settings.import-clients');
         Route::post('settings/reset-sms-trial', [SettingsController::class, 'resetSmsTrial'])->name('settings.reset-sms-trial');
         Route::post('settings/sms-config-check', [SettingsController::class, 'smsConfigCheck'])->name('settings.sms-config-check');
         Route::post('settings/test-marzpay-connectivity', [SettingsController::class, 'testMarzPayConnectivity'])->name('settings.test-marzpay-connectivity');

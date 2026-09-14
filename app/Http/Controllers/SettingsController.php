@@ -366,6 +366,29 @@ class SettingsController extends Controller
         return back()->with('marzpayConnReport', $report);
     }
 
+    /**
+     * One-click bulk client import: reads storage/app/imports/clients.csv (upload it there
+     * via File Manager first — see the note on this button) rather than a web upload form,
+     * since this runs once per deployment onboarding and a file picker isn't needed for that.
+     * See ClientImportService for the column matching / skip / flag rules.
+     */
+    public function importClients(\App\Services\ClientImportService $importer)
+    {
+        $path = storage_path('app/imports/clients.csv');
+
+        if (!file_exists($path)) {
+            return back()->with('error', 'No file found at storage/app/imports/clients.csv — upload your client CSV there first (via File Manager), then click this again.');
+        }
+
+        try {
+            $result = $importer->importFromCsv($path);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Import failed, nothing was saved: ' . $e->getMessage());
+        }
+
+        return back()->with('clientImportResult', $result);
+    }
+
     public function resetSmsTrial()
     {
         SystemSetting::set('sms_trial_used_count', 0);
