@@ -26,7 +26,9 @@ class SettingsController extends Controller
             ? LoanCollateralCategory::orderBy('label')->get()
             : collect();
 
-        return view('settings.index', compact('settings', 'collateralCategoriesReady', 'collateralCategories'));
+        $employees = \App\Models\Employee::where('status', 'active')->orderBy('name')->get();
+
+        return view('settings.index', compact('settings', 'collateralCategoriesReady', 'collateralCategories', 'employees'));
     }
 
     public function update(Request $request)
@@ -421,6 +423,17 @@ class SettingsController extends Controller
             ->update(['phone' => \Illuminate\Support\Facades\DB::raw("CONCAT('0', phone)")]);
 
         return back()->with('success', "Added a leading 0 to {$affected} client phone number(s).");
+    }
+
+    /** Bulk-assigns one employee as relationship_manager_id for every client, overwriting any existing value. */
+    public function setDefaultRelationshipManager(Request $request)
+    {
+        $request->validate(['relationship_manager_id' => 'required|exists:employees,id']);
+
+        $employee = \App\Models\Employee::findOrFail($request->relationship_manager_id);
+        $affected = \App\Models\Client::query()->update(['relationship_manager_id' => $employee->id]);
+
+        return back()->with('success', "Set {$employee->name} as relationship manager for {$affected} client(s).");
     }
 
     public function resetSmsTrial()

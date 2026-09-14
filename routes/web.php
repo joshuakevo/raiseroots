@@ -345,6 +345,7 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/import-clients', [SettingsController::class, 'importClients'])->name('settings.import-clients');
         Route::post('settings/import-clients-text', [SettingsController::class, 'importClientsFromText'])->name('settings.import-clients-text');
         Route::post('settings/fix-client-phones', [SettingsController::class, 'prependZeroToClientPhones'])->name('settings.fix-client-phones');
+        Route::post('settings/default-relationship-manager', [SettingsController::class, 'setDefaultRelationshipManager'])->name('settings.default-relationship-manager');
         Route::post('settings/reset-sms-trial', [SettingsController::class, 'resetSmsTrial'])->name('settings.reset-sms-trial');
         Route::post('settings/sms-config-check', [SettingsController::class, 'smsConfigCheck'])->name('settings.sms-config-check');
         Route::post('settings/test-marzpay-connectivity', [SettingsController::class, 'testMarzPayConnectivity'])->name('settings.test-marzpay-connectivity');
