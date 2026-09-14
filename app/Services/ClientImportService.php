@@ -24,6 +24,33 @@ class ClientImportService
     public function importFromCsv(string $path, ?int $branchId = null): array
     {
         $handle = fopen($path, 'r');
+        try {
+            return $this->importFromHandle($handle, $branchId);
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    /**
+     * Same as importFromCsv(), but for CSV text pasted directly into a form field rather
+     * than a file on disk — avoids ever writing the (often sensitive) source file to the
+     * server's filesystem or to git.
+     */
+    public function importFromCsvText(string $csvText, ?int $branchId = null): array
+    {
+        $handle = fopen('php://temp', 'r+');
+        fwrite($handle, $csvText);
+        rewind($handle);
+        try {
+            return $this->importFromHandle($handle, $branchId);
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    /** @return array{created:int, skipped_duplicate_in_file:string[], skipped_existing:string[], flagged_phones:string[]} */
+    private function importFromHandle($handle, ?int $branchId = null): array
+    {
         $header = array_map(fn ($h) => strtolower(trim((string) $h)), fgetcsv($handle) ?: []);
 
         $col = [];
@@ -38,7 +65,6 @@ class ClientImportService
         }
 
         if (!isset($col['name'])) {
-            fclose($handle);
             throw new \RuntimeException('Could not find a "Name" column in the file. Expected a header like "Name" or "Name of Client".');
         }
 
@@ -102,10 +128,8 @@ class ClientImportService
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            fclose($handle);
             throw $e;
         }
-        fclose($handle);
 
         return [
             'created'                   => $created,

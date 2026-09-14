@@ -279,6 +279,22 @@ $groupIcons = [
             </button>
         </form>
 
+        <hr class="my-3">
+        <p class="text-muted small mb-2">
+            No file on the server yet? Paste the CSV text directly below instead — same column
+            rules as above. Nothing is written to disk or to git; it's processed and discarded
+            immediately after import.
+        </p>
+        <form method="POST" action="{{ route('settings.import-clients-text') }}"
+              onsubmit="return confirm('Import clients from the pasted text now?')">
+            @csrf
+            <textarea name="csv_text" rows="6" class="form-control font-monospace small mb-2"
+                      placeholder="Reference Number,Name of Client,Telephone Number,NIN Number&#10;SIP/001,KADUMALA RUKIA REHEMA,787356969,CF76002100GH2F&#10;..." required></textarea>
+            <button type="submit" class="btn btn-outline-success">
+                <i class="bi bi-clipboard-check me-2"></i>Import Pasted CSV
+            </button>
+        </form>
+
         @if(session('clientImportResult'))
         @php $r = session('clientImportResult'); @endphp
         <div class="mt-3">

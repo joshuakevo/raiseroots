@@ -389,6 +389,24 @@ class SettingsController extends Controller
         return back()->with('clientImportResult', $result);
     }
 
+    /**
+     * Same import as importClients(), but for CSV text pasted directly into the Settings
+     * page rather than a file placed on the server first — avoids ever writing the (often
+     * sensitive) source file to disk or to git for a one-off import.
+     */
+    public function importClientsFromText(Request $request, \App\Services\ClientImportService $importer)
+    {
+        $request->validate(['csv_text' => 'required|string']);
+
+        try {
+            $result = $importer->importFromCsvText($request->csv_text);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Import failed, nothing was saved: ' . $e->getMessage());
+        }
+
+        return back()->with('clientImportResult', $result);
+    }
+
     public function resetSmsTrial()
     {
         SystemSetting::set('sms_trial_used_count', 0);
