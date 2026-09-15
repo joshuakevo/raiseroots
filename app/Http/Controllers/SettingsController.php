@@ -471,6 +471,29 @@ class SettingsController extends Controller
         return back()->with('success', "Backfilled first/last name for {$affected} client(s).");
     }
 
+    /**
+     * One-time bulk import of historical loan disbursements. Reads
+     * storage/app/imports/loan-disbursements.csv — upload it there via File Manager
+     * first — rather than a web upload form, matching importClients(). See
+     * LoanImportService for the full posting rules.
+     */
+    public function importLoanDisbursements(\App\Services\LoanImportService $importer)
+    {
+        $path = storage_path('app/imports/loan-disbursements.csv');
+
+        if (!file_exists($path)) {
+            return back()->with('error', 'No file found at storage/app/imports/loan-disbursements.csv — upload it there first (via File Manager), then click this again.');
+        }
+
+        try {
+            $result = $importer->importFromCsv($path);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Import failed: ' . $e->getMessage());
+        }
+
+        return back()->with('loanImportResult', $result);
+    }
+
     public function resetSmsTrial()
     {
         SystemSetting::set('sms_trial_used_count', 0);

@@ -349,6 +349,7 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/fix-client-phones', [SettingsController::class, 'prependZeroToClientPhones'])->name('settings.fix-client-phones');
         Route::post('settings/default-relationship-manager', [SettingsController::class, 'setDefaultRelationshipManager'])->name('settings.default-relationship-manager');
         Route::post('settings/backfill-client-names', [SettingsController::class, 'backfillClientNames'])->name('settings.backfill-client-names');
+        Route::post('settings/import-loan-disbursements', [SettingsController::class, 'importLoanDisbursements'])->name('settings.import-loan-disbursements');
         Route::post('settings/reset-sms-trial', [SettingsController::class, 'resetSmsTrial'])->name('settings.reset-sms-trial');
         Route::post('settings/sms-config-check', [SettingsController::class, 'smsConfigCheck'])->name('settings.sms-config-check');
         Route::post('settings/test-marzpay-connectivity', [SettingsController::class, 'testMarzPayConnectivity'])->name('settings.test-marzpay-connectivity');

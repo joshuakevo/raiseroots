@@ -380,6 +380,65 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- Loan Disbursements Import --}}
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-cash-coin text-danger"></i>
+        <span>Loan Disbursements Import</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            One-time bulk import of historical loan disbursements under the <strong>EMERGENCY LOAN</strong>
+            product. Upload the CSV to <code>storage/app/imports/loan-disbursements.csv</code> first (via File
+            Manager), then click below. For each row: creates and disburses the loan against the matched
+            client (real double-entry posting via the normal loan disbursement flow — Loan Receivable debited,
+            Cash credited), adds a guarantor if the row has one, and posts Admin Cost / Processing Fee as their
+            own separate fee-income transactions (not added to the loan's own balance). Rows marked
+            <code>COMPLETED</code> or <code>PAID</code> get a full repayment posted on the due date, closing the
+            loan. Rows that fail (e.g. an invalid amount) are skipped individually and listed below — everything
+            else still imports. <strong>Not safe to re-run</strong> — running it twice would create duplicate
+            loans for every row.
+        </p>
+        <form method="POST" action="{{ route('settings.import-loan-disbursements') }}"
+              onsubmit="return confirm('Import loan disbursements from storage/app/imports/loan-disbursements.csv now? This posts real GL transactions and cannot be undone by re-running.')">
+            @csrf
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-upload me-2"></i>Import Loan Disbursements
+            </button>
+        </form>
+
+        @if(session('loanImportResult'))
+        @php $lr = session('loanImportResult'); @endphp
+        <div class="mt-3">
+            <p class="mb-2">
+                <strong>{{ $lr['created'] }}</strong> loan(s) created and disbursed &bull;
+                <strong>{{ $lr['repaid'] }}</strong> closed with a repayment &bull;
+                <strong>{{ $lr['guarantors'] }}</strong> guarantor(s) added &bull;
+                <strong>{{ $lr['fees_posted'] }}</strong> fee transaction(s) posted
+            </p>
+
+            @if(count($lr['skipped']))
+            <div class="mb-2">
+                <div class="fw-semibold text-warning small mb-1">Skipped — no client_number ({{ count($lr['skipped']) }})</div>
+                <ul class="small text-muted mb-0">
+                    @foreach($lr['skipped'] as $line)<li>{{ $line }}</li>@endforeach
+                </ul>
+            </div>
+            @endif
+
+            @if(count($lr['errors']))
+            <div class="mb-0">
+                <div class="fw-semibold text-danger small mb-1">Errors ({{ count($lr['errors']) }})</div>
+                <ul class="small text-muted mb-0">
+                    @foreach($lr['errors'] as $line)<li>{{ $line }}</li>@endforeach
+                </ul>
+            </div>
+            @endif
+        </div>
+        @endif
+    </div>
+</div>
+
 {{-- SMS Free Trial --}}
 <div class="card mt-4 border-success">
     <div class="card-header d-flex align-items-center gap-2">
