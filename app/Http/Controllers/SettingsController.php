@@ -154,6 +154,15 @@ class SettingsController extends Controller
             $sample = array_slice($files, 0, 5);
         }
 
+        $importsDir = storage_path('app/imports');
+        $importsListing = '(directory does not exist)';
+        if (is_dir($importsDir)) {
+            $importsFiles = array_values(array_diff(scandir($importsDir) ?: [], ['.', '..']));
+            $importsListing = $importsFiles
+                ? implode(', ', array_map(fn ($f) => $f . ' (' . number_format(filesize($importsDir . '/' . $f)) . ' bytes)', $importsFiles))
+                : '(empty)';
+        }
+
         $report = [
             'Server date/time (app timezone)'      => now()->format('Y-m-d H:i:s T'),
             'Server date/time (UTC)'                => now('UTC')->format('Y-m-d H:i:s') . ' UTC',
@@ -171,6 +180,7 @@ class SettingsController extends Controller
             'public/storage is_dir() (resolves?)'  => is_dir($symlinkPath) ? 'YES' : 'NO',
             '.htaccess has storage rewrite rule'   => (file_exists($htaccess) && str_contains(file_get_contents($htaccess), 'storage/app/public')) ? 'YES' : 'NO',
             'storage:link command output'          => $linkOutput,
+            'storage/app/imports/ contents'        => $importsListing,
         ];
 
         return back()->with('storageReport', $report);
