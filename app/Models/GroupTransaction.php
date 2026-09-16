@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedToBranchViaRelation;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class GroupTransaction extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedToBranchViaRelation;
+
+    protected static string $branchScopeRelation = 'group';
 
     protected $fillable = [
         'group_id', 'member_id', 'type', 'posting_type',

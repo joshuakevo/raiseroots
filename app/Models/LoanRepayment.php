@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedToBranchViaRelation;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class LoanRepayment extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedToBranchViaRelation;
+
+    protected static string $branchScopeRelation = 'loan';
 
     protected $fillable = [
         'loan_id', 'payment_date', 'amount', 'principal_paid', 'interest_paid',

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedToBranchViaRelation;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MemberShare extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedToBranchViaRelation;
+
+    protected static string $branchScopeRelation = 'client';
 
     protected $fillable = [
         'client_id', 'share_number', 'share_value', 'amount_paid', 'status', 'notes', 'created_by',

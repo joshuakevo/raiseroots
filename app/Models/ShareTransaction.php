@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedToBranchViaRelation;
 use Illuminate\Database\Eloquent\Model;
 
 class ShareTransaction extends Model
 {
+    use ScopedToBranchViaRelation;
+
+    protected static string $branchScopeRelation = 'client';
+
     protected $fillable = [
         'share_id', 'client_id', 'type', 'amount', 'old_value', 'new_value', 'amount_paid_before',
         'transaction_date', 'reference', 'payment_method', 'notes',
