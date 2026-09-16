@@ -7,7 +7,40 @@
 @endsection
 
 @section('content')
-<h4 class="fw-bold mb-4">Dashboard</h4>
+
+@php
+    $hour = now()->hour;
+    $greeting = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good evening');
+    $userBranch = auth()->user()->branch;
+@endphp
+<div class="branch-hero">
+    <div class="branch-hero-inner d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="branch-hero-icon">
+                <i class="bi {{ $userBranch ? 'bi-geo-alt-fill' : 'bi-globe-americas' }}"></i>
+            </div>
+            <div>
+                <div class="branch-hero-eyebrow">{{ $userBranch ? "You're viewing" : 'Organization-wide view' }}</div>
+                <div class="branch-hero-name">{{ $userBranch->name ?? 'All Branches' }}</div>
+                <div class="branch-hero-sub">{{ $greeting }}, {{ explode(' ', auth()->user()->name)[0] }} — here's how things stand{{ $userBranch ? ' at your branch' : '' }} today.</div>
+            </div>
+        </div>
+        <div class="d-flex">
+            <div class="branch-hero-stat">
+                <div class="branch-hero-stat-val">{{ number_format($totalClients) }}</div>
+                <div class="branch-hero-stat-label">Clients</div>
+            </div>
+            <div class="branch-hero-stat">
+                <div class="branch-hero-stat-val">{{ number_format($stats['active_loans']) }}</div>
+                <div class="branch-hero-stat-label">Active Loans</div>
+            </div>
+            <div class="branch-hero-stat">
+                <div class="branch-hero-stat-val">{{ number_format($stats['total_outstanding'], 0) }}</div>
+                <div class="branch-hero-stat-label">Outstanding</div>
+            </div>
+        </div>
+    </div>
+</div>
 
 {{-- ── Stat Cards ─────────────────────────────────────────────────────────── --}}
 <div class="row g-3 mb-4">

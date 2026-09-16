@@ -153,6 +153,21 @@
         .alert-info{background:#e0f2fe;color:#0369a1}
         .alert-warning{background:#fef3c7;color:#92400e}
 
+        /* BRANCH HERO */
+        .branch-hero{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;border-radius:14px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
+        .branch-hero::after{content:'';position:absolute;right:-40px;top:-50px;width:200px;height:200px;background:rgba(255,255,255,.05);border-radius:50%}
+        .branch-hero::before{content:'';position:absolute;right:40px;bottom:-60px;width:130px;height:130px;background:rgba(255,255,255,.04);border-radius:50%}
+        .branch-hero-inner{position:relative;z-index:1}
+        .branch-hero-icon{width:54px;height:54px;border-radius:13px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+        .branch-hero-eyebrow{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.62);font-weight:700}
+        .branch-hero-name{font-size:1.55rem;font-weight:700;line-height:1.15;letter-spacing:-.02px}
+        .branch-hero-sub{font-size:.78rem;color:rgba(255,255,255,.68)}
+        .branch-hero-stat{text-align:center;padding:0 1rem}
+        .branch-hero-stat + .branch-hero-stat{border-left:1px solid rgba(255,255,255,.14)}
+        .branch-hero-stat-val{font-size:1.15rem;font-weight:700}
+        .branch-hero-stat-label{font-size:.66rem;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.05em}
+        @media (max-width:767px){.branch-hero-stat{padding:0 .6rem}.branch-hero-name{font-size:1.25rem}}
+
         /* TELLER */
         .teller-card{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;border-radius:12px;padding:1.4rem;margin-bottom:1rem}
         .teller-amount{font-size:2rem;font-weight:700;letter-spacing:-.5px}
@@ -398,8 +413,8 @@
     <div class="topbar-right">
         <span class="topbar-date hide-sm">{{ now()->format('D, d M Y') }}</span>
         @if(auth()->user()?->branch)
-            <span class="badge bg-primary bg-opacity-10 text-primary hide-sm" style="font-size:.7rem">
-                <i class="bi bi-diagram-3 me-1"></i>{{ auth()->user()->branch->name }}
+            <span class="badge hide-sm" style="font-size:.74rem;font-weight:600;background:var(--primary);color:#fff;padding:.4rem .75rem;border-radius:20px">
+                <i class="bi bi-geo-alt-fill me-1"></i>{{ auth()->user()->branch->name }}
             </span>
         @endif
         <div class="dropdown">
