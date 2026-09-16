@@ -506,7 +506,7 @@ class SettingsController extends Controller
             }
         }
 
-        foreach ([\App\Models\Loan::class, \App\Models\SavingsAccount::class, \App\Models\FixedDeposit::class] as $model) {
+        foreach ([\App\Models\Loan::class, \App\Models\SavingsAccount::class, \App\Models\FixedDeposit::class, \App\Models\Group::class] as $model) {
             $affected = 0;
             $model::withoutGlobalScopes()
                 ->whereNull('branch_id')

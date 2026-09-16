@@ -2,18 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Group extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, ScopedToBranch;
 
     protected $table = 'groups';
 
     protected $fillable = [
-        'client_id', 'group_number', 'name', 'group_type', 'registration_date',
+        'client_id', 'branch_id', 'group_number', 'name', 'group_type', 'registration_date',
         'membership_fee', 'expected_contribution', 'contribution_cycle', 'pool_balance',
         'monthly_interest_rate', 'gl_account_id', 'status', 'notes', 'created_by',
     ];

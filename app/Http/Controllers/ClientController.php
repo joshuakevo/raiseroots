@@ -98,6 +98,7 @@ class ClientController extends Controller
 
             Group::create([
                 'client_id'             => $client->id,
+                'branch_id'             => $client->branch_id,
                 'group_number'          => $this->generateGroupNumber(),
                 'name'                  => $client->name,
                 'group_type'            => $request->input('group_type', 'savings'),
