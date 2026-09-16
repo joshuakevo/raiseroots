@@ -447,10 +447,11 @@ $groupIcons = [
     </div>
     <div class="card-body">
         <p class="text-muted small mb-3">
-            Staff visibility is now scoped to their assigned branch (Clients/Loans/Savings/Fixed Deposits).
-            Loans, Savings Accounts, and Fixed Deposits created before this feature don't have a branch_id
-            set — this sets each one from its client's branch. Only touches rows with no branch_id yet, so
-            it's safe to run more than once.
+            Staff visibility is now scoped to their assigned branch (Clients/Loans/Savings/Fixed
+            Deposits/Journal Transactions). Records created before this feature don't have a branch_id
+            set — this sets each one from its client's branch (Transactions with no client-tagged line
+            can't be inferred and stay unset). Only touches rows with no branch_id yet, so it's safe to
+            run more than once.
         </p>
         <form method="POST" action="{{ route('settings.backfill-branch-ids') }}"
               onsubmit="return confirm('Backfill branch_id on Loans/Savings/Fixed Deposits from their client\'s branch?')">

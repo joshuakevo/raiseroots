@@ -521,6 +521,26 @@ class SettingsController extends Controller
             $counts[] = class_basename($model) . ": {$affected}";
         }
 
+        // Transactions (the GL journal): same single-branch shortcut as clients above;
+        // with multiple branches, derive from whichever client is tagged on the lines.
+        $txnAffected = 0;
+        if ($branchCount === 1) {
+            $txnAffected = \App\Models\Transaction::withoutGlobalScopes()->whereNull('branch_id')->update(['branch_id' => $onlyBranch->id]);
+        } else {
+            \App\Models\Transaction::withoutGlobalScopes()
+                ->whereNull('branch_id')
+                ->with('lines.client')
+                ->get()
+                ->each(function ($txn) use (&$txnAffected) {
+                    $branchId = $txn->lines->map(fn ($l) => $l->client?->branch_id)->filter()->first();
+                    if ($branchId) {
+                        $txn->update(['branch_id' => $branchId]);
+                        $txnAffected++;
+                    }
+                });
+        }
+        $counts[] = "Transaction: {$txnAffected}";
+
         return back()->with('success', 'Backfilled branch_id — ' . implode(', ', $counts) . '.');
     }
 

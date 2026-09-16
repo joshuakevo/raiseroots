@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Transaction extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedToBranch;
 
     protected $fillable = [
         'date', 'reference', 'description', 'module', 'module_id', 'created_by',
-        'reversal_of', 'reversed_by', 'reversal_reason',
+        'reversal_of', 'reversed_by', 'reversal_reason', 'branch_id',
     ];
 
     protected $casts = [

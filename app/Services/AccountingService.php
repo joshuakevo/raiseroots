@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\Client;
 use App\Models\Transaction;
 use App\Models\TransactionLine;
 use Illuminate\Support\Facades\DB;
@@ -24,13 +25,16 @@ class AccountingService
     {
         $this->validateLines($lines);
 
-        return DB::transaction(function () use ($date, $description, $lines, $module, $moduleId, $reference) {
+        $branchId = $this->resolveBranchId($lines);
+
+        return DB::transaction(function () use ($date, $description, $lines, $module, $moduleId, $reference, $branchId) {
             $transaction = Transaction::create([
                 'date'        => $date,
                 'reference'   => $reference ?: $this->generateReference(),
                 'description' => $description,
                 'module'      => $module,
                 'module_id'   => $moduleId,
+                'branch_id'   => $branchId,
                 'created_by'  => auth()->id(),
             ]);
 
@@ -47,6 +51,27 @@ class AccountingService
 
             return $transaction;
         });
+    }
+
+    /**
+     * Derive which branch a posting belongs to: prefer the branch of a client
+     * tagged on one of the lines (reflects where the money actually moved),
+     * falling back to the acting user's own branch (covers postings with no
+     * client_id line, e.g. payroll), else null for org-level entries.
+     */
+    protected function resolveBranchId(array $lines): ?int
+    {
+        foreach ($lines as $line) {
+            if (!empty($line['client_id'])) {
+                $client = Client::withoutGlobalScopes()->find($line['client_id']);
+                if ($client && $client->branch_id) {
+                    return $client->branch_id;
+                }
+            }
+        }
+
+        $user = auth()->user();
+        return $user?->branch_id;
     }
 
     /**
