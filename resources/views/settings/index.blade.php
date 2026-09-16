@@ -439,6 +439,29 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- Backfill Branch IDs --}}
+<div class="card mt-4">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-diagram-3 text-primary"></i>
+        <span>Backfill Branch IDs</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Staff visibility is now scoped to their assigned branch (Clients/Loans/Savings/Fixed Deposits).
+            Loans, Savings Accounts, and Fixed Deposits created before this feature don't have a branch_id
+            set — this sets each one from its client's branch. Only touches rows with no branch_id yet, so
+            it's safe to run more than once.
+        </p>
+        <form method="POST" action="{{ route('settings.backfill-branch-ids') }}"
+              onsubmit="return confirm('Backfill branch_id on Loans/Savings/Fixed Deposits from their client\'s branch?')">
+            @csrf
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="bi bi-diagram-3 me-2"></i>Backfill Branch IDs
+            </button>
+        </form>
+    </div>
+</div>
+
 {{-- SMS Free Trial --}}
 <div class="card mt-4 border-success">
     <div class="card-header d-flex align-items-center gap-2">

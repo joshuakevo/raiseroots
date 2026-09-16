@@ -78,6 +78,10 @@ class ClientController extends Controller
                 'contribution_cycle'     => $isPooled ? 'required|in:weekly,biweekly,monthly,quarterly' : 'nullable',
             ]);
 
+            if (auth()->user()?->isBranchScoped()) {
+                $data['branch_id'] = auth()->user()->branch_id;
+            }
+
             $data['client_type']     = 'group';
             $data['name']            = $data['group_name'];
             $data['first_name']      = $data['group_name'];
@@ -145,6 +149,10 @@ class ClientController extends Controller
             'status'                   => 'required|in:active,inactive,blacklisted',
             'joining_date'             => 'required|date',
         ]);
+
+        if (auth()->user()?->isBranchScoped()) {
+            $data['branch_id'] = auth()->user()->branch_id;
+        }
 
         $data['client_type']   = 'individual';
         $data['name']          = trim($data['first_name'] . ' ' . ($data['middle_name'] ? $data['middle_name'] . ' ' : '') . $data['last_name']);
@@ -251,6 +259,10 @@ class ClientController extends Controller
 
         $data['name']         = trim($data['first_name'] . ' ' . ($data['middle_name'] ? $data['middle_name'] . ' ' : '') . $data['last_name']);
         $data['loan_interest'] = $request->boolean('loan_interest');
+
+        if (auth()->user()?->isBranchScoped()) {
+            unset($data['branch_id']);
+        }
 
         if ($request->hasFile('photo')) {
             if ($client->photo && file_exists(public_path($client->photo))) {

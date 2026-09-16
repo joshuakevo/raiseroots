@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\Client;
 use App\Models\Loan;
 use App\Models\LoanProduct;
 use App\Models\LoanRepayment;
@@ -27,6 +28,7 @@ class LoanService
             $loan = Loan::create([
                 'loan_number'     => $this->generateLoanNumber(),
                 'client_id'       => $data['client_id'],
+                'branch_id'       => $data['branch_id'] ?? Client::withoutGlobalScopes()->find($data['client_id'])?->branch_id,
                 'loan_product_id' => $data['loan_product_id'],
                 'principal'       => $data['principal'],
                 'interest_rate'        => $data['interest_rate']        ?? $product->interest_rate,

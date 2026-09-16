@@ -268,7 +268,12 @@
         </div>
     </div>
     <div class="row g-3 mb-3">
-        @if($branches->count())
+        @if(auth()->user()->isBranchScoped())
+        <div class="col-md-6">
+            <label class="form-label">Branch</label>
+            <input type="text" class="form-control" value="{{ $client->branch?->name ?? 'No branch assigned' }}" disabled>
+        </div>
+        @elseif($branches->count())
         <div class="col-md-6">
             <label class="form-label">Branch</label>
             <select name="branch_id" class="form-select">

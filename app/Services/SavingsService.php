@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Client;
 use App\Models\SavingsAccount;
 use App\Models\SavingsProduct;
 use App\Models\SavingsTransaction;
@@ -19,6 +20,7 @@ class SavingsService
         return DB::transaction(function () use ($data) {
             return SavingsAccount::create([
                 'client_id'      => $data['client_id'],
+                'branch_id'      => $data['branch_id'] ?? Client::withoutGlobalScopes()->find($data['client_id'])?->branch_id,
                 'product_id'     => $data['product_id'],
                 'account_number' => $this->generateAccountNumber(),
                 'balance'        => 0,

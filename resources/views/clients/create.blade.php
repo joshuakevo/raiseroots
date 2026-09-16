@@ -77,12 +77,17 @@
         <div class="row g-2 mb-2">
             <div class="col-md-4">
                 <label class="form-label mb-1">Branch</label>
+                @if(auth()->user()->isBranchScoped())
+                <input type="text" class="form-control form-control-sm" value="{{ auth()->user()->branch?->name ?? 'No branch assigned' }}" disabled>
+                <div class="form-text small">New clients are assigned to your branch automatically.</div>
+                @else
                 <select name="branch_id" class="form-select form-select-sm">
                     <option value="">—</option>
                     @foreach($branches as $b)
                     <option value="{{ $b->id }}" {{ (string)old('branch_id')===(string)$b->id?'selected':'' }}>{{ $b->name }}</option>
                     @endforeach
                 </select>
+                @endif
             </div>
             <div class="col-md-4">
                 <label class="form-label mb-1">Status <span class="text-danger">*</span></label>
@@ -370,7 +375,13 @@
 <div class="step-pane" id="step5">
     <h6 class="fw-semibold mb-2">Preferences &amp; Account Settings</h6>
     <div class="row g-2 mb-2">
-        @if($branches->count())
+        @if(auth()->user()->isBranchScoped())
+        <div class="col-md-3">
+            <label class="form-label mb-1">Branch</label>
+            <input type="text" class="form-control form-control-sm" value="{{ auth()->user()->branch?->name ?? 'No branch assigned' }}" disabled>
+            <div class="form-text small">Assigned to your branch automatically.</div>
+        </div>
+        @elseif($branches->count())
         <div class="col-md-3">
             <label class="form-label mb-1">Branch</label>
             <select name="branch_id" class="form-select form-select-sm">

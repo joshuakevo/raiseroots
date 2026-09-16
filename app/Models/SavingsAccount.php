@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SavingsAccount extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, ScopedToBranch;
 
     protected $fillable = [
-        'client_id', 'product_id', 'account_number', 'balance', 'status', 'opened_date', 'created_by',
+        'client_id', 'branch_id', 'product_id', 'account_number', 'balance', 'status', 'opened_date', 'created_by',
         'last_interest_date',
     ];
 

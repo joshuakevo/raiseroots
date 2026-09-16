@@ -482,6 +482,49 @@ class SettingsController extends Controller
     }
 
     /**
+     * One-off data fix: Loan/SavingsAccount/FixedDeposit rows created before branch
+     * scoping was added have no branch_id. Backfills each from its client's branch_id.
+     * Only touches rows with a null branch_id, so it's safe to run more than once —
+     * including after future imports that don't yet set branch_id.
+     */
+    public function backfillBranchIds()
+    {
+        $counts = [];
+
+        // Clients created before a branch was assignable (or via bulk import) have no
+        // branch_id. If exactly one branch exists, it's safe to assume that's where they
+        // all belong; with multiple branches, this needs a human decision instead.
+        $branchCount = \App\Models\Branch::count();
+        if ($branchCount === 1) {
+            $onlyBranch = \App\Models\Branch::first();
+            $affected = \App\Models\Client::withoutGlobalScopes()->whereNull('branch_id')->update(['branch_id' => $onlyBranch->id]);
+            $counts[] = "Client: {$affected} (assigned to '{$onlyBranch->name}')";
+        } elseif ($branchCount > 1) {
+            $stillNull = \App\Models\Client::withoutGlobalScopes()->whereNull('branch_id')->count();
+            if ($stillNull > 0) {
+                $counts[] = "Client: 0 — {$stillNull} client(s) have no branch and multiple branches exist; assign manually";
+            }
+        }
+
+        foreach ([\App\Models\Loan::class, \App\Models\SavingsAccount::class, \App\Models\FixedDeposit::class] as $model) {
+            $affected = 0;
+            $model::withoutGlobalScopes()
+                ->whereNull('branch_id')
+                ->with('client')
+                ->get()
+                ->each(function ($record) use (&$affected) {
+                    if ($record->client && $record->client->branch_id) {
+                        $record->update(['branch_id' => $record->client->branch_id]);
+                        $affected++;
+                    }
+                });
+            $counts[] = class_basename($model) . ": {$affected}";
+        }
+
+        return back()->with('success', 'Backfilled branch_id — ' . implode(', ', $counts) . '.');
+    }
+
+    /**
      * One-time bulk import of historical loan disbursements. Reads
      * storage/app/imports/loan-disbursements.csv — upload it there via File Manager
      * first — rather than a web upload form, matching importClients(). See

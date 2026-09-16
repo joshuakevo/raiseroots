@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Client;
 use App\Models\FixedDeposit;
 use App\Models\FixedDepositProduct;
 use App\Models\SavingsAccount;
@@ -46,6 +47,7 @@ class FixedDepositService
 
             $deposit = FixedDeposit::create([
                 'client_id'          => $data['client_id'],
+                'branch_id'          => $data['branch_id'] ?? Client::withoutGlobalScopes()->find($data['client_id'])?->branch_id,
                 'savings_account_id' => $savingsAccount?->id,
                 'product_id'         => $data['product_id'],
                 'deposit_number'     => $this->generateDepositNumber(),

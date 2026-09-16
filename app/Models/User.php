@@ -71,4 +71,15 @@ class User extends Authenticatable
     {
         return $this->roles->first()?->name ?? 'No Role';
     }
+
+    /**
+     * Whether this user's visibility of Clients/Loans/Savings/FDs should be
+     * restricted to their own branch. Org-wide roles (super_admin, admin) and
+     * portal roles (client, group_leader, group_member — already scoped to
+     * their own client_id) are exempt.
+     */
+    public function isBranchScoped(): bool
+    {
+        return !$this->hasAnyRole(['super_admin', 'admin', 'client', 'group_leader', 'group_member']);
+    }
 }

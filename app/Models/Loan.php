@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Loan extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, ScopedToBranch;
 
     protected $fillable = [
-        'loan_number', 'client_id', 'loan_product_id', 'principal', 'interest_rate',
+        'loan_number', 'client_id', 'branch_id', 'loan_product_id', 'principal', 'interest_rate',
         'interest_method', 'repayment_frequency', 'term_months', 'disbursement_date', 'maturity_date',
         'outstanding_principal', 'outstanding_interest', 'outstanding_penalty',
         'application_fee', 'application_fee_rate', 'application_fee_method',
