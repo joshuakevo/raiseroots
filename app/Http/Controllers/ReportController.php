@@ -24,12 +24,28 @@ class ReportController extends Controller
         return view('reports.index');
     }
 
+    /**
+     * Which branch a financial statement should be filtered to. Branch-scoped
+     * staff are locked to their own branch; org-wide roles can optionally pick
+     * one via ?branch_id=, defaulting to null (all branches combined).
+     */
+    private function resolveReportBranchId(Request $request): ?int
+    {
+        $user = auth()->user();
+        if ($user->isBranchScoped()) {
+            return $user->branch_id;
+        }
+        return $request->filled('branch_id') ? (int) $request->branch_id : null;
+    }
+
     public function trialBalance(Request $request)
     {
         $fromDate = $request->from_date;
         $toDate   = $request->to_date ?? now()->toDateString();
+        $branchId = $this->resolveReportBranchId($request);
+        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
 
-        $data = $this->accounting->getTrialBalance($fromDate, $toDate);
+        $data = $this->accounting->getTrialBalance($fromDate, $toDate, $branchId);
 
         if ($request->format === 'pdf') {
             $pdf = Pdf::loadView('pdf.reports.trial-balance', compact('data', 'fromDate', 'toDate'))
@@ -47,15 +63,17 @@ class ReportController extends Controller
             return $this->csvDownload($rows, 'trial-balance-' . now()->format('Y-m-d'));
         }
 
-        return view('reports.trial-balance', compact('data', 'fromDate', 'toDate'));
+        return view('reports.trial-balance', compact('data', 'fromDate', 'toDate', 'branchId', 'branches'));
     }
 
     public function incomeStatement(Request $request)
     {
         $fromDate = $request->from_date ?? now()->startOfMonth()->toDateString();
         $toDate   = $request->to_date   ?? now()->toDateString();
+        $branchId = $this->resolveReportBranchId($request);
+        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
 
-        $data = $this->accounting->getIncomeStatement($fromDate, $toDate);
+        $data = $this->accounting->getIncomeStatement($fromDate, $toDate, $branchId);
 
         if ($request->format === 'pdf') {
             $pdf = Pdf::loadView('pdf.reports.income-statement', compact('data', 'fromDate', 'toDate'))
@@ -83,13 +101,15 @@ class ReportController extends Controller
             return $this->csvDownload($rows, 'income-statement-' . now()->format('Y-m-d'));
         }
 
-        return view('reports.income-statement', compact('data', 'fromDate', 'toDate'));
+        return view('reports.income-statement', compact('data', 'fromDate', 'toDate', 'branchId', 'branches'));
     }
 
     public function balanceSheet(Request $request)
     {
         $asOf = $request->as_of ?? now()->toDateString();
-        $data = $this->accounting->getBalanceSheet($asOf);
+        $branchId = $this->resolveReportBranchId($request);
+        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
+        $data = $this->accounting->getBalanceSheet($asOf, $branchId);
 
         if ($request->format === 'pdf') {
             $pdf = Pdf::loadView('pdf.reports.balance-sheet', compact('data', 'asOf'))
@@ -117,12 +137,14 @@ class ReportController extends Controller
             return $this->csvDownload($rows, 'balance-sheet-' . now()->format('Y-m-d'));
         }
 
-        return view('reports.balance-sheet', compact('data', 'asOf'));
+        return view('reports.balance-sheet', compact('data', 'asOf', 'branchId', 'branches'));
     }
 
     public function generalLedger(Request $request)
     {
         $accounts = Account::where('is_active', true)->orderBy('account_code')->get();
+        $branchId = $this->resolveReportBranchId($request);
+        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
 
         if (!$request->filled('account_id')) {
             return view('reports.general-ledger', [
@@ -131,6 +153,8 @@ class ReportController extends Controller
                 'rows'      => collect(),
                 'fromDate'  => null,
                 'toDate'    => now()->toDateString(),
+                'branchId'  => $branchId,
+                'branches'  => $branches,
             ]);
         }
 
@@ -147,6 +171,7 @@ class ReportController extends Controller
             ->join('transactions', 'transaction_lines.transaction_id', '=', 'transactions.id')
             ->when($fromDate, fn($q) => $q->where('transactions.date', '>=', $fromDate))
             ->when($toDate,   fn($q) => $q->where('transactions.date', '<=', $toDate))
+            ->when($branchId, fn($q) => $q->where('transactions.branch_id', $branchId))
             ->orderBy('transactions.date')
             ->select('transaction_lines.*')
             ->get();
@@ -184,7 +209,7 @@ class ReportController extends Controller
             return $this->csvDownload($csvRows, 'general-ledger-' . $account->account_code . '-' . now()->format('Y-m-d'));
         }
 
-        return view('reports.general-ledger', compact('account', 'rows', 'fromDate', 'toDate', 'accounts'));
+        return view('reports.general-ledger', compact('account', 'rows', 'fromDate', 'toDate', 'accounts', 'branchId', 'branches'));
     }
 
     public function loanPortfolio(Request $request)

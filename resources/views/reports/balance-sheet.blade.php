@@ -19,6 +19,7 @@
     <div class="card-body">
         <form class="row g-2" method="GET">
             <div class="col-md-3"><label class="form-label small fw-semibold">As of Date</label><input type="date" name="as_of" class="form-control" value="{{ $asOf }}"></div>
+            @include('reports.partials.branch-filter')
             <div class="col-auto align-self-end"><button class="btn btn-primary">Run Report</button></div>
         </form>
     </div>

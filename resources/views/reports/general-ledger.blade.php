@@ -31,6 +31,7 @@
             </div>
             <div class="col-md-2"><label class="form-label small fw-semibold">From Date</label><input type="date" name="from_date" class="form-control" value="{{ $fromDate }}"></div>
             <div class="col-md-2"><label class="form-label small fw-semibold">To Date</label><input type="date" name="to_date" class="form-control" value="{{ $toDate }}"></div>
+            @include('reports.partials.branch-filter')
             <div class="col-auto align-self-end"><button class="btn btn-primary">Run Report</button></div>
         </form>
     </div>

@@ -102,9 +102,10 @@ class AccountingService
     }
 
     /**
-     * Get account balance between dates.
+     * Get account balance between dates. $branchId filters to one branch's
+     * transactions when given; null means org-wide (all branches).
      */
-    public function getAccountBalance(int $accountId, ?string $fromDate = null, ?string $toDate = null): array
+    public function getAccountBalance(int $accountId, ?string $fromDate = null, ?string $toDate = null, ?int $branchId = null): array
     {
         $query = TransactionLine::where('account_id', $accountId)
             ->join('transactions', 'transaction_lines.transaction_id', '=', 'transactions.id');
@@ -114,6 +115,9 @@ class AccountingService
         }
         if ($toDate) {
             $query->where('transactions.date', '<=', $toDate);
+        }
+        if ($branchId) {
+            $query->where('transactions.branch_id', $branchId);
         }
 
         $debit  = $query->sum('transaction_lines.debit');
@@ -127,9 +131,9 @@ class AccountingService
     }
 
     /**
-     * Generate trial balance.
+     * Generate trial balance. $branchId filters to one branch when given, else org-wide.
      */
-    public function getTrialBalance(?string $fromDate = null, ?string $toDate = null): array
+    public function getTrialBalance(?string $fromDate = null, ?string $toDate = null, ?int $branchId = null): array
     {
         $accounts = Account::where('is_active', true)->get();
         $rows = [];
@@ -137,7 +141,7 @@ class AccountingService
         $totalCredit = 0;
 
         foreach ($accounts as $account) {
-            $bal = $this->getAccountBalance($account->id, $fromDate, $toDate);
+            $bal = $this->getAccountBalance($account->id, $fromDate, $toDate, $branchId);
             if ($bal['debit'] == 0 && $bal['credit'] == 0) continue;
 
             $rows[] = [
@@ -188,9 +192,10 @@ class AccountingService
     }
 
     /**
-     * Generate income statement (Revenue - Expense).
+     * Generate income statement (Revenue - Expense). $branchId filters to one
+     * branch when given, else org-wide.
      */
-    public function getIncomeStatement(?string $fromDate = null, ?string $toDate = null): array
+    public function getIncomeStatement(?string $fromDate = null, ?string $toDate = null, ?int $branchId = null): array
     {
         $revenues = Account::where('account_type', 'revenue')->where('is_active', true)->get();
         $expenses = Account::with('parent')->where('account_type', 'expense')->where('is_active', true)->get();
@@ -198,7 +203,7 @@ class AccountingService
         $revenueRows = [];
         $totalRevenue = 0;
         foreach ($revenues as $acc) {
-            $bal = $this->getAccountBalance($acc->id, $fromDate, $toDate);
+            $bal = $this->getAccountBalance($acc->id, $fromDate, $toDate, $branchId);
             $balance = $bal['credit'] - $bal['debit'];
             if ($balance == 0) continue;
             $revenueRows[] = ['account' => $acc, 'balance' => $balance];
@@ -208,7 +213,7 @@ class AccountingService
         $expenseRows = [];
         $totalExpense = 0;
         foreach ($expenses as $acc) {
-            $bal = $this->getAccountBalance($acc->id, $fromDate, $toDate);
+            $bal = $this->getAccountBalance($acc->id, $fromDate, $toDate, $branchId);
             $balance = $bal['debit'] - $bal['credit'];
             if ($balance == 0) continue;
             $expenseRows[] = ['account' => $acc, 'balance' => $balance];
@@ -226,9 +231,10 @@ class AccountingService
     }
 
     /**
-     * Generate balance sheet (Assets, Liabilities, Equity).
+     * Generate balance sheet (Assets, Liabilities, Equity). $branchId filters
+     * to one branch when given, else org-wide.
      */
-    public function getBalanceSheet(?string $asOf = null): array
+    public function getBalanceSheet(?string $asOf = null, ?int $branchId = null): array
     {
         $asOf = $asOf ?? now()->toDateString();
 
@@ -238,7 +244,7 @@ class AccountingService
             $rows = [];
             $total = 0;
             foreach ($accounts as $acc) {
-                $bal = $this->getAccountBalance($acc->id, null, $asOf);
+                $bal = $this->getAccountBalance($acc->id, null, $asOf, $branchId);
                 $balance = ($type === 'asset') ? $bal['debit'] - $bal['credit'] : $bal['credit'] - $bal['debit'];
                 if ($balance == 0) continue;
                 $rows[] = ['account' => $acc, 'balance' => $balance];
@@ -254,13 +260,13 @@ class AccountingService
 
         $totalRevenue = 0;
         foreach ($revenues as $acc) {
-            $bal = $this->getAccountBalance($acc->id, null, $asOf);
+            $bal = $this->getAccountBalance($acc->id, null, $asOf, $branchId);
             $totalRevenue += $bal['credit'] - $bal['debit'];
         }
 
         $totalExpense = 0;
         foreach ($expenses as $acc) {
-            $bal = $this->getAccountBalance($acc->id, null, $asOf);
+            $bal = $this->getAccountBalance($acc->id, null, $asOf, $branchId);
             $totalExpense += $bal['debit'] - $bal['credit'];
         }
 
