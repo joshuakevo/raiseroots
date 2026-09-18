@@ -53,6 +53,14 @@
         </div>
     </div>
     <div class="col">
+        <div class="card text-center border-0 bg-primary bg-opacity-10">
+            <div class="card-body py-2">
+                <div class="text-muted small">Loans Taken</div>
+                <div class="fw-bold fs-6 text-primary">{{ number_format($totals['loans_taken']) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
         <div class="card text-center border-0 bg-danger bg-opacity-10">
             <div class="card-body py-2">
                 <div class="text-muted small">Loan Principal</div>
@@ -79,6 +87,7 @@
                     <th class="ps-3">#</th>
                     <th>Member</th>
                     <th>Client #</th>
+                    <th class="text-end">Loans Taken</th>
                     <th class="text-end">Loan Principal</th>
                     <th class="text-end">Loan Interest</th>
                     <th class="pe-3">Relationship Manager</th>
@@ -100,6 +109,9 @@
                     </div>
                 </td>
                 <td class="font-monospace text-muted">{{ $row->client->client_number }}</td>
+                <td class="text-end {{ $row->loans_taken > 0 ? 'fw-semibold' : 'text-muted' }}">
+                    {{ $row->loans_taken > 0 ? $row->loans_taken : '—' }}
+                </td>
                 <td class="text-end {{ $row->loan_principal > 0 ? 'text-danger fw-semibold' : 'text-muted' }}">
                     {{ $row->loan_principal > 0 ? number_format($row->loan_principal, 0) : '—' }}
                 </td>
@@ -124,12 +136,13 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="6" class="text-center text-muted py-4">No members found.</td></tr>
+            <tr><td colspan="7" class="text-center text-muted py-4">No members found.</td></tr>
             @endforelse
             </tbody>
             <tfoot class="table-secondary fw-bold small">
                 <tr>
                     <td colspan="3" class="ps-3">Totals ({{ $members->count() }} members)</td>
+                    <td class="text-end">{{ number_format($totals['loans_taken']) }}</td>
                     <td class="text-end text-danger">{{ number_format($totals['loan_principal'], 0) }}</td>
                     <td class="text-end text-warning">{{ number_format($totals['loan_interest'], 0) }}</td>
                     <td class="pe-3"></td>

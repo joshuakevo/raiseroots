@@ -495,23 +495,34 @@ class ReportController extends Controller
             ->select('l.client_id', \DB::raw('COALESCE(SUM(sched.interest_os), 0) as interest'))
             ->pluck('interest', 'client_id');
 
+        // Loans taken = number of loans actually disbursed on or before $asOf (excludes
+        // pending/approved-not-yet-disbursed, since disbursement_date is null for those).
+        $loanCounts = \DB::table('loans')
+            ->where('disbursement_date', '<=', $asOf)
+            ->whereNull('deleted_at')
+            ->groupBy('client_id')
+            ->select('client_id', \DB::raw('COUNT(*) as cnt'))
+            ->pluck('cnt', 'client_id');
+
         // Fetch clients registered on or before $asOf
         $members = Client::with('relationshipManager')
             ->whereDate('created_at', '<=', $asOf)
             ->when($request->status, fn($q) => $q->where('status', $request->status))
             ->orderBy('name')
             ->get()
-            ->map(function ($client) use ($loanPrincipals, $loanInterests) {
+            ->map(function ($client) use ($loanPrincipals, $loanInterests, $loanCounts) {
                 return (object) [
                     'client'         => $client,
                     'loan_principal' => (float) ($loanPrincipals[$client->id] ?? 0),
                     'loan_interest'  => (float) ($loanInterests[$client->id]  ?? 0),
+                    'loans_taken'    => (int) ($loanCounts[$client->id] ?? 0),
                 ];
             });
 
         $totals = [
             'loan_principal' => $members->sum('loan_principal'),
             'loan_interest'  => $members->sum('loan_interest'),
+            'loans_taken'    => $members->sum('loans_taken'),
         ];
 
         // Relationship managers are any active staff user — excludes client-portal-only logins.
@@ -528,18 +539,19 @@ class ReportController extends Controller
 
         if ($request->format === 'excel') {
             $rows = [];
-            $rows[] = ['#', 'Member Name', 'Client #', 'Loan Principal', 'Loan Interest', 'Relationship Manager'];
+            $rows[] = ['#', 'Member Name', 'Client #', 'Loans Taken', 'Loan Principal', 'Loan Interest', 'Relationship Manager'];
             foreach ($members as $i => $row) {
                 $rows[] = [
                     $i + 1,
                     $row->client->name,
                     $row->client->client_number,
+                    $row->loans_taken,
                     $row->loan_principal,
                     $row->loan_interest,
                     $row->client->relationshipManager?->name ?? '',
                 ];
             }
-            $rows[] = ['', 'TOTALS', '', $totals['loan_principal'], $totals['loan_interest'], ''];
+            $rows[] = ['', 'TOTALS', '', $totals['loans_taken'], $totals['loan_principal'], $totals['loan_interest'], ''];
             return $this->csvDownload($rows, 'member-summary-' . $asOf);
         }
 

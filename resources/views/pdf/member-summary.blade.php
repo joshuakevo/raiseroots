@@ -45,6 +45,7 @@
 <table class="summary-row">
     <tr>
         <td><span class="lbl">Members</span><span class="val">{{ $members->count() }}</span></td>
+        <td><span class="lbl">Loans Taken</span><span class="val text-primary">{{ number_format($totals['loans_taken']) }}</span></td>
         <td><span class="lbl">Loan Principal</span><span class="val text-danger">{{ number_format($totals['loan_principal'], 0) }}</span></td>
         <td><span class="lbl">Loan Interest</span><span class="val text-warning">{{ number_format($totals['loan_interest'], 0) }}</span></td>
     </tr>
@@ -56,6 +57,7 @@
             <th>#</th>
             <th>Member Name</th>
             <th>Client #</th>
+            <th class="r">Loans Taken</th>
             <th class="r">Loan Principal</th>
             <th class="r">Loan Interest</th>
             <th>Relationship Manager</th>
@@ -67,6 +69,9 @@
         <td class="text-muted">{{ $i + 1 }}</td>
         <td><strong>{{ $row->client->name }}</strong></td>
         <td class="text-muted">{{ $row->client->client_number }}</td>
+        <td class="r {{ $row->loans_taken > 0 ? '' : 'text-muted' }}">
+            {{ $row->loans_taken > 0 ? $row->loans_taken : '—' }}
+        </td>
         <td class="r {{ $row->loan_principal > 0 ? 'text-danger' : 'text-muted' }}">
             {{ $row->loan_principal > 0 ? number_format($row->loan_principal, 0) : '—' }}
         </td>
@@ -80,6 +85,7 @@
     <tfoot>
         <tr>
             <td colspan="3">TOTALS ({{ $members->count() }} members)</td>
+            <td class="r">{{ number_format($totals['loans_taken']) }}</td>
             <td class="r text-danger">{{ number_format($totals['loan_principal'], 0) }}</td>
             <td class="r text-warning">{{ number_format($totals['loan_interest'], 0) }}</td>
             <td></td>
