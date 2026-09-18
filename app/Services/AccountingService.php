@@ -97,7 +97,7 @@ class AccountingService
     {
         $prefix = 'TXN';
         $date   = now()->format('Ymd');
-        $last   = Transaction::whereDate('created_at', today())->count() + 1;
+        $last   = Transaction::withoutGlobalScope('branch')->whereDate('created_at', today())->count() + 1;
         return "{$prefix}-{$date}-" . str_pad($last, 4, '0', STR_PAD_LEFT);
     }
 

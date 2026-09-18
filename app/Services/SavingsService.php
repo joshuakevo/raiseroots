@@ -290,7 +290,7 @@ class SavingsService
     {
         $prefix = 'SAV';
         $year   = now()->format('y');
-        $last   = SavingsAccount::count() + 1;
+        $last   = SavingsAccount::withoutGlobalScope('branch')->count() + 1;
         return "{$prefix}{$year}" . str_pad($last, 5, '0', STR_PAD_LEFT);
     }
 }

@@ -141,7 +141,7 @@ class ClientImportService
 
     private function generateClientNumber(): string
     {
-        $last = Client::withTrashed()->count() + 1;
+        $last = Client::withoutGlobalScope('branch')->withTrashed()->count() + 1;
         return 'CLT-' . str_pad($last, 6, '0', STR_PAD_LEFT);
     }
 }

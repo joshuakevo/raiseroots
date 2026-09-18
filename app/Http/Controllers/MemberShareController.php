@@ -483,7 +483,7 @@ class MemberShareController extends Controller
     protected function generateShareNumber(): string
     {
         $year = now()->format('Y');
-        $last = MemberShare::whereYear('created_at', $year)->count() + 1;
+        $last = MemberShare::withoutGlobalScope('branch')->whereYear('created_at', $year)->count() + 1;
         return 'SHR-' . $year . '-' . str_pad($last, 5, '0', STR_PAD_LEFT);
     }
 }

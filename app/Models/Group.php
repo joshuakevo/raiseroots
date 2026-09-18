@@ -74,7 +74,7 @@ class Group extends Model
 
     public static function generateGroupNumber(): string
     {
-        $last = static::withTrashed()->orderByDesc('id')->value('group_number');
+        $last = static::withoutGlobalScope('branch')->withTrashed()->orderByDesc('id')->value('group_number');
         $next = $last ? ((int) substr($last, 2)) + 1 : 1;
         return 'GR' . str_pad($next, 5, '0', STR_PAD_LEFT);
     }

@@ -430,7 +430,7 @@ class FixedDepositService
     {
         $prefix = 'FD';
         $year   = now()->format('Y');
-        $last   = FixedDeposit::whereYear('created_at', $year)->count() + 1;
+        $last   = FixedDeposit::withoutGlobalScope('branch')->whereYear('created_at', $year)->count() + 1;
         return "{$prefix}-{$year}-" . str_pad($last, 5, '0', STR_PAD_LEFT);
     }
 }

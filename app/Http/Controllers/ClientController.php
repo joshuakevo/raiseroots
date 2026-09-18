@@ -439,22 +439,27 @@ class ClientController extends Controller
         return $filename;
     }
 
+    /**
+     * These generate org-wide unique sequential numbers, so they must always
+     * count across every branch — never scoped to the acting user's own
+     * branch — or two branches will hand out the same number.
+     */
     private function generateClientNumber(): string
     {
-        $last = Client::withTrashed()->count() + 1;
+        $last = Client::withoutGlobalScope('branch')->withTrashed()->count() + 1;
         return 'CLT-' . str_pad($last, 6, '0', STR_PAD_LEFT);
     }
 
     private function generateShareNumber(): string
     {
         $year = now()->format('Y');
-        $last = MemberShare::whereYear('created_at', $year)->count() + 1;
+        $last = MemberShare::withoutGlobalScope('branch')->whereYear('created_at', $year)->count() + 1;
         return 'SHR-' . $year . '-' . str_pad($last, 5, '0', STR_PAD_LEFT);
     }
 
     private function generateGroupNumber(): string
     {
-        $last = Group::count() + 1;
+        $last = Group::withoutGlobalScope('branch')->count() + 1;
 
         return 'GRP-' . str_pad((string) $last, 6, '0', STR_PAD_LEFT);
     }
