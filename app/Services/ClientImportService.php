@@ -141,7 +141,13 @@ class ClientImportService
 
     private function generateClientNumber(): string
     {
-        $last = Client::withoutGlobalScope('branch')->withTrashed()->count() + 1;
-        return 'CLT-' . str_pad($last, 6, '0', STR_PAD_LEFT);
+        $prefix = \App\Models\SystemSetting::get('client_number_prefix', 'CLT-');
+        $pad    = (int) \App\Models\SystemSetting::get('client_number_padding', 6);
+
+        $max = \Illuminate\Support\Facades\DB::table('clients')
+            ->where('client_number', 'like', $prefix . '%')
+            ->max(\Illuminate\Support\Facades\DB::raw("CAST(SUBSTRING(client_number, " . (strlen($prefix) + 1) . ") AS UNSIGNED)"));
+
+        return $prefix . str_pad((int) $max + 1, $pad, '0', STR_PAD_LEFT);
     }
 }

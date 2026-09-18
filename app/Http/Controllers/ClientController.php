@@ -444,10 +444,24 @@ class ClientController extends Controller
      * count across every branch — never scoped to the acting user's own
      * branch — or two branches will hand out the same number.
      */
+    /**
+     * Prefix/padding are configurable (Settings > Client Number Prefix) since
+     * this codebase serves multiple orgs with different legacy numbering
+     * (e.g. sipmart's imported "SIP/255" vs the default "CLT-000255").
+     * Uses the raw table (not Eloquent) so it's immune to branch scoping and
+     * takes MAX(suffix)+1 rather than a row count, since legacy-imported
+     * numbers have gaps — a count would collide with an already-used number.
+     */
     private function generateClientNumber(): string
     {
-        $last = Client::withoutGlobalScope('branch')->withTrashed()->count() + 1;
-        return 'CLT-' . str_pad($last, 6, '0', STR_PAD_LEFT);
+        $prefix = \App\Models\SystemSetting::get('client_number_prefix', 'CLT-');
+        $pad    = (int) \App\Models\SystemSetting::get('client_number_padding', 6);
+
+        $max = \Illuminate\Support\Facades\DB::table('clients')
+            ->where('client_number', 'like', $prefix . '%')
+            ->max(\Illuminate\Support\Facades\DB::raw("CAST(SUBSTRING(client_number, " . (strlen($prefix) + 1) . ") AS UNSIGNED)"));
+
+        return $prefix . str_pad((int) $max + 1, $pad, '0', STR_PAD_LEFT);
     }
 
     private function generateShareNumber(): string
