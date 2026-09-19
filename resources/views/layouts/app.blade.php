@@ -289,12 +289,15 @@
         </a>
         @endcan
         @can('view loans')
-        <a href="{{ route('loans.index') }}" class="nav-link-item {{ request()->routeIs('loans.*') ? 'active' : '' }}">
+        <a href="{{ route('loans.index') }}" class="nav-link-item {{ request()->routeIs('loans.*') && !request()->routeIs('loans.cycle-run') ? 'active' : '' }}">
             <i class="bi bi-cash-stack"></i> Loans
             @php $actionNeededLoans = \App\Models\Loan::whereIn('status', ['pending', 'approved'])->count(); @endphp
             @if($actionNeededLoans > 0)
                 <span class="badge bg-warning text-dark ms-auto rounded-pill" style="font-size:.62rem" title="Pending approval or approved and awaiting disbursement">{{ $actionNeededLoans }}</span>
             @endif
+        </a>
+        <a href="{{ route('loans.cycle-run') }}" class="nav-link-item {{ request()->routeIs('loans.cycle-run') ? 'active' : '' }}">
+            <i class="bi bi-arrow-repeat"></i> Loan Cycle Run
         </a>
         @endcan
         @endcanany

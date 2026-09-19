@@ -37,6 +37,51 @@ class LoanController extends Controller
         return view('loans.index', compact('loans'));
     }
 
+    /**
+     * "Loan Cycle Run": active/defaulted loans grouped by their anniversary
+     * date - the day-of-month they were disbursed on, which is the day every
+     * installment for that loan falls due each month. Lets a loan officer
+     * work through everyone due on a given calendar day regardless of which
+     * month they actually disbursed in.
+     */
+    public function cycleRun(Request $request)
+    {
+        $anniversaryDate = $request->filled('date') ? $request->date : now()->toDateString();
+        $day = \Carbon\Carbon::parse($anniversaryDate)->day;
+
+        $rows = Loan::with(['client.savingsAccounts', 'schedules', 'repayments'])
+            ->whereIn('status', ['active', 'defaulted'])
+            ->whereNotNull('disbursement_date')
+            ->whereDay('disbursement_date', $day)
+            ->when($request->search, fn ($q) => $q->where('loan_number', 'like', "%{$request->search}%")
+                ->orWhereHas('client', fn ($q2) => $q2->where('name', 'like', "%{$request->search}%")))
+            ->get()
+            ->sortBy(fn ($loan) => $loan->client->name)
+            ->values()
+            ->map(function ($loan) {
+                $nextSchedule = $loan->schedules->first(fn ($s) => in_array($s->status, ['pending', 'partial']));
+                $lastRepayment = $loan->repayments->last();
+
+                return (object) [
+                    'loan'            => $loan,
+                    'installment'     => $nextSchedule
+                        ? round(($nextSchedule->principal_due - $nextSchedule->principal_paid) + ($nextSchedule->interest_due - $nextSchedule->interest_paid), 2)
+                        : 0,
+                    'savings_balance' => $loan->client->savingsAccounts->whereIn('status', ['active', 'dormant'])->sum('balance'),
+                    'last_recovered'  => $lastRepayment?->payment_date,
+                    'next_due_date'   => $nextSchedule?->due_date,
+                ];
+            });
+
+        $totals = [
+            'principal' => $rows->sum(fn ($r) => $r->loan->outstanding_principal),
+            'interest'  => $rows->sum(fn ($r) => $r->loan->outstanding_interest),
+            'count'     => $rows->count(),
+        ];
+
+        return view('loans.cycle-run', compact('rows', 'totals', 'anniversaryDate', 'day'));
+    }
+
     public function create(Request $request)
     {
         $clients  = Client::where('status', 'active')->orderBy('name')->get();

@@ -178,11 +178,13 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:view loan-products');
 
     // ── Loans ─────────────────────────────────────────────────────────
-    // NOTE: loans/create must come before loans/{loan}
+    // NOTE: loans/create and loans/cycle-run must come before loans/{loan}
     Route::get('loans/create', [LoanController::class, 'create'])
         ->name('loans.create')->middleware('permission:create loans');
     Route::post('loans', [LoanController::class, 'store'])
         ->name('loans.store')->middleware('permission:create loans');
+    Route::get('loans/cycle-run', [LoanController::class, 'cycleRun'])
+        ->name('loans.cycle-run')->middleware('permission:view loans');
     Route::get('loans', [LoanController::class, 'index'])
         ->name('loans.index')->middleware('permission:view loans');
     Route::get('loans/{loan}', [LoanController::class, 'show'])
