@@ -49,10 +49,11 @@ class LoanController extends Controller
         $anniversaryDate = $request->filled('date') ? $request->date : now()->toDateString();
         $day = \Carbon\Carbon::parse($anniversaryDate)->day;
 
-        $rows = Loan::with(['client.savingsAccounts', 'schedules', 'repayments'])
+        $rows = Loan::with(['client', 'schedules', 'repayments'])
             ->whereIn('status', ['active', 'defaulted'])
             ->whereNotNull('disbursement_date')
             ->whereDay('disbursement_date', $day)
+            ->where(fn ($q) => $q->where('outstanding_principal', '>', 0)->orWhere('outstanding_interest', '>', 0))
             ->when($request->search, fn ($q) => $q->where('loan_number', 'like', "%{$request->search}%")
                 ->orWhereHas('client', fn ($q2) => $q2->where('name', 'like', "%{$request->search}%")))
             ->get()
@@ -67,7 +68,6 @@ class LoanController extends Controller
                     'installment'     => $nextSchedule
                         ? round(($nextSchedule->principal_due - $nextSchedule->principal_paid) + ($nextSchedule->interest_due - $nextSchedule->interest_paid), 2)
                         : 0,
-                    'savings_balance' => $loan->client->savingsAccounts->whereIn('status', ['active', 'dormant'])->sum('balance'),
                     'last_recovered'  => $lastRepayment?->payment_date,
                     'next_due_date'   => $nextSchedule?->due_date,
                 ];

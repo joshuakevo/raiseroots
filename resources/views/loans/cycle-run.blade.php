@@ -75,7 +75,6 @@
                     <th class="text-end">Outstanding Principal</th>
                     <th class="text-end">Outstanding Interest</th>
                     <th class="text-end">Installment</th>
-                    <th class="text-end">Savings Balance</th>
                     <th>Last Date Recovered</th>
                     <th>Next Due Date</th>
                     <th class="pe-3 text-end">Actions</th>
@@ -93,7 +92,6 @@
                 <td class="text-end">{{ number_format($row->loan->outstanding_principal, $dp) }}</td>
                 <td class="text-end">{{ number_format($row->loan->outstanding_interest, $dp) }}</td>
                 <td class="text-end fw-semibold">{{ number_format($row->installment, $dp) }}</td>
-                <td class="text-end">{{ number_format($row->savings_balance, $dp) }}</td>
                 <td class="{{ $row->last_recovered ? '' : 'text-muted fst-italic' }}">
                     {{ $row->last_recovered ? \Carbon\Carbon::parse($row->last_recovered)->format('d M Y') : 'Never' }}
                 </td>
@@ -112,7 +110,7 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="9" class="text-center text-muted py-4">No active loans have their anniversary on this day.</td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-4">No active loans have their anniversary on this day.</td></tr>
             @endforelse
             </tbody>
         </table>
