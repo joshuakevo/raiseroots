@@ -33,6 +33,7 @@
         .sidebar-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:.35rem 0 .75rem}
         .sidebar-scroll::-webkit-scrollbar{width:3px}
         .sidebar-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+        .sidebar-section{font-size:.63rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.28);padding:.85rem 1.1rem .25rem}
         .nav-link-item{display:flex;align-items:center;gap:.6rem;padding:.4rem 1.1rem;margin:.03rem .45rem;border-radius:6px;color:var(--sidebar-text);text-decoration:none;font-size:.81rem;transition:background .15s,color .15s;white-space:nowrap}
         .nav-link-item i{font-size:.92rem;opacity:.8;flex-shrink:0;width:16px;text-align:center}
         .nav-link-item:hover{background:rgba(255,255,255,.08);color:#fff}
@@ -286,35 +287,24 @@
         @endcanany
 
         @canany(['view loan-products', 'view loans'])
-        @php
-            $loansGroupActive = request()->routeIs('loan-products.*') || request()->routeIs('loans.*');
-            $actionNeededLoans = \App\Models\Loan::whereIn('status', ['pending', 'approved'])->count();
-        @endphp
-        <button class="nav-collapse-btn" data-bs-toggle="collapse" data-bs-target="#loansMenu" aria-expanded="{{ $loansGroupActive ? 'true' : 'false' }}">
+        <div class="sidebar-section">Loans</div>
+        @can('view loan-products')
+        <a href="{{ route('loan-products.index') }}" class="nav-link-item {{ request()->routeIs('loan-products.*') ? 'active' : '' }}">
+            <i class="bi bi-grid-3x3-gap"></i> Loan Products
+        </a>
+        @endcan
+        @can('view loans')
+        <a href="{{ route('loans.index') }}" class="nav-link-item {{ request()->routeIs('loans.*') && !request()->routeIs('loans.cycle-run') ? 'active' : '' }}">
             <i class="bi bi-cash-stack"></i> Loans
+            @php $actionNeededLoans = \App\Models\Loan::whereIn('status', ['pending', 'approved'])->count(); @endphp
             @if($actionNeededLoans > 0)
                 <span class="badge bg-warning text-dark ms-auto rounded-pill" style="font-size:.62rem" title="Pending approval or approved and awaiting disbursement">{{ $actionNeededLoans }}</span>
             @endif
-            <i class="bi bi-chevron-right chevron"></i>
-        </button>
-        <div class="collapse nav-sub {{ $loansGroupActive ? 'show' : '' }}" id="loansMenu">
-            @can('view loan-products')
-            <a href="{{ route('loan-products.index') }}" class="nav-link-item {{ request()->routeIs('loan-products.*') ? 'active' : '' }}">
-                <i class="bi bi-grid-3x3-gap"></i> Loan Products
-            </a>
-            @endcan
-            @can('view loans')
-            <a href="{{ route('loans.index') }}" class="nav-link-item {{ request()->routeIs('loans.*') && !request()->routeIs('loans.cycle-run') ? 'active' : '' }}">
-                <i class="bi bi-cash-stack"></i> Loans
-                @if($actionNeededLoans > 0)
-                    <span class="badge bg-warning text-dark ms-auto rounded-pill" style="font-size:.62rem" title="Pending approval or approved and awaiting disbursement">{{ $actionNeededLoans }}</span>
-                @endif
-            </a>
-            <a href="{{ route('loans.cycle-run') }}" class="nav-link-item {{ request()->routeIs('loans.cycle-run') ? 'active' : '' }}">
-                <i class="bi bi-arrow-repeat"></i> Loan Cycle Run
-            </a>
-            @endcan
-        </div>
+        </a>
+        <a href="{{ route('loans.cycle-run') }}" class="nav-link-item {{ request()->routeIs('loans.cycle-run') ? 'active' : '' }}">
+            <i class="bi bi-arrow-repeat"></i> Loan Cycle Run
+        </a>
+        @endcan
         @endcanany
 
         @canany(['view employees', 'view payroll'])
