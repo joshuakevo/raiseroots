@@ -228,6 +228,65 @@
     </div>
 </div>
 
+{{-- ── Row: Assets & Liabilities Analysis ──────────────────────────────────── --}}
+<div class="row g-3 mb-3">
+    <div class="col-md-7">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span class="fw-semibold"><i class="bi bi-bank2 text-primary me-2"></i>Assets &amp; Liabilities</span>
+                <span class="text-muted small">As of today</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-4 text-center">
+                        <div class="text-muted small mb-1">Total Assets</div>
+                        <div class="fw-bold text-success">{{ number_format($totalAssets, $dp) }}</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="text-muted small mb-1">Total Liabilities</div>
+                        <div class="fw-bold text-danger">{{ number_format($totalLiabilities, $dp) }}</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="text-muted small mb-1">Net Position</div>
+                        <div class="fw-bold {{ $netPosition >= 0 ? 'text-primary' : 'text-danger' }}">{{ number_format($netPosition, $dp) }}</div>
+                    </div>
+                </div>
+                <canvas id="assetsLiabilitiesChart" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-list-ul text-secondary me-2"></i>Top Accounts
+            </div>
+            <div class="card-body">
+                <div class="small fw-semibold text-success mb-2"><i class="bi bi-arrow-up-circle me-1"></i>Assets</div>
+                @forelse($topAssetAccounts as $row)
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="small text-truncate me-2">{{ $row['account']->account_name }}</span>
+                    <span class="small fw-semibold text-nowrap">{{ number_format($row['balance'], 0) }}</span>
+                </div>
+                @empty
+                <div class="text-muted small mb-2">No asset balances yet.</div>
+                @endforelse
+                <hr class="my-2">
+                <div class="small fw-semibold text-danger mb-2"><i class="bi bi-arrow-down-circle me-1"></i>Liabilities</div>
+                @forelse($topLiabilityAccounts as $row)
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="small text-truncate me-2">{{ $row['account']->account_name }}</span>
+                    <span class="small fw-semibold text-nowrap">{{ number_format($row['balance'], 0) }}</span>
+                </div>
+                @empty
+                <div class="text-muted small mb-2">No liability balances yet.</div>
+                @endforelse
+                <a href="{{ route('reports.balance-sheet') }}" class="d-block text-center small mt-2">View full Balance Sheet →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- ── Row 2: Client Activity + Loan Status + Portfolio Insights ──────────── --}}
 <div class="row g-3 mb-3">
     {{-- Client Activity --}}
@@ -431,6 +490,29 @@ new Chart(document.getElementById('profitabilityChart'), {
         scales: {
             x: { grid: { color: gridColor }, ticks: { font } },
             y: { grid: { color: gridColor }, ticks: { font, callback: v => v.toLocaleString() } }
+        }
+    }
+});
+
+// ── Assets & Liabilities Chart ──────────────────────────────────────────────
+new Chart(document.getElementById('assetsLiabilitiesChart'), {
+    type: 'bar',
+    data: {
+        labels: ['Assets', 'Liabilities'],
+        datasets: [{
+            data: [{{ $totalAssets }}, {{ $totalLiabilities }}],
+            backgroundColor: ['rgba(34,197,94,.75)', 'rgba(239,68,68,.75)'],
+            borderRadius: 4,
+            barThickness: 60,
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { color: gridColor }, ticks: { font, callback: v => v.toLocaleString() } },
+            y: { grid: { display: false }, ticks: { font } }
         }
     }
 });

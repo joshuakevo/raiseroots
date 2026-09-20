@@ -8,10 +8,13 @@ use App\Models\LoanRepayment;
 use App\Models\LoanSchedule;
 use App\Models\TransactionLine;
 use App\Models\Account;
+use App\Services\AccountingService;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public function __construct(protected AccountingService $accounting) {}
+
     public function index()
     {
         session(['active_portal' => 'staff']);
@@ -168,12 +171,24 @@ class DashboardController extends Controller
                 'text' => 'Stable Portfolio: Loan portfolio is stable with good balance between growth and risk management.'];
         }
 
+        // ── Assets & Liabilities ─────────────────────────────────────────────
+        // Respects the viewer's branch, same as everywhere else - a branch-scoped
+        // user sees their own branch's position, org-wide roles see everything.
+        $balanceSheetBranchId = auth()->user()->isBranchScoped() ? auth()->user()->branch_id : null;
+        $balanceSheet = $this->accounting->getBalanceSheet(now()->toDateString(), $balanceSheetBranchId);
+        $totalAssets      = $balanceSheet['asset']['total'];
+        $totalLiabilities = $balanceSheet['liability']['total'];
+        $netPosition      = $totalAssets - $totalLiabilities;
+        $topAssetAccounts = collect($balanceSheet['asset']['rows'])->sortByDesc('balance')->take(5);
+        $topLiabilityAccounts = collect($balanceSheet['liability']['rows'])->sortByDesc('balance')->take(5);
+
         return view('dashboard', compact(
             'stats', 'loanStatusBreakdown', 'upcomingInstallments', 'topBorrowers',
             'monthLabels', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit', 'monthlyLoanDisbursements',
             'par30', 'defaultRate',
             'activeBorrowers', 'totalClients',
-            'loanGrowth', 'recommendations'
+            'loanGrowth', 'recommendations',
+            'totalAssets', 'totalLiabilities', 'netPosition', 'topAssetAccounts', 'topLiabilityAccounts'
         ));
     }
 }
