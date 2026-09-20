@@ -60,14 +60,20 @@ class LoanController extends Controller
             ->sortBy(fn ($loan) => $loan->client->name)
             ->values()
             ->map(function ($loan) {
-                $nextSchedule = $loan->schedules->first(fn ($s) => in_array($s->status, ['pending', 'partial']));
+                // 'overdue' is a distinct schedule status from 'pending'/'partial' (set once a
+                // due date passes) - missing it here meant defaulted loans, whose installments
+                // are almost always 'overdue' by then, showed no amount due at all.
+                $dueSchedules = $loan->schedules->whereIn('status', ['pending', 'partial', 'overdue']);
+                $nextSchedule = $dueSchedules->first();
                 $lastRepayment = $loan->repayments->last();
 
                 return (object) [
                     'loan'            => $loan,
-                    'installment'     => $nextSchedule
-                        ? round(($nextSchedule->principal_due - $nextSchedule->principal_paid) + ($nextSchedule->interest_due - $nextSchedule->interest_paid), 2)
-                        : 0,
+                    // Total of every unpaid installment, not just the next one - a defaulted
+                    // loan with several missed payments needs all of them recovered, not one.
+                    'amount_due'      => round($dueSchedules->sum(
+                        fn ($s) => max(0, ($s->principal_due - $s->principal_paid) + ($s->interest_due - $s->interest_paid))
+                    ), 2),
                     'last_recovered'  => $lastRepayment?->payment_date,
                     'next_due_date'   => $nextSchedule?->due_date,
                 ];

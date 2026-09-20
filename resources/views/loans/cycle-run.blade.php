@@ -74,7 +74,7 @@
                     <th>Client</th>
                     <th class="text-end">Outstanding Principal</th>
                     <th class="text-end">Outstanding Interest</th>
-                    <th class="text-end">Installment</th>
+                    <th class="text-end">Amount Due</th>
                     <th>Last Date Recovered</th>
                     <th>Next Due Date</th>
                     <th class="pe-3 text-end">Actions</th>
@@ -91,7 +91,7 @@
                 </td>
                 <td class="text-end">{{ number_format($row->loan->outstanding_principal, $dp) }}</td>
                 <td class="text-end">{{ number_format($row->loan->outstanding_interest, $dp) }}</td>
-                <td class="text-end fw-semibold">{{ number_format($row->installment, $dp) }}</td>
+                <td class="text-end fw-semibold {{ $row->amount_due > 0 ? 'text-danger' : '' }}">{{ number_format($row->amount_due, $dp) }}</td>
                 <td class="{{ $row->last_recovered ? '' : 'text-muted fst-italic' }}">
                     {{ $row->last_recovered ? \Carbon\Carbon::parse($row->last_recovered)->format('d M Y') : 'Never' }}
                 </td>
