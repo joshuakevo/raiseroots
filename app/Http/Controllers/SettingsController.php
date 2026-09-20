@@ -522,17 +522,25 @@ class SettingsController extends Controller
         }
 
         // Transactions (the GL journal): same single-branch shortcut as clients above;
-        // with multiple branches, derive from whichever client is tagged on the lines.
+        // with multiple branches, derive from whichever client is tagged on the lines,
+        // else the poster's own branch, else - if only one branch actually has any
+        // clients - that branch (an unclassified manual entry almost certainly
+        // doesn't belong to a brand-new, still-empty branch).
         $txnAffected = 0;
         if ($branchCount === 1) {
             $txnAffected = \App\Models\Transaction::withoutGlobalScopes()->whereNull('branch_id')->update(['branch_id' => $onlyBranch->id]);
         } else {
+            $activeClientBranches = \App\Models\Client::withoutGlobalScopes()->whereNotNull('branch_id')->distinct()->pluck('branch_id');
+            $onlyActiveBranch = $activeClientBranches->count() === 1 ? $activeClientBranches->first() : null;
+
             \App\Models\Transaction::withoutGlobalScopes()
                 ->whereNull('branch_id')
-                ->with('lines.client')
+                ->with('lines.client', 'createdBy')
                 ->get()
-                ->each(function ($txn) use (&$txnAffected) {
-                    $branchId = $txn->lines->map(fn ($l) => $l->client?->branch_id)->filter()->first();
+                ->each(function ($txn) use (&$txnAffected, $onlyActiveBranch) {
+                    $branchId = $txn->lines->map(fn ($l) => $l->client?->branch_id)->filter()->first()
+                        ?? $txn->createdBy?->branch_id
+                        ?? $onlyActiveBranch;
                     if ($branchId) {
                         $txn->update(['branch_id' => $branchId]);
                         $txnAffected++;

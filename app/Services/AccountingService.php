@@ -61,8 +61,10 @@ class AccountingService
      * org-wide admin posting a manual entry with no client tie, which is
      * common - and there's only one branch in the whole system, it's
      * unambiguous which one this belongs to, so use it rather than leaving
-     * the posting unclassified. Only when multiple branches exist and
-     * neither signal resolves it does this fall through to null.
+     * the posting unclassified. If multiple branches exist but only one of
+     * them actually has any clients, an unclassified entry almost certainly
+     * belongs there too, not to a brand-new, still-empty branch. Only when
+     * none of that resolves it does this fall through to null.
      */
     protected function resolveBranchId(array $lines): ?int
     {
@@ -82,6 +84,11 @@ class AccountingService
 
         if (\App\Models\Branch::count() === 1) {
             return \App\Models\Branch::value('id');
+        }
+
+        $activeBranches = Client::withoutGlobalScopes()->whereNotNull('branch_id')->distinct()->pluck('branch_id');
+        if ($activeBranches->count() === 1) {
+            return $activeBranches->first();
         }
 
         return null;
