@@ -57,7 +57,12 @@ class AccountingService
      * Derive which branch a posting belongs to: prefer the branch of a client
      * tagged on one of the lines (reflects where the money actually moved),
      * falling back to the acting user's own branch (covers postings with no
-     * client_id line, e.g. payroll), else null for org-level entries.
+     * client_id line, e.g. payroll). If neither is available - e.g. an
+     * org-wide admin posting a manual entry with no client tie, which is
+     * common - and there's only one branch in the whole system, it's
+     * unambiguous which one this belongs to, so use it rather than leaving
+     * the posting unclassified. Only when multiple branches exist and
+     * neither signal resolves it does this fall through to null.
      */
     protected function resolveBranchId(array $lines): ?int
     {
@@ -71,7 +76,15 @@ class AccountingService
         }
 
         $user = auth()->user();
-        return $user?->branch_id;
+        if ($user?->branch_id) {
+            return $user->branch_id;
+        }
+
+        if (\App\Models\Branch::count() === 1) {
+            return \App\Models\Branch::value('id');
+        }
+
+        return null;
     }
 
     /**
