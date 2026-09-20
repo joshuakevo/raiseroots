@@ -34,6 +34,7 @@
         .sidebar-scroll::-webkit-scrollbar{width:3px}
         .sidebar-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
         .sidebar-section{font-size:.63rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.28);padding:.85rem 1.1rem .25rem}
+        .sidebar-divider{border:none;border-top:1px solid rgba(255,255,255,.08);margin:.5rem 1.1rem}
         .nav-link-item{display:flex;align-items:center;gap:.6rem;padding:.4rem 1.1rem;margin:.03rem .45rem;border-radius:6px;color:var(--sidebar-text);text-decoration:none;font-size:.81rem;transition:background .15s,color .15s;white-space:nowrap}
         .nav-link-item i{font-size:.92rem;opacity:.8;flex-shrink:0;width:16px;text-align:center}
         .nav-link-item:hover{background:rgba(255,255,255,.08);color:#fff}
@@ -287,6 +288,7 @@
         @endcanany
 
         @canany(['view loan-products', 'view loans'])
+        <hr class="sidebar-divider">
         <div class="sidebar-section">Loans</div>
         @can('view loan-products')
         <a href="{{ route('loan-products.index') }}" class="nav-link-item {{ request()->routeIs('loan-products.*') ? 'active' : '' }}">
@@ -305,6 +307,7 @@
             <i class="bi bi-arrow-repeat"></i> Loan Cycle Run
         </a>
         @endcan
+        <hr class="sidebar-divider">
         @endcanany
 
         @canany(['view employees', 'view payroll'])
