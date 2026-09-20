@@ -17,9 +17,41 @@
 </div>
 <div class="card mb-3">
     <div class="card-body">
-        <form class="row g-2" method="GET">
-            <div class="col-md-3"><label class="form-label small fw-semibold">As of Date</label><input type="date" name="as_of" class="form-control" value="{{ $asOf }}"></div>
-            <div class="col-auto align-self-end"><button class="btn btn-primary">Run Report</button></div>
+        <form class="row g-2 align-items-end" method="GET">
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">As of Date</label>
+                <input type="date" name="as_of" class="form-control" value="{{ $asOf }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    @foreach(['pending','active','closed','defaulted'] as $s)
+                        <option value="{{ $s }}" @selected(request('status')==$s)>{{ ucfirst($s) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Relationship Manager</label>
+                <select name="relationship_manager_id" class="form-select">
+                    <option value="">All Relationship Managers</option>
+                    @foreach($relationshipManagers as $user)
+                        <option value="{{ $user->id }}" @selected(request('relationship_manager_id')==$user->id)>{{ $user->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Disbursed From</label>
+                <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Disbursed To</label>
+                <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary">Run Report</button>
+                <a href="{{ route('reports.loan-aging') }}" class="btn btn-outline-secondary">Reset</a>
+            </div>
         </form>
     </div>
 </div>

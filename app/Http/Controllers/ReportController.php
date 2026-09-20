@@ -274,9 +274,27 @@ class ReportController extends Controller
     {
         $asOf = $request->as_of ?? now()->toDateString();
 
-        $overdueSchedules = LoanSchedule::with('loan.client', 'loan.product')
+        $overdueSchedules = LoanSchedule::with('loan.client.relationshipManager', 'loan.product')
             ->where('due_date', '<', $asOf)
             ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->when($request->status, fn($q) => $q->whereHas(
+                'loan', fn($q2) => $q2->where('status', $request->status)
+            ))
+            ->when($request->relationship_manager_id, fn($q) => $q->whereHas(
+                'loan.client', fn($q2) => $q2->where('relationship_manager_id', $request->relationship_manager_id)
+            ))
+            ->when($request->from_date, fn($q) => $q->whereHas(
+                'loan', fn($q2) => $q2->whereDate('disbursement_date', '>=', $request->from_date)
+            ))
+            ->when($request->to_date, fn($q) => $q->whereHas(
+                'loan', fn($q2) => $q2->whereDate('disbursement_date', '<=', $request->to_date)
+            ))
+            ->get();
+
+        // Relationship managers are any active staff user - excludes client-portal-only logins.
+        $relationshipManagers = \App\Models\User::where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
+            ->orderBy('name')
             ->get();
 
         $buckets = [
@@ -323,7 +341,7 @@ class ReportController extends Controller
             return $this->csvDownload($rows, 'loan-aging-' . now()->format('Y-m-d'));
         }
 
-        return view('reports.loan-aging', compact('buckets', 'asOf'));
+        return view('reports.loan-aging', compact('buckets', 'asOf', 'relationshipManagers'));
     }
 
     public function repaymentSchedule(Request $request)
