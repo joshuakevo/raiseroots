@@ -55,6 +55,7 @@
         <tr>
             <th>Loan #</th>
             <th>Client</th>
+            <th>Relationship Manager</th>
             <th>Product</th>
             <th>Method</th>
             <th class="r">Principal</th>
@@ -69,6 +70,7 @@
     <tr>
         <td style="font-family:monospace;font-size:7px">{{ $loan->loan_number }}</td>
         <td>{{ $loan->client->name }}</td>
+        <td style="font-size:7px;color:#6b7280">{{ $loan->client->relationshipManager?->name ?? '—' }}</td>
         <td style="font-size:7px;color:#6b7280">{{ $loan->product->name }}</td>
         <td style="font-size:7px">{{ ucfirst($loan->interest_method) }}</td>
         <td class="r">{{ number_format($loan->principal, 2) }}</td>
@@ -78,12 +80,12 @@
         <td><span class="badge badge-{{ $loan->status }}">{{ ucfirst($loan->status) }}</span></td>
     </tr>
     @empty
-    <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:10px">No loans found.</td></tr>
+    <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:10px">No loans found.</td></tr>
     @endforelse
     </tbody>
     <tfoot>
         <tr>
-            <td colspan="4">TOTALS ({{ $loans->count() }} loans)</td>
+            <td colspan="5">TOTALS ({{ $loans->count() }} loans)</td>
             <td class="r">{{ number_format($summary['total_disbursed'], 2) }}</td>
             <td class="r" style="color:#d97706">{{ number_format($summary['total_outstanding'], 2) }}</td>
             <td colspan="3"></td>

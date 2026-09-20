@@ -214,8 +214,19 @@ class ReportController extends Controller
 
     public function loanPortfolio(Request $request)
     {
-        $loans = Loan::with('client', 'product')
+        $loans = Loan::with('client.relationshipManager', 'product')
             ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when($request->relationship_manager_id, fn($q) => $q->whereHas(
+                'client', fn($q2) => $q2->where('relationship_manager_id', $request->relationship_manager_id)
+            ))
+            ->when($request->from_date, fn($q) => $q->whereDate('disbursement_date', '>=', $request->from_date))
+            ->when($request->to_date, fn($q) => $q->whereDate('disbursement_date', '<=', $request->to_date))
+            ->get();
+
+        // Relationship managers are any active staff user - excludes client-portal-only logins.
+        $relationshipManagers = \App\Models\User::where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
+            ->orderBy('name')
             ->get();
 
         $summary = [
@@ -235,11 +246,12 @@ class ReportController extends Controller
 
         if ($request->format === 'excel') {
             $rows = [];
-            $rows[] = ['Loan #', 'Client', 'Product', 'Method', 'Principal', 'Outstanding Principal', 'Outstanding Interest', 'Disbursed', 'Maturity', 'Status'];
+            $rows[] = ['Loan #', 'Client', 'Relationship Manager', 'Product', 'Method', 'Principal', 'Outstanding Principal', 'Outstanding Interest', 'Disbursed', 'Maturity', 'Status'];
             foreach ($loans as $loan) {
                 $rows[] = [
                     $loan->loan_number,
                     $loan->client->name,
+                    $loan->client->relationshipManager?->name ?? '',
                     $loan->product->name,
                     ucfirst($loan->interest_method),
                     $loan->principal,
@@ -251,11 +263,11 @@ class ReportController extends Controller
                 ];
             }
             $rows[] = [];
-            $rows[] = ['', 'TOTALS', '', '', $summary['total_disbursed'], $summary['total_outstanding'], '', '', '', ''];
+            $rows[] = ['', 'TOTALS', '', '', '', $summary['total_disbursed'], $summary['total_outstanding'], '', '', '', ''];
             return $this->csvDownload($rows, 'loan-portfolio-' . now()->format('Y-m-d'));
         }
 
-        return view('reports.loan-portfolio', compact('loans', 'summary'));
+        return view('reports.loan-portfolio', compact('loans', 'summary', 'relationshipManagers'));
     }
 
     public function loanAging(Request $request)
