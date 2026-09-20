@@ -181,6 +181,12 @@ class SettingsController extends Controller
             '.htaccess has storage rewrite rule'   => (file_exists($htaccess) && str_contains(file_get_contents($htaccess), 'storage/app/public')) ? 'YES' : 'NO',
             'storage:link command output'          => $linkOutput,
             'storage/app/imports/ contents'        => $importsListing,
+            'transactions.branch_id distribution'  => \App\Models\Transaction::withoutGlobalScopes()
+                ->selectRaw('branch_id, COUNT(*) as cnt')
+                ->groupBy('branch_id')
+                ->get()
+                ->map(fn ($row) => ($row->branch_id === null ? 'NULL' : $row->branch_id) . '=' . $row->cnt)
+                ->implode(', '),
         ];
 
         return back()->with('storageReport', $report);
