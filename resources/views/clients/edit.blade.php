@@ -298,7 +298,7 @@
                    value="{{ old('joining_date', $client->joining_date?->toDateString()) }}">
         </div>
         <div class="col-md-6">
-            <label class="form-label">Relationship Manager</label>
+            <label class="form-label">Loan Officer</label>
             <select name="relationship_manager_id" class="form-select">
                 <option value="">— Default: {{ $client->createdBy->name ?? 'whoever created this client' }} —</option>
                 @foreach($relationshipManagers as $user)

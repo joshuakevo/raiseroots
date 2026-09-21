@@ -10,6 +10,7 @@
         <div class="dropdown">
             <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-download me-1"></i>Export</button>
             <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="{{ request()->fullUrlWithQuery(['format' => 'csv']) }}"><i class="bi bi-filetype-csv me-2 text-success"></i>Export CSV</a></li>
                 <li><a class="dropdown-item" href="{{ request()->fullUrlWithQuery(['format' => 'pdf']) }}" target="_blank"><i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Export PDF</a></li>
             </ul>
         </div>
@@ -43,7 +44,7 @@
                 <th class="ps-3">#</th>
                 <th>Client Number</th>
                 <th>Name</th>
-                <th>Relationship Manager</th>
+                <th>Loan Officer</th>
                 <th>Phone</th>
                 <th>Email</th>
                 <th>Status</th>
@@ -58,7 +59,21 @@
                     <td class="ps-3 text-muted">{{ $loop->iteration }}</td>
                     <td><span class="font-monospace">{{ $client->client_number }}</span></td>
                     <td class="fw-semibold">{{ $client->name }}</td>
-                    <td class="small">{{ $client->relationship_manager_name ?? '—' }}</td>
+                    <td class="small">
+                        @can('assign relationship manager')
+                        <select class="form-select form-select-sm loan-officer-select" style="min-width:170px"
+                            data-action="{{ route('clients.relationship-manager', $client) }}"
+                            data-original="{{ $client->relationship_manager_id }}"
+                            aria-label="Loan Officer for {{ $client->name }}">
+                            <option value="">{{ $client->createdBy?->name ? $client->createdBy->name . ' (default)' : 'Unassigned' }}</option>
+                            @foreach($relationshipManagers as $officer)
+                                <option value="{{ $officer->id }}" @selected($client->relationship_manager_id == $officer->id)>{{ $officer->name }}</option>
+                            @endforeach
+                        </select>
+                        @else
+                        {{ $client->relationship_manager_name ?? '—' }}
+                        @endcan
+                    </td>
                     <td>{{ $client->phone ?? '—' }}</td>
                     <td>{{ $client->email ?? '—' }}</td>
                     <td>
@@ -228,6 +243,45 @@
     }
 
     sendBtn.addEventListener('click', doSend);
+})();
+
+// Inline Loan Officer change: saves on selection, reverts the dropdown if the save fails.
+(function () {
+    const token = document.querySelector('meta[name="csrf-token"]').content;
+
+    document.querySelectorAll('.loan-officer-select').forEach(select => {
+        select.addEventListener('change', async () => {
+            const previous = select.dataset.original;
+            select.disabled = true;
+            select.classList.remove('is-valid', 'is-invalid');
+
+            try {
+                const res = await fetch(select.dataset.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ relationship_manager_id: select.value || null }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || 'Could not update the Loan Officer.');
+                }
+                select.dataset.original = select.value;
+                select.classList.add('is-valid');
+                setTimeout(() => select.classList.remove('is-valid'), 1500);
+            } catch (e) {
+                select.value = previous;
+                select.classList.add('is-invalid');
+                setTimeout(() => select.classList.remove('is-invalid'), 2500);
+                alert(e.message || 'Network error. Please try again.');
+            } finally {
+                select.disabled = false;
+            }
+        });
+    });
 })();
 </script>
 @endpush

@@ -262,7 +262,7 @@
                 <strong>{{ $client->createdBy->name ?? '—' }}</strong>
             </div>
             <div class="col-md-3">
-                <span class="text-muted">Relationship Manager</span><br>
+                <span class="text-muted">Loan Officer</span><br>
                 <strong>{{ $client->relationship_manager_name ?? '—' }}</strong>
                 @if(!$client->relationship_manager_id)
                     <span class="badge bg-light text-muted border ms-1" style="font-size:.65rem">default</span>

@@ -42,6 +42,45 @@ class ClientController extends Controller
             return $pdf->download('clients-' . now()->format('Y-m-d') . '.pdf');
         }
 
+        if ($request->format === 'csv') {
+            $clients = (clone $query)->with('branch', 'relationshipManager', 'createdBy')->latest()->get();
+            $showMembership = \App\Models\SystemSetting::get('membership_fee_module_enabled', '1');
+
+            return response()->streamDownload(function () use ($clients, $showMembership) {
+                $out = fopen('php://output', 'w');
+                fwrite($out, "\xEF\xBB\xBF"); // BOM so Excel reads UTF-8 names correctly
+
+                $header = ['#', 'Client Number', 'Name', 'Type', 'Loan Officer', 'Phone', 'Email', 'Status', 'Branch', 'Joining Date'];
+                if ($showMembership) {
+                    $header[] = 'Membership';
+                }
+                fputcsv($out, $header);
+
+                foreach ($clients as $i => $client) {
+                    $row = [
+                        $i + 1,
+                        $client->client_number,
+                        $client->name,
+                        ucfirst($client->client_type ?? 'individual'),
+                        $client->relationship_manager_name,
+                        $client->phone,
+                        $client->email,
+                        ucfirst($client->status),
+                        $client->branch?->name,
+                        $client->joining_date?->format('Y-m-d'),
+                    ];
+                    if ($showMembership) {
+                        $row[] = ucfirst($client->membership_fee_status);
+                    }
+                    fputcsv($out, $row);
+                }
+
+                fclose($out);
+            }, 'clients-' . now()->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }
+
+        $relationshipManagers = $this->relationshipManagerOptions();
+
         $clients = $query->withCount('shares')
             ->with([
                 'shares' => fn($q) => $q->select('client_id', 'share_value', 'amount_paid', 'status'),
@@ -50,7 +89,16 @@ class ClientController extends Controller
             ->latest()
             ->paginate(20);
 
-        return view('clients.index', compact('clients'));
+        return view('clients.index', compact('clients', 'relationshipManagers'));
+    }
+
+    /** Relationship managers (shown as "Loan Officer") are any active staff user — excludes client-portal-only logins. */
+    private function relationshipManagerOptions()
+    {
+        return \App\Models\User::where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
+            ->orderBy('name')
+            ->get();
     }
 
     public function create()
@@ -210,11 +258,7 @@ class ClientController extends Controller
     {
         $branches = \App\Models\Branch::where('is_active', true)->orderBy('name')->get();
 
-        // Relationship managers are any active staff user — excludes client-portal-only logins.
-        $relationshipManagers = \App\Models\User::where('is_active', true)
-            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
-            ->orderBy('name')
-            ->get();
+        $relationshipManagers = $this->relationshipManagerOptions();
 
         return view('clients.edit', compact('client', 'branches', 'relationshipManagers'));
     }
@@ -287,7 +331,14 @@ class ClientController extends Controller
 
         $client->update(['relationship_manager_id' => $request->relationship_manager_id ?: null]);
 
-        return back()->with('success', 'Relationship manager updated for ' . $client->name . '.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Loan Officer updated for ' . $client->name . '.',
+            ]);
+        }
+
+        return back()->with('success', 'Loan Officer updated for ' . $client->name . '.');
     }
 
     public function invite(Client $client)
