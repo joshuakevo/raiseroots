@@ -57,6 +57,9 @@ class RolesAndPermissionsSeeder extends Seeder
             // Payroll
             'view payroll', 'create payroll', 'process payroll', 'delete payroll',
 
+            // Staff Analysis (Loan Officer performance)
+            'view staff analysis',
+
             // Member Shares
             'manage shares',
 
@@ -136,6 +139,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view reports',
             'view groups',
             'view employees',
+            'view staff analysis',
         ]);
 
         Role::firstOrCreate(['name' => 'group_leader']);

@@ -287,6 +287,81 @@
     </div>
 </div>
 
+{{-- ── Row: Loan Officer Performance ────────────────────────────────────────── --}}
+@if($officerPerformance)
+@php
+    $opRows   = $officerPerformance['officers']->filter(fn ($r) => $r['id'] !== null)->take(6)->values();
+    $opTotals = $officerPerformance['totals'];
+    $opInsight = $officerPerformance['insights'];
+    $opPct    = fn ($v) => $v === null ? '—' : number_format($v, 1) . '%';
+    $opChart  = $opRows->filter(fn ($r) => $r['outstanding_principal'] > 0)->values();
+@endphp
+<div class="row g-3 mb-3">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span class="fw-semibold"><i class="bi bi-person-badge text-primary me-2"></i>Loan Officer Performance</span>
+                <a href="{{ route('staff-analysis.index') }}" class="small">Full analysis →</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0" style="font-size:.82rem">
+                    <thead class="table-light"><tr>
+                        <th class="ps-3">Officer</th>
+                        <th class="text-end">Outstanding</th>
+                        <th class="text-end" title="Outstanding with an instalment 30+ days overdue">PAR30</th>
+                        <th class="text-end" title="Paid ÷ due on instalments that have fallen due">Collection</th>
+                        <th class="text-end">Defaulted</th>
+                        <th class="pe-3">Rating</th>
+                    </tr></thead>
+                    <tbody>
+                    @forelse($opRows as $r)
+                        <tr>
+                            <td class="ps-3 fw-semibold">{{ $r['name'] }}<div class="text-muted fw-normal" style="font-size:.68rem">{{ $r['clients'] }} clients · {{ $r['active_count'] }} active loans</div></td>
+                            <td class="text-end">{{ number_format($r['outstanding_principal'], 0) }}</td>
+                            <td class="text-end">{{ $opPct($r['par30_pct']) }}</td>
+                            <td class="text-end">{{ $opPct($r['collection_efficiency']) }}</td>
+                            <td class="text-end {{ $r['defaulted_count'] ? 'text-danger' : '' }}">{{ $r['defaulted_count'] }}</td>
+                            <td class="pe-3">@include('staff-analysis._rating', ['rating' => $r['rating']])</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6" class="text-center text-muted py-3">No Loan Officers yet.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer text-muted small">
+                Team: {{ number_format($opTotals['outstanding_principal'], 0) }} outstanding ·
+                PAR30 {{ $opPct($opTotals['par30_pct']) }} · collection {{ $opPct($opTotals['collection_efficiency']) }}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header fw-semibold"><i class="bi bi-shield-check text-success me-2"></i>Portfolio Quality by Officer</div>
+            <div class="card-body">
+                @if($opChart->isNotEmpty())
+                    <canvas id="officerQualityChart" height="{{ max(140, 46 * $opChart->count()) }}"></canvas>
+                @else
+                    <div class="text-muted small">No outstanding loans assigned to a Loan Officer yet.</div>
+                @endif
+                <hr class="my-3">
+                @if($opInsight['lowest_par'])
+                    <div class="small mb-1"><i class="bi bi-shield-check text-success me-1"></i><strong>Healthiest book:</strong> {{ $opInsight['lowest_par']['name'] }} ({{ $opPct($opInsight['lowest_par']['par30_pct']) }} PAR30)</div>
+                @endif
+                @if($opInsight['best_collection'])
+                    <div class="small mb-1"><i class="bi bi-bullseye text-success me-1"></i><strong>Best collections:</strong> {{ $opInsight['best_collection']['name'] }} ({{ $opPct($opInsight['best_collection']['collection_efficiency']) }})</div>
+                @endif
+                @if($opInsight['needs_attention'])
+                    <div class="small"><i class="bi bi-exclamation-octagon text-danger me-1"></i><strong>Needs attention:</strong> {{ $opInsight['needs_attention']['name'] }} ({{ $opPct($opInsight['needs_attention']['par30_pct']) }} PAR30)</div>
+                @else
+                    <div class="small text-muted"><i class="bi bi-check-circle text-success me-1"></i>No officer is currently rated at risk.</div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- ── Row 2: Client Activity + Loan Status + Portfolio Insights ──────────── --}}
 <div class="row g-3 mb-3">
     {{-- Client Activity --}}
@@ -493,6 +568,29 @@ new Chart(document.getElementById('profitabilityChart'), {
         }
     }
 });
+
+@if(!empty($opChart) && $opChart->isNotEmpty())
+// ── Loan Officer portfolio quality ──────────────────────────────────────────
+new Chart(document.getElementById('officerQualityChart'), {
+    type: 'bar',
+    data: {
+        labels: @json($opChart->pluck('name')),
+        datasets: [
+            { label: 'Performing', data: @json($opChart->map(fn ($r) => round($r['outstanding_principal'] - $r['par30_amount'], 2))), backgroundColor: 'rgba(34,197,94,.75)', borderRadius: 3 },
+            { label: 'PAR30 (at risk)', data: @json($opChart->pluck('par30_amount')), backgroundColor: 'rgba(239,68,68,.8)', borderRadius: 3 },
+        ]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { font } } },
+        scales: {
+            x: { stacked: true, grid: { color: gridColor }, ticks: { font, callback: v => v.toLocaleString() } },
+            y: { stacked: true, grid: { display: false }, ticks: { font } }
+        }
+    }
+});
+@endif
 
 // ── Assets & Liabilities Chart ──────────────────────────────────────────────
 new Chart(document.getElementById('assetsLiabilitiesChart'), {

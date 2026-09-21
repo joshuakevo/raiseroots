@@ -182,7 +182,13 @@ class DashboardController extends Controller
         $topAssetAccounts = collect($balanceSheet['asset']['rows'])->sortByDesc('balance')->take(5);
         $topLiabilityAccounts = collect($balanceSheet['liability']['rows'])->sortByDesc('balance')->take(5);
 
+        // ── Loan Officer performance ─────────────────────────────────────────
+        $officerPerformance = auth()->user()->can('view staff analysis')
+            ? app(\App\Services\StaffAnalysisService::class)->analyse()
+            : null;
+
         return view('dashboard', compact(
+            'officerPerformance',
             'stats', 'loanStatusBreakdown', 'upcomingInstallments', 'topBorrowers',
             'monthLabels', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit', 'monthlyLoanDisbursements',
             'par30', 'defaultRate',

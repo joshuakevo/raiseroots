@@ -310,8 +310,8 @@
         <hr class="sidebar-divider">
         @endcanany
 
-        @canany(['view employees', 'view payroll'])
-        @php $hrGroupActive = request()->routeIs('employees.*') || request()->routeIs('payroll.*'); @endphp
+        @canany(['view employees', 'view payroll', 'view staff analysis'])
+        @php $hrGroupActive = request()->routeIs('employees.*') || request()->routeIs('payroll.*') || request()->routeIs('staff-analysis.*'); @endphp
         <button class="nav-collapse-btn" data-bs-toggle="collapse" data-bs-target="#hrMenu" aria-expanded="{{ $hrGroupActive ? 'true' : 'false' }}">
             <i class="bi bi-person-badge"></i> HR &amp; Payroll
             <i class="bi bi-chevron-right chevron"></i>
@@ -325,6 +325,11 @@
             @can('view payroll')
             <a href="{{ route('payroll.index') }}" class="nav-link-item {{ request()->routeIs('payroll.*') ? 'active' : '' }}">
                 <i class="bi bi-cash-coin me-1"></i> Payroll
+            </a>
+            @endcan
+            @can('view staff analysis')
+            <a href="{{ route('staff-analysis.index') }}" class="nav-link-item {{ request()->routeIs('staff-analysis.*') ? 'active' : '' }}">
+                <i class="bi bi-graph-up-arrow me-1"></i> Staff Analysis
             </a>
             @endcan
         </div>

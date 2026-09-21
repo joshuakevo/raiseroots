@@ -425,6 +425,10 @@ Route::middleware('auth')->group(function () {
         Route::put('employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
     });
 
+    // ── Staff Analysis (Loan Officer performance) ─────────────────────
+    Route::get('staff-analysis', [\App\Http\Controllers\StaffAnalysisController::class, 'index'])
+        ->name('staff-analysis.index')->middleware('permission:view staff analysis');
+
     // ── Payroll (payroll/create before payroll/{payroll}) ─────────────
     Route::middleware('permission:view payroll')->group(function () {
         Route::get('payroll', [PayrollController::class, 'index'])->name('payroll.index');

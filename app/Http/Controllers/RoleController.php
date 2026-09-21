@@ -113,6 +113,10 @@ class RoleController extends Controller
                 'icon'  => 'bi-receipt-cutoff',
                 'perms' => ['view payroll', 'create payroll', 'process payroll', 'delete payroll'],
             ],
+            'Staff Analysis' => [
+                'icon'  => 'bi-graph-up-arrow',
+                'perms' => ['view staff analysis'],
+            ],
             'Reports' => [
                 'icon'  => 'bi-bar-chart-fill',
                 'perms' => ['view reports'],
