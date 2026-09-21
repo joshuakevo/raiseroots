@@ -24,8 +24,77 @@ class StaffAnalysisService
     public const RISK_PAR30 = 15;
     public const RISK_EFFICIENCY = 70;
 
+    /** Quick-pick periods, in display order. "custom" is handled separately (own from/to). */
+    public const PERIODS = [
+        'today'        => 'Today',
+        'this_week'    => 'This week',
+        'last_week'    => 'Last week',
+        'this_month'   => 'This month',
+        'last_month'   => 'Last month',
+        'this_quarter' => 'This quarter',
+        'last_quarter' => 'Last quarter',
+        'this_year'    => 'This year',
+        'last_year'    => 'Last year',
+        'all'          => 'All time',
+    ];
+
     /**
-     * @param  string|null  $from  start of the "in period" figures (disbursed / collected); default Jan 1 this year
+     * Turn a preset key (or custom from/to) into a concrete range, plus the equal-length range
+     * immediately before it for "vs previous period". The end is capped at today: nothing has
+     * happened in the future, and counting not-yet-due instalments would make a running period look bad.
+     *
+     * @return array{key:string,label:string,from:string,to:string,prev_from:?string,prev_to:?string}
+     */
+    public static function resolvePeriod(?string $key, ?string $from = null, ?string $to = null): array
+    {
+        $now = now();
+
+        if (!$key && ($from || $to)) {
+            $key = 'custom';
+        }
+        if ($key !== 'custom' && !isset(self::PERIODS[$key])) {
+            $key = 'this_year';
+        }
+
+        [$start, $end] = match ($key) {
+            'today'        => [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
+            'this_week'    => [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()],
+            'last_week'    => [$now->copy()->subWeek()->startOfWeek(), $now->copy()->subWeek()->endOfWeek()],
+            'this_month'   => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
+            'last_month'   => [$now->copy()->subMonthNoOverflow()->startOfMonth(), $now->copy()->subMonthNoOverflow()->endOfMonth()],
+            'this_quarter' => [$now->copy()->startOfQuarter(), $now->copy()->endOfQuarter()],
+            'last_quarter' => [$now->copy()->subQuarterNoOverflow()->startOfQuarter(), $now->copy()->subQuarterNoOverflow()->endOfQuarter()],
+            'this_year'    => [$now->copy()->startOfYear(), $now->copy()->endOfYear()],
+            'last_year'    => [$now->copy()->subYear()->startOfYear(), $now->copy()->subYear()->endOfYear()],
+            'all'          => [\Illuminate\Support\Carbon::parse('2000-01-01'), $now->copy()->endOfDay()],
+            'custom'       => [
+                \Illuminate\Support\Carbon::parse($from ?: $now->copy()->startOfYear()->toDateString())->startOfDay(),
+                \Illuminate\Support\Carbon::parse($to ?: $now->toDateString())->endOfDay(),
+            ],
+        };
+
+        if ($end->gt($now)) {
+            $end = $now->copy()->endOfDay();
+        }
+        if ($start->gt($end)) {
+            $start = $end->copy()->startOfDay();
+        }
+
+        $days = $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1;
+
+        return [
+            'key'       => $key,
+            'label'     => $key === 'custom' ? 'Custom range' : self::PERIODS[$key],
+            'from'      => $start->toDateString(),
+            'to'        => $end->toDateString(),
+            'days'      => $days,
+            'prev_from' => $key === 'all' ? null : $start->copy()->subDays($days)->toDateString(),
+            'prev_to'   => $key === 'all' ? null : $start->copy()->subDay()->toDateString(),
+        ];
+    }
+
+    /**
+     * @param  string|null  $from  start of the "activity in period" figures (disbursed / collected / due); default Jan 1 this year
      * @param  string|null  $to    end of the period; default today
      */
     public function analyse(?string $from = null, ?string $to = null): array
@@ -41,6 +110,7 @@ class StaffAnalysisService
         $this->addPortfolioAtRisk($rows);
         $this->addCollectionEfficiency($rows);
         $this->addPeriodCollections($rows, $from, $to);
+        $this->addPeriodEfficiency($rows, $from, $to);
 
         $rows = collect($rows)
             // A loan officer with no clients and no loans is still worth showing (flagged users);
@@ -98,6 +168,7 @@ class StaffAnalysisService
             'disbursed_period_count' => 0, 'disbursed_period_amount' => 0.0,
             'collected_period' => 0.0, 'interest_collected_period' => 0.0,
             'due_to_date' => 0.0, 'paid_to_date' => 0.0,
+            'due_period' => 0.0, 'paid_period' => 0.0,
         ];
     }
 
@@ -241,6 +312,35 @@ class StaffAnalysisService
         }
     }
 
+    /** Same idea as collection efficiency, but only for instalments that fell due inside the period. */
+    private function addPeriodEfficiency(array &$rows, string $from, string $to): void
+    {
+        $to = min($to, now()->toDateString());
+        if ($from > $to) {
+            return;
+        }
+
+        $data = DB::table('loan_schedules')
+            ->join('loans', 'loans.id', '=', 'loan_schedules.loan_id')
+            ->join('clients', 'clients.id', '=', 'loans.client_id')
+            ->whereIn('loans.id', $this->visibleLoanIds())
+            ->whereIn('loans.status', self::ISSUED)
+            ->whereBetween('loan_schedules.due_date', [$from, $to])
+            ->selectRaw('clients.relationship_manager_id as rm,
+                SUM(loan_schedules.total_due) as due,
+                SUM(LEAST(loan_schedules.principal_paid + loan_schedules.interest_paid, loan_schedules.total_due)) as paid')
+            ->groupBy('clients.relationship_manager_id')
+            ->get();
+
+        foreach ($data as $d) {
+            $k = $this->key($d->rm);
+            if (isset($rows[$k])) {
+                $rows[$k]['due_period']  = (float) $d->due;
+                $rows[$k]['paid_period'] = (float) $d->paid;
+            }
+        }
+    }
+
     private function addPeriodCollections(array &$rows, string $from, string $to): void
     {
         $data = DB::table('loan_repayments')
@@ -267,6 +367,7 @@ class StaffAnalysisService
         $r['par30_pct']  = $r['outstanding_principal'] > 0 ? round($r['par30_amount'] / $r['outstanding_principal'] * 100, 1) : null;
         $r['default_rate'] = $r['issued_count'] > 0 ? round($r['defaulted_count'] / $r['issued_count'] * 100, 1) : null;
         $r['collection_efficiency'] = $r['due_to_date'] > 0 ? round($r['paid_to_date'] / $r['due_to_date'] * 100, 1) : null;
+        $r['period_efficiency'] = $r['due_period'] > 0 ? round($r['paid_period'] / $r['due_period'] * 100, 1) : null;
         $r['avg_loan']   = $r['issued_count'] > 0 ? round($r['issued_amount'] / $r['issued_count'], 2) : 0;
         $r['repeat_rate'] = $r['issued_borrowers'] > 0 ? round($r['repeat_borrowers'] / $r['issued_borrowers'] * 100, 1) : null;
         $r['rating']     = $this->rate($r['par30_pct'], $r['collection_efficiency']);
@@ -317,6 +418,7 @@ class StaffAnalysisService
             'best_collection'   => $named->filter(fn ($r) => $r['collection_efficiency'] !== null)
                 ->sortBy([['collection_efficiency', 'desc'], ['due_to_date', 'desc']])->first(),
             'top_disburser'     => $named->filter(fn ($r) => $r['disbursed_period_amount'] > 0)->sortByDesc('disbursed_period_amount')->first(),
+            'top_collector'     => $named->filter(fn ($r) => $r['collected_period'] > 0)->sortByDesc('collected_period')->first(),
             'needs_attention'   => $withBook->filter(fn ($r) => $r['rating'] === 'risk')->sortByDesc('par30_amount')->first(),
         ];
     }
