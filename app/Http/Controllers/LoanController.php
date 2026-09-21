@@ -25,16 +25,29 @@ class LoanController extends Controller
 
     public function index(Request $request)
     {
-        $loans = Loan::with('client', 'product')
+        $loans = Loan::with('client.relationshipManager', 'product', 'disbursedBy')
             ->when($request->status === 'issued', fn($q) => $q->whereIn('status', ['active', 'closed', 'defaulted']))
             ->when($request->status && $request->status !== 'issued', fn($q) => $q->where('status', $request->status))
             ->when($request->search, fn($q) => $q->where('loan_number', 'like', "%{$request->search}%")
                 ->orWhereHas('client', fn($q2) => $q2->where('name', 'like', "%{$request->search}%")))
+            ->when($request->relationship_manager_id, fn($q) => $q->whereHas(
+                'client', fn($q2) => $q2->where('relationship_manager_id', $request->relationship_manager_id)
+            ))
+            ->when($request->from_date, fn($q) => $q->whereDate('disbursement_date', '>=', $request->from_date))
+            ->when($request->to_date, fn($q) => $q->whereDate('disbursement_date', '<=', $request->to_date))
             ->orderByDesc('disbursement_date')
             ->orderByDesc('created_at')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('loans.index', compact('loans'));
+        // Relationship managers ("Loan Officer" here) are any active staff user -
+        // excludes client-portal-only logins.
+        $relationshipManagers = \App\Models\User::where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
+            ->orderBy('name')
+            ->get();
+
+        return view('loans.index', compact('loans', 'relationshipManagers'));
     }
 
     /**

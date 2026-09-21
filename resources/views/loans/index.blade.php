@@ -12,11 +12,13 @@
 </div>
 <div class="card">
     <div class="card-body pb-0">
-        <form class="row g-2 mb-3" method="GET">
-            <div class="col-md-4">
+        <form class="row g-2 mb-3 align-items-end" method="GET">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Search</label>
                 <input type="text" name="search" class="form-control" placeholder="Search loan # or client name..." value="{{ request('search') }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Status</label>
                 <select name="status" class="form-select">
                     <option value="">All Statuses</option>
                     <option value="issued" @selected(request('status')=='issued')>Issued (Active/Closed/Defaulted)</option>
@@ -27,6 +29,23 @@
                     <option value="defaulted" @selected(request('status')=='defaulted')>Defaulted</option>
                 </select>
             </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Loan Officer</label>
+                <select name="relationship_manager_id" class="form-select">
+                    <option value="">All Loan Officers</option>
+                    @foreach($relationshipManagers as $user)
+                        <option value="{{ $user->id }}" @selected(request('relationship_manager_id')==$user->id)>{{ $user->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Disbursed From</label>
+                <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Disbursed To</label>
+                <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
+            </div>
             <div class="col-auto"><button class="btn btn-outline-primary">Filter</button></div>
             <div class="col-auto"><a href="{{ route('loans.index') }}" class="btn btn-outline-secondary">Clear</a></div>
         </form>
@@ -35,8 +54,8 @@
         <table class="table table-hover align-middle mb-0">
             <thead><tr>
                 <th class="ps-3">Loan #</th><th>Client</th><th>Product</th>
-                <th class="text-end">Principal</th><th class="text-end">Outstanding</th>
-                <th>Disbursed</th><th>Method</th><th>Status</th><th class="pe-3">Actions</th>
+                <th class="text-end">Outstanding</th>
+                <th>Disbursed</th><th>Loan Officer</th><th>Disbursed By</th><th>Status</th><th class="pe-3">Actions</th>
             </tr></thead>
             <tbody>
             @forelse($loans as $loan)
@@ -50,12 +69,12 @@
                         @endif
                     </td>
                     <td class="small text-muted">{{ $loan->product->name }}</td>
-                    <td class="text-end">{{ number_format($loan->principal, $dp) }}</td>
                     <td class="text-end fw-semibold {{ $loan->outstanding_principal > 0 ? 'text-warning' : 'text-success' }}">
                         {{ number_format($loan->outstanding_principal, $dp) }}
                     </td>
                     <td class="small text-muted">{{ $loan->disbursement_date?->format('d M Y') ?? '—' }}</td>
-                    <td><span class="badge bg-light text-dark">{{ ucfirst($loan->interest_method) }}</span></td>
+                    <td class="small text-muted">{{ $loan->client?->relationshipManager?->name ?? '—' }}</td>
+                    <td class="small text-muted">{{ $loan->disbursedBy?->name ?? '—' }}</td>
                     <td><span class="badge badge-status-{{ $loan->status }}">{{ ucfirst($loan->status) }}</span></td>
                     <td class="pe-3">
                         <a href="{{ route('loans.show', $loan) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
