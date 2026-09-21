@@ -527,32 +527,29 @@ class SettingsController extends Controller
             $counts[] = class_basename($model) . ": {$affected}";
         }
 
-        // Transactions (the GL journal): same single-branch shortcut as clients above;
-        // with multiple branches, derive from whichever client is tagged on the lines,
-        // else the poster's own branch, else - if only one branch actually has any
-        // clients - that branch (an unclassified manual entry almost certainly
-        // doesn't belong to a brand-new, still-empty branch).
+        // Transactions (the GL journal): derive from whichever client is tagged on the
+        // lines, else the linked loan's branch, else the poster's own branch, else
+        // AccountingService::defaultBranchId() (head office). Same order as posting,
+        // so nothing is left null - a null branch_id is invisible to every
+        // branch-scoped user and makes their totals differ from the org-wide view.
+        $accounting = app(\App\Services\AccountingService::class);
+        $defaultBranchId = $accounting->defaultBranchId();
         $txnAffected = 0;
-        if ($branchCount === 1) {
-            $txnAffected = \App\Models\Transaction::withoutGlobalScopes()->whereNull('branch_id')->update(['branch_id' => $onlyBranch->id]);
-        } else {
-            $activeClientBranches = \App\Models\Client::withoutGlobalScopes()->whereNotNull('branch_id')->distinct()->pluck('branch_id');
-            $onlyActiveBranch = $activeClientBranches->count() === 1 ? $activeClientBranches->first() : null;
 
-            \App\Models\Transaction::withoutGlobalScopes()
-                ->whereNull('branch_id')
-                ->with('lines.client', 'createdBy')
-                ->get()
-                ->each(function ($txn) use (&$txnAffected, $onlyActiveBranch) {
-                    $branchId = $txn->lines->map(fn ($l) => $l->client?->branch_id)->filter()->first()
-                        ?? $txn->createdBy?->branch_id
-                        ?? $onlyActiveBranch;
-                    if ($branchId) {
-                        $txn->update(['branch_id' => $branchId]);
-                        $txnAffected++;
-                    }
-                });
-        }
+        \App\Models\Transaction::withoutGlobalScopes()
+            ->whereNull('branch_id')
+            ->with('lines.client', 'createdBy')
+            ->get()
+            ->each(function ($txn) use (&$txnAffected, $accounting, $defaultBranchId) {
+                $branchId = $txn->lines->map(fn ($l) => $l->client?->branch_id)->filter()->first()
+                    ?? $accounting->moduleBranchId($txn->module, $txn->module_id)
+                    ?? $txn->createdBy?->branch_id
+                    ?? $defaultBranchId;
+                if ($branchId) {
+                    $txn->update(['branch_id' => $branchId]);
+                    $txnAffected++;
+                }
+            });
         $counts[] = "Transaction: {$txnAffected}";
 
         return back()->with('success', 'Backfilled branch_id — ' . implode(', ', $counts) . '.');

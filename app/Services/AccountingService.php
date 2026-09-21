@@ -25,7 +25,7 @@ class AccountingService
     {
         $this->validateLines($lines);
 
-        $branchId = $this->resolveBranchId($lines);
+        $branchId = $this->resolveBranchId($lines, $module, $moduleId);
 
         return DB::transaction(function () use ($date, $description, $lines, $module, $moduleId, $reference, $branchId) {
             $transaction = Transaction::create([
@@ -63,10 +63,14 @@ class AccountingService
      * unambiguous which one this belongs to, so use it rather than leaving
      * the posting unclassified. If multiple branches exist but only one of
      * them actually has any clients, an unclassified entry almost certainly
-     * belongs there too, not to a brand-new, still-empty branch. Only when
-     * none of that resolves it does this fall through to null.
+     * belongs there too, not to a brand-new, still-empty branch. Loan
+     * postings with no client line (e.g. an admin recording a repayment) take
+     * the loan's own branch. Finally, anything still unclassified is treated
+     * as head-office-level (see defaultBranchId()) rather than left null,
+     * because a null branch_id is invisible to every branch-scoped user and
+     * makes their totals disagree with the org-wide view.
      */
-    protected function resolveBranchId(array $lines): ?int
+    protected function resolveBranchId(array $lines, ?string $module = null, ?int $moduleId = null): ?int
     {
         foreach ($lines as $line) {
             if (!empty($line['client_id'])) {
@@ -77,21 +81,46 @@ class AccountingService
             }
         }
 
+        if ($branchId = $this->moduleBranchId($module, $moduleId)) {
+            return $branchId;
+        }
+
         $user = auth()->user();
         if ($user?->branch_id) {
             return $user->branch_id;
         }
 
-        if (\App\Models\Branch::count() === 1) {
-            return \App\Models\Branch::value('id');
+        return $this->defaultBranchId();
+    }
+
+    /**
+     * Branch of the record a module-linked posting belongs to. Only loans are
+     * resolved here: their journals often carry no client_id line.
+     */
+    public function moduleBranchId(?string $module, ?int $moduleId): ?int
+    {
+        if ($module === 'loan' && $moduleId) {
+            return \App\Models\Loan::withoutGlobalScopes()->whereKey($moduleId)->value('branch_id');
         }
 
+        return null;
+    }
+
+    /**
+     * Branch for a posting nothing else could place: the sole branch if there
+     * is only one, the sole branch that has any clients, else head office -
+     * the oldest branch. Org-wide entries (capital, opening balances, bank
+     * reconciliation) are head-office-level, and leaving them null hides them
+     * from every branch-scoped user.
+     */
+    public function defaultBranchId(): ?int
+    {
         $activeBranches = Client::withoutGlobalScopes()->whereNotNull('branch_id')->distinct()->pluck('branch_id');
         if ($activeBranches->count() === 1) {
             return $activeBranches->first();
         }
 
-        return null;
+        return \App\Models\Branch::orderBy('id')->value('id');
     }
 
     /**
