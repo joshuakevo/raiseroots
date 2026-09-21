@@ -77,7 +77,6 @@ class LoanService
                 'status'                   => 'active',
                 'disbursement_date'        => $disbursementDate,
                 'maturity_date'            => $maturityDate,
-                'disbursed_by'             => auth()->id(),
                 'outstanding_principal'    => $loan->principal,
                 'application_fee'          => $applicationFee,
                 'application_fee_rate'     => $applicationFeeRate,

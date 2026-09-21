@@ -19,7 +19,7 @@ class Loan extends Model
         'management_fee', 'management_fee_rate', 'management_fee_method',
         'insurance_fee', 'insurance_fee_rate', 'insurance_fee_method',
         'fee_savings_account_id',
-        'status', 'approved_by', 'approved_at', 'disbursed_by', 'created_by', 'notes',
+        'status', 'approved_by', 'approved_at', 'created_by', 'notes',
     ];
 
     protected $casts = [
@@ -77,11 +77,6 @@ class Loan extends Model
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function disbursedBy()
-    {
-        return $this->belongsTo(User::class, 'disbursed_by');
     }
 
     public function feeSavingsAccount()

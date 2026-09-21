@@ -55,7 +55,7 @@
             <thead><tr>
                 <th class="ps-3">Loan #</th><th>Client</th><th>Product</th>
                 <th class="text-end">Outstanding</th>
-                <th>Disbursed</th><th>Loan Officer</th><th>Disbursed By</th><th>Status</th><th class="pe-3">Actions</th>
+                <th>Disbursed</th><th>Loan Officer</th><th>Status</th><th class="pe-3">Actions</th>
             </tr></thead>
             <tbody>
             @forelse($loans as $loan)
@@ -74,7 +74,6 @@
                     </td>
                     <td class="small text-muted">{{ $loan->disbursement_date?->format('d M Y') ?? '—' }}</td>
                     <td class="small text-muted">{{ $loan->client?->relationshipManager?->name ?? '—' }}</td>
-                    <td class="small text-muted">{{ $loan->disbursedBy?->name ?? '—' }}</td>
                     <td><span class="badge badge-status-{{ $loan->status }}">{{ ucfirst($loan->status) }}</span></td>
                     <td class="pe-3">
                         <a href="{{ route('loans.show', $loan) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
@@ -86,7 +85,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="9" class="text-center text-muted py-4">No loans found.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">No loans found.</td></tr>
             @endforelse
             </tbody>
         </table>
