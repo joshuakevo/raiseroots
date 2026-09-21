@@ -50,7 +50,7 @@ class UserController extends Controller
             'branch_id' => $data['branch_id'] ?? null,
             'client_id' => $data['client_id'] ?? null,
             'is_active' => $request->boolean('is_active', true),
-        ]);
+        ] + $this->loanOfficerData($request));
 
         $user->assignRole($data['role']);
 
@@ -91,7 +91,7 @@ class UserController extends Controller
             'branch_id' => $data['branch_id'] ?? null,
             'client_id' => $data['client_id'] ?? null,
             'is_active' => $request->boolean('is_active', true),
-        ];
+        ] + $this->loanOfficerData($request);
 
         if (!empty($data['password'])) {
             $updateData['password'] = Hash::make($data['password']);
@@ -108,6 +108,26 @@ class UserController extends Controller
         $user->update(['is_active' => !$user->is_active]);
         $status = $user->is_active ? 'activated' : 'deactivated';
         return back()->with('success', "User {$status} successfully.");
+    }
+
+    public function toggleLoanOfficer(User $user)
+    {
+        if (!User::loanOfficerFlagAvailable()) {
+            return back()->with('error', 'Run migrations first (Settings) to enable Loan Officer lists.');
+        }
+
+        $user->update(['is_loan_officer' => !$user->is_loan_officer]);
+        $state = $user->is_loan_officer ? 'now appears' : 'no longer appears';
+
+        return back()->with('success', "{$user->name} {$state} in Loan Officer lists.");
+    }
+
+    /** Skipped until the is_loan_officer migration has run, so saving a user never 500s on a missing column. */
+    private function loanOfficerData(Request $request): array
+    {
+        return User::loanOfficerFlagAvailable()
+            ? ['is_loan_officer' => $request->boolean('is_loan_officer')]
+            : [];
     }
 
     public function assignRole(Request $request, User $user)

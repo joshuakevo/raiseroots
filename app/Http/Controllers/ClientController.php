@@ -92,13 +92,10 @@ class ClientController extends Controller
         return view('clients.index', compact('clients', 'relationshipManagers'));
     }
 
-    /** Relationship managers (shown as "Loan Officer") are any active staff user — excludes client-portal-only logins. */
+    /** Relationship managers (shown as "Loan Officer") are the staff users switched on under Users > Edit. */
     private function relationshipManagerOptions()
     {
-        return \App\Models\User::where('is_active', true)
-            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
-            ->orderBy('name')
-            ->get();
+        return \App\Models\User::loanOfficers()->orderBy('name')->get();
     }
 
     public function create()

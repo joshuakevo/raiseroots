@@ -321,6 +321,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:manage users')->group(function () {
         Route::resource('users', UserController::class)->except(['destroy']);
         Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+        Route::post('users/{user}/toggle-loan-officer', [UserController::class, 'toggleLoanOfficer'])->name('users.toggle-loan-officer');
         Route::post('users/{user}/assign-role', [UserController::class, 'assignRole'])->name('users.assign-role');
         Route::post('users/{user}/permissions', [App\Http\Controllers\RoleController::class, 'updateUserPermissions'])->name('users.permissions');
     });

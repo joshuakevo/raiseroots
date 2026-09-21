@@ -69,6 +69,9 @@
                             @foreach($relationshipManagers as $officer)
                                 <option value="{{ $officer->id }}" @selected($client->relationship_manager_id == $officer->id)>{{ $officer->name }}</option>
                             @endforeach
+                            @if($client->relationship_manager_id && !$relationshipManagers->contains('id', $client->relationship_manager_id))
+                                <option value="{{ $client->relationship_manager_id }}" selected>{{ $client->relationshipManager?->name }} (not in list)</option>
+                            @endif
                         </select>
                         @else
                         {{ $client->relationship_manager_name ?? '—' }}

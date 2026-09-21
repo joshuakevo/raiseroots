@@ -26,6 +26,7 @@
                     <th>Role</th>
                     <th>Branch</th>
                     <th class="text-center">Status</th>
+                    <th class="text-center" title="Appears in the Loan Officer dropdown on Clients">Loan Officer</th>
                     <th></th>
                 </tr>
             </thead>
@@ -56,6 +57,16 @@
                             <span class="badge bg-danger-subtle text-danger">Inactive</span>
                         @endif
                     </td>
+                    <td class="text-center">
+                        <form method="POST" action="{{ route('users.toggle-loan-officer', $user) }}" class="d-inline-block">
+                            @csrf
+                            <div class="form-check form-switch d-flex justify-content-center m-0 p-0">
+                                <input class="form-check-input m-0" type="checkbox" role="switch"
+                                       @checked($user->is_loan_officer) onchange="this.form.submit()"
+                                       aria-label="Appear in Loan Officer lists: {{ $user->name }}">
+                            </div>
+                        </form>
+                    </td>
                     <td class="text-end">
                         <div class="d-flex gap-1 justify-content-end">
                             <a href="{{ route('users.edit', $user) }}" class="btn btn-sm btn-outline-secondary">
@@ -72,7 +83,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="text-center py-4 text-muted">No system users found.</td></tr>
+                <tr><td colspan="8" class="text-center py-4 text-muted">No system users found.</td></tr>
             @endforelse
             </tbody>
         </table>

@@ -13,7 +13,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
-        'name', 'email', 'password', 'branch_id', 'phone', 'is_active', 'client_id',
+        'name', 'email', 'password', 'branch_id', 'phone', 'is_active', 'client_id', 'is_loan_officer',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -21,7 +21,36 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'is_active'         => 'boolean',
+        'is_loan_officer'   => 'boolean',
     ];
+
+    /**
+     * False until the is_loan_officer migration has run. The Settings page (which has
+     * the Run Migrations button) and the Clients list both build this dropdown, so they
+     * must keep working on a deploy where the column doesn't exist yet.
+     */
+    public static function loanOfficerFlagAvailable(): bool
+    {
+        static $available = null;
+
+        return $available ??= \Illuminate\Support\Facades\Schema::hasColumn('users', 'is_loan_officer');
+    }
+
+    /**
+     * Staff who may be picked as a client's Loan Officer: active, not a client-portal
+     * login, and switched on under Users > Edit ("Appear in Loan Officer lists").
+     */
+    public function scopeLoanOfficers($query)
+    {
+        $query->where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']));
+
+        if (static::loanOfficerFlagAvailable()) {
+            $query->where('is_loan_officer', true);
+        }
+
+        return $query;
+    }
 
     public function branch()
     {

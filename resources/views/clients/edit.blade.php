@@ -304,6 +304,9 @@
                 @foreach($relationshipManagers as $user)
                 <option value="{{ $user->id }}" @selected(old('relationship_manager_id', $client->relationship_manager_id) == $user->id)>{{ $user->name }}</option>
                 @endforeach
+                @if($client->relationship_manager_id && !$relationshipManagers->contains('id', $client->relationship_manager_id))
+                <option value="{{ $client->relationship_manager_id }}" @selected(old('relationship_manager_id', $client->relationship_manager_id) == $client->relationship_manager_id)>{{ $client->relationshipManager?->name }} (not in list)</option>
+                @endif
             </select>
             <div class="form-text">Leave as default to keep it assigned to whoever created this client.</div>
         </div>

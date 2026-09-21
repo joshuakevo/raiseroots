@@ -26,11 +26,7 @@ class SettingsController extends Controller
             ? LoanCollateralCategory::orderBy('label')->get()
             : collect();
 
-        // Relationship managers are any active staff user — excludes client-portal-only logins.
-        $relationshipManagers = \App\Models\User::where('is_active', true)
-            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
-            ->orderBy('name')
-            ->get();
+        $relationshipManagers = \App\Models\User::loanOfficers()->orderBy('name')->get();
 
         return view('settings.index', compact('settings', 'collateralCategoriesReady', 'collateralCategories', 'relationshipManagers'));
     }

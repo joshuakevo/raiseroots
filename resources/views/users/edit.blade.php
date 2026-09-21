@@ -86,6 +86,14 @@
             <label class="form-check-label" for="is_active">Active</label>
         </div>
     </div>
+    <div class="col-12">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="is_loan_officer" id="is_loan_officer"
+                   value="1" {{ old('is_loan_officer', $user->is_loan_officer) ? 'checked' : '' }}>
+            <label class="form-check-label" for="is_loan_officer">Appear in Loan Officer lists</label>
+        </div>
+        <div class="form-text">When on, this user can be picked as a client's Loan Officer.</div>
+    </div>
 </div>
 <div class="mt-4 d-flex gap-2">
     <button type="submit" class="btn btn-primary">Update User</button>
