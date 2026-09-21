@@ -35,6 +35,9 @@ class LoanController extends Controller
             ))
             ->when($request->from_date, fn($q) => $q->whereDate('disbursement_date', '>=', $request->from_date))
             ->when($request->to_date, fn($q) => $q->whereDate('disbursement_date', '<=', $request->to_date))
+            // Loans waiting on someone (approval or disbursement) float to the top of the whole
+            // list, not just the page - they have no disbursement date, so they'd otherwise sink.
+            ->orderByRaw("CASE WHEN loans.status IN ('pending', 'approved') THEN 0 ELSE 1 END")
             ->orderByDesc('disbursement_date')
             ->orderByDesc('created_at')
             ->paginate(20)

@@ -59,7 +59,13 @@
             </tr></thead>
             <tbody>
             @forelse($loans as $loan)
-                <tr>
+                @php
+                    // Pending = waiting for approval; approved = waiting to be disbursed.
+                    $needsAction = in_array($loan->status, ['pending', 'approved']);
+                    $rowTint     = $loan->status === 'pending' ? 'table-warning' : ($loan->status === 'approved' ? 'table-info' : '');
+                    $accent      = $loan->status === 'pending' ? '#ffc107' : '#0dcaf0';
+                @endphp
+                <tr class="{{ $rowTint }}" @if($needsAction) style="box-shadow: inset 4px 0 0 {{ $accent }}" @endif>
                     <td class="ps-3 font-monospace">{{ $loan->loan_number }}</td>
                     <td>
                         @if($loan->client)
@@ -74,7 +80,12 @@
                     </td>
                     <td class="small text-muted">{{ $loan->disbursement_date?->format('d M Y') ?? '—' }}</td>
                     <td class="small text-muted">{{ $loan->client?->relationshipManager?->name ?? '—' }}</td>
-                    <td><span class="badge badge-status-{{ $loan->status }}">{{ ucfirst($loan->status) }}</span></td>
+                    <td>
+                        <span class="badge badge-status-{{ $loan->status }}">{{ ucfirst($loan->status) }}</span>
+                        @if($needsAction)
+                            <div class="fw-semibold" style="font-size:.68rem">{{ $loan->status === 'pending' ? 'Awaiting approval' : 'Awaiting disbursement' }}</div>
+                        @endif
+                    </td>
                     <td class="pe-3">
                         <a href="{{ route('loans.show', $loan) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                         @can('repay loans')
