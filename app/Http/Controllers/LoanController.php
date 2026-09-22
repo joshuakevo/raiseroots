@@ -80,7 +80,6 @@ class LoanController extends Controller
                 // due date passes) - missing it here meant defaulted loans, whose installments
                 // are almost always 'overdue' by then, showed no amount due at all.
                 $dueSchedules = $loan->schedules->whereIn('status', ['pending', 'partial', 'overdue']);
-                $nextSchedule = $dueSchedules->first();
                 $lastRepayment = $loan->repayments->last();
 
                 return (object) [
@@ -91,7 +90,6 @@ class LoanController extends Controller
                         fn ($s) => max(0, ($s->principal_due - $s->principal_paid) + ($s->interest_due - $s->interest_paid))
                     ), 2),
                     'last_recovered'  => $lastRepayment?->payment_date,
-                    'next_due_date'   => $nextSchedule?->due_date,
                 ];
             });
 

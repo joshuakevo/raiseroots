@@ -75,8 +75,7 @@
                     <th class="text-end">Outstanding Principal</th>
                     <th class="text-end">Outstanding Interest</th>
                     <th class="text-end">Amount Due</th>
-                    <th>Last Date Recovered</th>
-                    <th>Next Due Date</th>
+                    <th>Maturity Date</th>
                     <th class="pe-3 text-end">Actions</th>
                 </tr>
             </thead>
@@ -92,11 +91,15 @@
                 <td class="text-end">{{ number_format($row->loan->outstanding_principal, $dp) }}</td>
                 <td class="text-end">{{ number_format($row->loan->outstanding_interest, $dp) }}</td>
                 <td class="text-end fw-semibold {{ $row->amount_due > 0 ? 'text-danger' : '' }}">{{ number_format($row->amount_due, $dp) }}</td>
-                <td class="{{ $row->last_recovered ? '' : 'text-muted fst-italic' }}">
-                    {{ $row->last_recovered ? \Carbon\Carbon::parse($row->last_recovered)->format('d M Y') : 'Never' }}
-                </td>
-                <td class="{{ $row->next_due_date && \Carbon\Carbon::parse($row->next_due_date)->isPast() ? 'text-danger fw-semibold' : '' }}">
-                    {{ $row->next_due_date ? \Carbon\Carbon::parse($row->next_due_date)->format('d M Y') : '—' }}
+                @php
+                    $maturity = $row->loan->maturity_date;
+                    $daysOverdue = $maturity && $maturity->isPast() ? $maturity->diffInDays(now()->startOfDay()) : 0;
+                @endphp
+                <td class="{{ $daysOverdue > 0 ? 'text-danger fw-semibold' : '' }}">
+                    {{ $maturity ? $maturity->format('d M Y') : '—' }}
+                    @if($daysOverdue > 0)
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" title="Past maturity">{{ $daysOverdue }}d overdue</span>
+                    @endif
                 </td>
                 <td class="pe-3 text-end">
                     <a href="{{ route('loans.show', $row->loan) }}" class="btn btn-sm btn-outline-primary" title="View loan">
@@ -110,7 +113,7 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="8" class="text-center text-muted py-4">No active loans have their anniversary on this day.</td></tr>
+            <tr><td colspan="7" class="text-center text-muted py-4">No active loans have their anniversary on this day.</td></tr>
             @endforelse
             </tbody>
         </table>
