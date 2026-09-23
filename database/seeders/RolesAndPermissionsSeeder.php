@@ -7,6 +7,16 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
+/**
+ * Baseline roles and permissions. Grants only - never revokes.
+ *
+ * Administration > Roles lets an admin customize any role's permissions after the fact
+ * (add extras, or take some away). This seeder re-runs every time a new permission is
+ * introduced (e.g. after a deploy), and must never undo those customizations - so every
+ * role here uses givePermissionTo() (adds what's missing, leaves everything else alone),
+ * never syncPermissions() (replaces the whole set, wiping any custom grant or revocation
+ * made through the UI back to whatever is hardcoded below).
+ */
 class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
@@ -82,17 +92,17 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Super Admin — all permissions
         $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
-        $superAdmin->syncPermissions(Permission::all());
+        $superAdmin->givePermissionTo(Permission::all());
 
         // Admin — everything except backup management
         $admin = Role::firstOrCreate(['name' => 'admin']);
-        $admin->syncPermissions(
+        $admin->givePermissionTo(
             Permission::whereNotIn('name', ['manage backup'])->get()
         );
 
         // Cashier — full operational access; products/payroll management is admin/super_admin only
         $cashier = Role::firstOrCreate(['name' => 'cashier']);
-        $cashier->syncPermissions([
+        $cashier->givePermissionTo([
             'view dashboard',
             'view clients', 'create clients', 'edit clients', 'delete clients', 'assign relationship manager',
             'view accounts', 'view transactions', 'create transactions', 'reverse transactions',
@@ -109,7 +119,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Staff — view only, no create/edit/delete
         $staff = Role::firstOrCreate(['name' => 'staff']);
-        $staff->syncPermissions([
+        $staff->givePermissionTo([
             'view dashboard',
             'view clients',
             'view accounts',
@@ -127,7 +137,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Manager — reviews and approves loans before they can be disbursed,
         // plus enough view access to make an informed approval decision
         $manager = Role::firstOrCreate(['name' => 'manager']);
-        $manager->syncPermissions([
+        $manager->givePermissionTo([
             'view dashboard',
             'view clients',
             'view accounts',
