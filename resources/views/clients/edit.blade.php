@@ -57,6 +57,19 @@
     <h6 class="fw-semibold mb-3">Personal Information</h6>
     <div class="row g-3 mb-3">
         <div class="col-md-4">
+            <label class="form-label">Client Number</label>
+            @can('edit client number')
+            <input type="text" name="client_number" class="form-control font-monospace @error('client_number') is-invalid @enderror"
+                   value="{{ old('client_number', $client->client_number) }}" required>
+            @error('client_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            <div class="form-text">Printed on this member's receipts and statements — change with care.</div>
+            @else
+            <input type="text" class="form-control font-monospace" value="{{ $client->client_number }}" disabled>
+            @endcan
+        </div>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
             <label class="form-label">First Name <span class="text-danger">*</span></label>
             <input type="text" name="first_name" class="form-control @error('first_name') is-invalid @enderror"
                    value="{{ old('first_name', $client->first_name) }}" required>

@@ -20,6 +20,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // Clients
             'view clients', 'create clients', 'edit clients', 'delete clients', 'assign relationship manager',
+            'edit client number',
 
             // Accounts / Chart of Accounts
             'view accounts', 'create accounts', 'edit accounts',
@@ -140,6 +141,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view groups',
             'view employees',
             'view staff analysis',
+            'edit client number',
         ]);
 
         Role::firstOrCreate(['name' => 'group_leader']);

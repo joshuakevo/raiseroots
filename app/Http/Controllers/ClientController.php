@@ -262,7 +262,7 @@ class ClientController extends Controller
 
     public function update(Request $request, Client $client)
     {
-        $data = $request->validate([
+        $rules = [
             // Personal
             'first_name'               => 'required|string|max:100',
             'middle_name'              => 'nullable|string|max:100',
@@ -297,7 +297,17 @@ class ClientController extends Controller
             'relationship_manager_id'  => 'nullable|exists:users,id',
             'status'                   => 'required|in:active,inactive,blacklisted',
             'joining_date'             => 'nullable|date',
-        ]);
+        ];
+
+        // Client Number is locked down separately from the rest of the profile - it's printed
+        // on every receipt/statement a member holds, so changing it needs its own permission.
+        // Ignored entirely (not just hidden in the form) for anyone without it, even if submitted.
+        $canEditNumber = auth()->user()?->can('edit client number');
+        if ($canEditNumber) {
+            $rules['client_number'] = ['required', 'string', 'max:50', \Illuminate\Validation\Rule::unique('clients', 'client_number')->ignore($client->id)];
+        }
+
+        $data = $request->validate($rules);
 
         $data['name']         = trim($data['first_name'] . ' ' . ($data['middle_name'] ? $data['middle_name'] . ' ' : '') . $data['last_name']);
         $data['loan_interest'] = $request->boolean('loan_interest');
@@ -313,10 +323,22 @@ class ClientController extends Controller
             $data['photo'] = $this->storeClientPhoto($request->file('photo'));
         }
 
+        $originalClientNumber = $client->client_number;
+
         $client->update($data);
 
         if ($client->group) {
             $client->group->update(['name' => $data['name']]);
+        }
+
+        // The blanket "Updated client" audit entry (from AuditActivity middleware) doesn't
+        // capture field values - record the old/new number explicitly since this one matters.
+        if ($canEditNumber && isset($data['client_number']) && $data['client_number'] !== $originalClientNumber) {
+            \App\Models\AuditLog::record(
+                'update',
+                "Changed Client Number for {$client->name} from '{$originalClientNumber}' to '{$data['client_number']}'",
+                'Clients'
+            );
         }
 
         return redirect()->route('clients.show', $client)->with('success', 'Client updated successfully.');
