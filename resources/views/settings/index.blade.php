@@ -663,10 +663,10 @@ $groupIcons = [
     <div class="card-body">
         <p class="text-muted small mb-3">
             Permanently deletes all clients, loans, savings, fixed deposits, shares, groups, employees, payroll,
-            journal entries, and other users. <strong>Kept untouched:</strong> chart of accounts, loan/savings/FD
-            products, branches, loan collateral categories, financial periods, system settings, and your own
-            login (guaranteed super_admin afterwards). There is no undo and no backup step available from this
-            screen — <strong>Preview first</strong> to see exactly what will be removed.
+            and journal entries. <strong>Kept untouched:</strong> chart of accounts, loan/savings/FD products,
+            branches, loan collateral categories, financial periods, system settings, and every user, role and
+            permission — logins keep working exactly as before. There is no undo and no backup step available
+            from this screen — <strong>Preview first</strong> to see exactly what will be removed.
         </p>
         <div class="d-flex gap-2 mb-3">
             <form method="POST" action="{{ route('settings.reset-production-preview') }}">

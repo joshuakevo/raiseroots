@@ -604,11 +604,11 @@ class SettingsController extends Controller
     /**
      * "Go-live wipe" — clears client/transaction data, keeps setup (chart of
      * accounts, products, branches, collateral categories, financial periods,
-     * settings) and exactly one superadmin: whoever is running this.
+     * settings) and every user, role and permission exactly as they are.
      */
     public function previewResetProductionData()
     {
-        Artisan::call('eltech:reset-production-data', ['--keep-user' => auth()->id()]);
+        Artisan::call('eltech:reset-production-data');
         $output = trim(Artisan::output());
 
         return back()->with('resetProductionOutput', $output);
@@ -624,10 +624,7 @@ class SettingsController extends Controller
             return back()->with('resetProductionOutput', 'Confirmation phrase did not match — nothing was deleted.');
         }
 
-        Artisan::call('eltech:reset-production-data', [
-            '--keep-user' => auth()->id(),
-            '--commit'    => true,
-        ]);
+        Artisan::call('eltech:reset-production-data', ['--commit' => true]);
         $output = trim(Artisan::output());
 
         return back()->with('resetProductionOutput', $output);
