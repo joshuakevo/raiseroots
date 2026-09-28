@@ -20,10 +20,14 @@ use Illuminate\Support\Facades\DB;
  * principal/interest balance) — per explicit instruction, not LoanService's
  * built-in loan-product fee mechanism.
  *
- * Expected CSV columns: date, due_date, client_number, principal, interest,
- * admin_cost, processing_fee, guarantor_name, guarantor_phone, status.
- * Extra columns (sheet, sheet_fnumber, sheet_name, phone, loan_officer, match_type)
- * are ignored if present.
+ * Recognized columns (aliases in brackets): date [issue_date], due_date,
+ * client_number [client_id], principal [loan_amount], admin_cost,
+ * processing_fee [processing_fees], guarantor_name [guarantor], guarantor_phone,
+ * status. `interest` is never read - the loan product's own rate governs
+ * interest, so a sheet's computed interest column is for reference only and can
+ * differ from what's actually posted if a row's implied rate doesn't match the
+ * product. Every other column (sheet, sex, loan_officer, business_type, product,
+ * etc.) is ignored if present.
  */
 class LoanImportService
 {
@@ -31,6 +35,18 @@ class LoanImportService
     private const CASH_ACCOUNT_CODE       = '1001'; // Cash At Hand
     private const ADMIN_FEE_ACCOUNT_CODE  = '4009'; // Loan Administrative Fee
     private const PROCESSING_FEE_ACCOUNT_CODE = '4005'; // Processing Fees
+
+    private const COLUMN_ALIASES = [
+        'date'            => ['date', 'issue_date', 'disbursement_date'],
+        'due_date'        => ['due_date', 'maturity_date'],
+        'client_number'   => ['client_number', 'client_id', 'client id'],
+        'principal'       => ['principal', 'loan_amount', 'amount'],
+        'admin_cost'      => ['admin_cost'],
+        'processing_fee'  => ['processing_fee', 'processing_fees'],
+        'guarantor_name'  => ['guarantor_name', 'guarantor'],
+        'guarantor_phone' => ['guarantor_phone'],
+        'status'          => ['status'],
+    ];
 
     public function __construct(
         protected LoanService $loanService,
@@ -53,7 +69,19 @@ class LoanImportService
         }
 
         $handle = fopen($path, 'r');
-        $header = array_map(fn ($h) => strtolower(trim((string) $h)), fgetcsv($handle) ?: []);
+        $rawHeader = array_map(fn ($h) => strtolower(trim((string) $h)), fgetcsv($handle) ?: []);
+
+        // Map each canonical field to whichever column index actually holds it in this sheet.
+        $col = [];
+        foreach (self::COLUMN_ALIASES as $field => $aliases) {
+            foreach ($aliases as $alias) {
+                $idx = array_search($alias, $rawHeader, true);
+                if ($idx !== false) {
+                    $col[$field] = $idx;
+                    break;
+                }
+            }
+        }
 
         $created = 0;
         $repaid = 0;
@@ -69,11 +97,15 @@ class LoanImportService
                 continue; // blank row
             }
 
-            $data = array_combine($header, array_pad($row, count($header), null));
+            // Canonical field name => raw cell value, using whichever column alias matched.
+            $data = [];
+            foreach ($col as $field => $idx) {
+                $data[$field] = $row[$idx] ?? null;
+            }
             $clientNumber = trim((string) ($data['client_number'] ?? ''));
 
             if ($clientNumber === '') {
-                $skipped[] = "Row {$rowNum}: {$data['sheet_name']} — no client_number, not imported";
+                $skipped[] = "Row {$rowNum} — no client number column matched, not imported";
                 continue;
             }
 
@@ -151,11 +183,18 @@ class LoanImportService
                     }
                 });
             } catch (\Throwable $e) {
-                $errors[] = "Row {$rowNum} ({$clientNumber} / " . ($data['sheet_name'] ?? '?') . "): " . $e->getMessage();
+                $errors[] = "Row {$rowNum} ({$clientNumber}): " . $e->getMessage();
             }
         }
         fclose($handle);
 
-        return compact('created', 'repaid', 'guarantors', 'feesPosted', 'skipped', 'errors');
+        return [
+            'created'     => $created,
+            'repaid'      => $repaid,
+            'guarantors'  => $guarantors,
+            'fees_posted' => $feesPosted,
+            'skipped'     => $skipped,
+            'errors'      => $errors,
+        ];
     }
 }

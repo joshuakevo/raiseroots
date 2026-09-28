@@ -319,10 +319,28 @@ $groupIcons = [
             @endif
 
             @if(count($r['flagged_phones']))
-            <div class="mb-0">
+            <div class="mb-2">
                 <div class="fw-semibold text-info small mb-1">Created but phone number looks off — check manually ({{ count($r['flagged_phones']) }})</div>
                 <ul class="small text-muted mb-0">
                     @foreach($r['flagged_phones'] as $line)<li>{{ $line }}</li>@endforeach
+                </ul>
+            </div>
+            @endif
+
+            @if(count($r['unmatched_officers'] ?? []))
+            <div class="mb-2">
+                <div class="fw-semibold text-warning small mb-1">Loan Officer name(s) not found — clients created unassigned ({{ count($r['unmatched_officers']) }})</div>
+                <ul class="small text-muted mb-0">
+                    @foreach($r['unmatched_officers'] as $line)<li>{{ $line }}</li>@endforeach
+                </ul>
+            </div>
+            @endif
+
+            @if(count($r['unmatched_branches'] ?? []))
+            <div class="mb-0">
+                <div class="fw-semibold text-warning small mb-1">Branch name(s) not found — used the default branch instead ({{ count($r['unmatched_branches']) }})</div>
+                <ul class="small text-muted mb-0">
+                    @foreach($r['unmatched_branches'] as $line)<li>{{ $line }}</li>@endforeach
                 </ul>
             </div>
             @endif
