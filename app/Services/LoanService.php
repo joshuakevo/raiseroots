@@ -734,6 +734,27 @@ class LoanService
         });
     }
 
+    /**
+     * Retroactively set the Admin Cost on a loan that was disbursed without one
+     * (e.g. the loan officer left the field blank). Only ever moves admin_cost
+     * from 0 -> something - once a loan has an Admin Cost, corrections to what's
+     * still owed go through ordinary repayments or recordAdminFee(), not this.
+     */
+    public function setAdminCost(Loan $loan, float $amount): void
+    {
+        $amount = round($amount, 2);
+        if ($amount <= 0.01) {
+            throw new \InvalidArgumentException('Enter an amount greater than zero.');
+        }
+        if ($loan->admin_cost > 0.01) {
+            throw new \InvalidArgumentException('This loan already has an Admin Cost recorded.');
+        }
+
+        $loan->update([
+            'admin_cost'            => $amount,
+            'outstanding_admin_fee' => $amount,
+        ]);
+    }
 
     protected function getInsuranceFeeAccount(): int
     {

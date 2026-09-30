@@ -32,6 +32,11 @@
                 <i class="bi bi-cash-coin me-1"></i>Record Admin Fee
             </button>
         @endif
+        @if($loan->admin_cost <= 0.01 && in_array($loan->status, ['active', 'defaulted']))
+            <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#setAdminCostModal">
+                <i class="bi bi-pencil-square me-1"></i>Set Admin Cost
+            </button>
+        @endif
         @endcan
         @can('create loans')
         @if(in_array($loan->status, ['pending', 'approved']))
@@ -589,6 +594,42 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button class="btn btn-sm btn-success"><i class="bi bi-check-lg me-1"></i>Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+@endcan
+
+{{-- Set Admin Cost Modal — for a loan that was disbursed without one recorded --}}
+@can('disburse loans')
+@if($loan->admin_cost <= 0.01 && in_array($loan->status, ['active', 'defaulted']))
+<div class="modal fade" id="setAdminCostModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-pencil-square me-1"></i>Set Admin Cost — {{ $loan->loan_number }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('loans.set-admin-cost', $loan) }}">
+                @csrf
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        This loan was disbursed without an Admin Cost recorded. Setting it here adds it to the
+                        loan's balance, to be collected through ordinary repayments (priority: interest → admin
+                        fee → principal) — nothing is posted to the books here, only as it's actually collected.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Admin Cost <span class="text-danger">*</span></label>
+                        <input type="number" name="amount" class="form-control" step="any" min="0.01" required
+                               value="{{ round($loan->principal * 0.122, 2) }}">
+                        <div class="form-text">Defaults to 12.2% of principal ({{ number_format($loan->principal, $dp) }}) — adjust if different.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm btn-warning"><i class="bi bi-check-lg me-1"></i>Set Admin Cost</button>
                 </div>
             </form>
         </div>

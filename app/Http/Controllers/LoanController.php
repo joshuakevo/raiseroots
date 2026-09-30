@@ -285,6 +285,21 @@ class LoanController extends Controller
         return back()->with('success', 'Admin Fee recorded for ' . $loan->loan_number . '.');
     }
 
+    public function setAdminCost(Request $request, Loan $loan)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        try {
+            $this->loanService->setAdminCost($loan, (float) $request->amount);
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Admin Cost of ' . number_format($request->amount, 2) . ' set for ' . $loan->loan_number . '.');
+    }
+
     public function approve(Loan $loan)
     {
         if ($loan->status !== 'pending') {
