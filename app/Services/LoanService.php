@@ -98,6 +98,28 @@ class LoanService
                 $insuranceFee,   $insuranceFeeMethod
             );
 
+            // Admin Fee: a separate cash charge collected alongside the loan, not deducted
+            // from it - the client still receives the full principal. Posted as its own
+            // standalone transaction (same account/description convention LoanImportService
+            // uses for historical disbursements), so it's picked up by the same "has an admin
+            // fee been collected for this loan" check the Loans list uses, however/whenever
+            // it's recorded - here at disbursement, or later via a manual journal entry if it
+            // wasn't collected yet.
+            $adminFee = round((float) ($feeData['admin_fee_amount'] ?? 0), 2);
+            if ($adminFee > 0.01) {
+                $cashAccount = Account::where('account_code', '1001')->firstOrFail();
+                $this->accounting->post(
+                    $disbursementDate,
+                    "Admin cost - {$loan->loan_number}",
+                    [
+                        ['account_id' => $cashAccount->id, 'debit' => $adminFee, 'credit' => 0, 'client_id' => $loan->client_id],
+                        ['account_id' => $this->getManagementFeeAccount(), 'debit' => 0, 'credit' => $adminFee],
+                    ],
+                    'loan',
+                    $loan->id
+                );
+            }
+
             // Deduct savings-method fees from the savings account
             if ($anySavings && !empty($feeData['savings_account_id'])) {
                 $savingsAccount = SavingsAccount::findOrFail($feeData['savings_account_id']);

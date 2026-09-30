@@ -93,6 +93,15 @@
                     </dd>
                     @endif
                     @endif
+                    <dt class="col-6 fw-normal text-muted">Admin Fee</dt>
+                    <dd class="col-6">
+                        @if($loan->admin_fee_paid)
+                            <span class="text-success fw-semibold">{{ number_format($loan->admin_fee_amount, $dp) }}</span>
+                            <span class="text-muted small">({{ \Carbon\Carbon::parse($loan->admin_fee_paid_date)->format('d M Y') }})</span>
+                        @else
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Not paid</span>
+                        @endif
+                    </dd>
                 </dl>
             </div>
         </div>
@@ -458,122 +467,35 @@
                 @csrf
                 <div class="modal-body">
 
-                    {{-- Per-fee rate + method table --}}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Fees &amp; Deduction Method</label>
-                        <table class="table table-sm table-bordered mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width:130px">Fee</th>
-                                    <th style="width:200px">Amount / Rate</th>
-                                    <th class="text-end" style="width:140px">Amount</th>
-                                    <th>Deduct From</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="fw-semibold align-middle">Application Fees</td>
-                                    <td>
-                                        <input type="number" name="application_fee_amount" id="appFeeAmt"
-                                               class="form-control" value="50000"
-                                               step="1000" min="0" required oninput="recalcFees()">
-                                        <input type="hidden" name="application_fee_rate" value="0">
-                                    </td>
-                                    <td class="text-end align-middle fw-semibold" id="appFeeDisplay">50,000.00</td>
-                                    <td class="align-middle">
-                                        <div class="btn-group w-100" role="group">
-                                            <input type="radio" class="btn-check" name="application_fee_method" id="appFromLoan" value="loan" checked onchange="recalcFees()">
-                                            <label class="btn btn-outline-secondary" for="appFromLoan">Loan</label>
-                                            <input type="radio" class="btn-check" name="application_fee_method" id="appFromSav" value="savings" onchange="recalcFees()">
-                                            <label class="btn btn-outline-primary" for="appFromSav">Savings</label>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-semibold align-middle">Management</td>
-                                    <td>
-                                        <div class="input-group">
-                                            <input type="number" name="management_fee_rate" id="mgmtFeeRate"
-                                                   class="form-control" value="1.5" step="any" min="0" max="100"
-                                                   required oninput="recalcFees()">
-                                            <span class="input-group-text">%</span>
-                                        </div>
-                                    </td>
-                                    <td class="text-end align-middle fw-semibold" id="mgmtFeeAmt">0.00</td>
-                                    <td class="align-middle">
-                                        <div class="btn-group w-100" role="group">
-                                            <input type="radio" class="btn-check" name="management_fee_method" id="mgmtFromLoan" value="loan" checked onchange="recalcFees()">
-                                            <label class="btn btn-outline-secondary" for="mgmtFromLoan">Loan</label>
-                                            <input type="radio" class="btn-check" name="management_fee_method" id="mgmtFromSav" value="savings" onchange="recalcFees()">
-                                            <label class="btn btn-outline-primary" for="mgmtFromSav">Savings</label>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-semibold align-middle">Insurance</td>
-                                    <td>
-                                        <div class="input-group">
-                                            <input type="number" name="insurance_fee_rate" id="insFeeRate"
-                                                   class="form-control" value="1.5" step="any" min="0" max="100"
-                                                   required oninput="recalcFees()">
-                                            <span class="input-group-text">%</span>
-                                        </div>
-                                    </td>
-                                    <td class="text-end align-middle fw-semibold" id="insFeeAmt">0.00</td>
-                                    <td class="align-middle">
-                                        <div class="btn-group w-100" role="group">
-                                            <input type="radio" class="btn-check" name="insurance_fee_method" id="insFromLoan" value="loan" checked onchange="recalcFees()">
-                                            <label class="btn btn-outline-secondary" for="insFromLoan">Loan</label>
-                                            <input type="radio" class="btn-check" name="insurance_fee_method" id="insFromSav" value="savings" onchange="recalcFees()">
-                                            <label class="btn btn-outline-primary" for="insFromSav">Savings</label>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
                     {{-- Fee Summary Banner --}}
                     <div class="card border-0 bg-light mb-3">
                         <div class="card-body py-2">
                             <div class="row text-center">
-                                <div class="col-4">
+                                <div class="col-6">
                                     <div class="text-muted">Principal</div>
                                     <div class="fw-bold">{{ number_format($loan->principal, $dp) }}</div>
                                 </div>
-                                <div class="col-4">
-                                    <div class="text-muted">Loan-deducted Fees</div>
-                                    <div class="fw-bold text-danger" id="totalFeesDisplay">0.00</div>
-                                    <div style="font-size:.68rem" class="text-muted" id="savFeeNote">Savings fees: 0.00</div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="text-muted">Net Cash to Client</div>
-                                    <div class="fw-bold text-success" id="netDisb">{{ number_format($loan->principal, $dp) }}</div>
+                                <div class="col-6">
+                                    <div class="text-muted">Cash to Client</div>
+                                    <div class="fw-bold text-success">{{ number_format($loan->principal, $dp) }}</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Disbursement Date <span class="text-danger">*</span></label>
-                        <input type="date" name="disbursement_date" class="form-control" value="{{ today()->toDateString() }}" required>
+                        <label class="form-label fw-semibold">Admin Fee</label>
+                        <input type="number" name="admin_fee_amount" class="form-control" value="0" step="1000" min="0">
+                        <div class="form-text">
+                            Collected separately in cash, alongside the loan — not deducted from the principal above.
+                            Leave at 0 if not collected yet; it can be recorded later from Accounting &gt; Journal Entries.
+                        </div>
                     </div>
 
-                    <div id="savingsAccountRow" style="display:none" class="mb-3">
-                        <label class="form-label fw-semibold">Savings Account (for fees) <span class="text-danger">*</span></label>
-                        <select name="fee_savings_account_id" id="feeSavingsAccount" class="form-select" onchange="recalcFees()">
-                            <option value="">— Select savings account —</option>
-                            @foreach($clientSavingsAccounts as $sa)
-                            <option value="{{ $sa->id }}" data-balance="{{ $sa->balance }}">
-                                {{ $sa->account_number }} — {{ $sa->product->name }}
-                                (Bal: {{ number_format($sa->balance, $dp) }})
-                            </option>
-                            @endforeach
-                        </select>
-                        <div class="form-text" id="savingsBalNote"></div>
-                        @if($clientSavingsAccounts->isEmpty())
-                            <div class="form-text text-danger">This client has no active savings accounts.</div>
-                        @endif
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Disbursement Date <span class="text-danger">*</span></label>
+                        <input type="date" name="disbursement_date" class="form-control" value="{{ today()->toDateString() }}" required>
+                        <div class="form-text">Also used as the Admin Fee's date, if one is entered above.</div>
                     </div>
 
                 </div>
@@ -616,63 +538,5 @@
 @endif
 @endcan
 
-@push('scripts')
-<script>
-const _principal = {{ $loan->principal }};
-
-function fmt(n) { return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
-
-function feeMethod(name) {
-    const el = document.querySelector('input[name="' + name + '"]:checked');
-    return el ? el.value : 'loan';
-}
-
-function recalcFees() {
-    const appFee   = parseFloat(document.getElementById('appFeeAmt').value)   || 0;
-    const mgmtRate = parseFloat(document.getElementById('mgmtFeeRate').value) || 0;
-    const insRate  = parseFloat(document.getElementById('insFeeRate').value)  || 0;
-    const mgmtFee  = _principal * mgmtRate / 100;
-    const insFee   = _principal * insRate  / 100;
-
-    document.getElementById('appFeeDisplay').textContent = fmt(appFee);
-    document.getElementById('mgmtFeeAmt').textContent    = fmt(mgmtFee);
-    document.getElementById('insFeeAmt').textContent     = fmt(insFee);
-
-    const appMethod  = feeMethod('application_fee_method');
-    const mgmtMethod = feeMethod('management_fee_method');
-    const insMethod  = feeMethod('insurance_fee_method');
-
-    const loanFees    = (appMethod  === 'loan'    ? appFee  : 0)
-                      + (mgmtMethod === 'loan'    ? mgmtFee : 0)
-                      + (insMethod  === 'loan'    ? insFee  : 0);
-    const savingsFees = (appMethod  === 'savings' ? appFee  : 0)
-                      + (mgmtMethod === 'savings' ? mgmtFee : 0)
-                      + (insMethod  === 'savings' ? insFee  : 0);
-
-    document.getElementById('totalFeesDisplay').textContent = fmt(loanFees);
-    document.getElementById('savFeeNote').textContent       = 'Savings fees: ' + fmt(savingsFees);
-    document.getElementById('netDisb').textContent          = fmt(_principal - loanFees);
-
-    // Show savings account row if any fee is set to savings
-    document.getElementById('savingsAccountRow').style.display = savingsFees > 0 ? '' : 'none';
-
-    checkSavBal(savingsFees);
-}
-
-function checkSavBal(savingsFees) {
-    if (savingsFees <= 0) return;
-    const sel  = document.getElementById('feeSavingsAccount');
-    const opt  = sel?.options[sel.selectedIndex];
-    const note = document.getElementById('savingsBalNote');
-    if (!opt?.dataset.balance) { if(note) note.textContent = ''; return; }
-    const bal = parseFloat(opt.dataset.balance) || 0;
-    note.textContent = 'Available: ' + fmt(bal) + ' — Required: ' + fmt(savingsFees);
-    note.className   = 'form-text ' + (bal >= savingsFees ? 'text-success' : 'text-danger');
-}
-
-// Initialise on page load
-recalcFees();
-</script>
-@endpush
 
 @endsection
