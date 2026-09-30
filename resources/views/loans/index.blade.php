@@ -75,8 +75,10 @@
                         @endif
                     </td>
                     <td class="small text-muted">{{ $loan->product->name }}</td>
-                    <td class="text-end fw-semibold {{ $loan->outstanding_principal > 0 ? 'text-warning' : 'text-success' }}">
-                        {{ number_format($loan->outstanding_principal, $dp) }}
+                    @php $outstandingTotal = $loan->outstanding_principal + $loan->outstanding_interest; @endphp
+                    <td class="text-end fw-semibold {{ $outstandingTotal > 0 ? 'text-warning' : 'text-success' }}"
+                        title="Principal {{ number_format($loan->outstanding_principal, $dp) }} + Interest {{ number_format($loan->outstanding_interest, $dp) }}">
+                        {{ number_format($outstandingTotal, $dp) }}
                     </td>
                     <td class="small text-muted">{{ $loan->disbursement_date?->format('d M Y') ?? '—' }}</td>
                     <td class="small text-muted">{{ $loan->client?->relationshipManager?->name ?? '—' }}</td>
