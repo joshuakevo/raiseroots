@@ -417,7 +417,7 @@ class LoanController extends Controller
             return back()->with('error', 'Only active or defaulted loans can accept repayments.');
         }
 
-        $total = $loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_penalty;
+        $total = $loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_penalty + $loan->outstanding_admin_fee;
         if ($request->amount > $total + 0.01) {
             return back()->withErrors(['amount' => 'Repayment cannot exceed total outstanding balance.'])->withInput();
         }
