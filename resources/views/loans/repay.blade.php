@@ -23,8 +23,14 @@
                 @if($penaltyDue > 0)
                 <div class="d-flex justify-content-between mb-1"><span class="text-muted">Penalty</span><span class="fw-semibold text-danger">{{ number_format($penaltyDue, $dp) }}</span></div>
                 @endif
+                @if($adminCostPending > 0)
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">Admin Cost <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size:.6rem">pending</span></span><span class="fw-semibold text-warning-emphasis">{{ number_format($adminCostPending, $dp) }}</span></div>
+                @endif
                 <hr class="my-2">
-                <div class="d-flex justify-content-between"><span class="fw-semibold">Total Outstanding</span><span class="fw-bold text-danger">{{ number_format($loan->total_outstanding + $penaltyDue, $dp) }}</span></div>
+                <div class="d-flex justify-content-between"><span class="fw-semibold">Total Outstanding</span><span class="fw-bold text-danger">{{ number_format($loan->total_outstanding + $penaltyDue + $adminCostPending, $dp) }}</span></div>
+                @if($adminCostPending > 0)
+                <div class="text-muted mt-1" style="font-size:.68rem">Includes {{ number_format($adminCostPending, $dp) }} pending Admin Cost — collected separately, not part of the repayment below.</div>
+                @endif
             </div>
         </div>
 

@@ -339,9 +339,27 @@ class LoanController extends Controller
 
         $paymentSourceAccounts = \App\Models\Account::where('is_payment_source', true)->where('is_active', true)->orderBy('account_code')->get();
 
+        // Admin Cost, if still pending (expected but not yet collected separately - see
+        // Loan Details on the loan page) - shown alongside Total Outstanding for
+        // visibility only. It's not part of the loan schedule, so it's never added to
+        // the actual repayment amount/allocation below.
+        $adminCostPending = 0.0;
+        if ($loan->admin_cost > 0) {
+            $feeAccountId = \App\Models\Account::where('account_code', '4009')->value('id');
+            $alreadyCollected = $feeAccountId && \App\Models\TransactionLine::query()
+                ->join('transactions', 'transactions.id', '=', 'transaction_lines.transaction_id')
+                ->where('transaction_lines.account_id', $feeAccountId)
+                ->where('transactions.module', 'loan')
+                ->where('transactions.module_id', $loan->id)
+                ->where('transaction_lines.credit', '>', 0)
+                ->exists();
+            $adminCostPending = $alreadyCollected ? 0.0 : (float) $loan->admin_cost;
+        }
+
         return view('loans.repay', compact(
             'loan', 'nextInstallment', 'overdueInstallments', 'overdueAmount',
-            'suggestedAmount', 'savingsAccounts', 'penaltyDue', 'earlySettlement', 'schedulesJson', 'paymentSourceAccounts'
+            'suggestedAmount', 'savingsAccounts', 'penaltyDue', 'earlySettlement', 'schedulesJson', 'paymentSourceAccounts',
+            'adminCostPending'
         ));
     }
 
