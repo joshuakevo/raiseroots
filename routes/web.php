@@ -371,6 +371,8 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/admin-cost-fix-apply', [SettingsController::class, 'runDeleteAdminCostEntries'])->name('settings.admin-cost-fix-apply');
         Route::post('settings/admin-cost-backfill-preview', [SettingsController::class, 'previewBackfillAdminCost'])->name('settings.admin-cost-backfill-preview');
         Route::post('settings/admin-cost-backfill-apply', [SettingsController::class, 'runBackfillAdminCost'])->name('settings.admin-cost-backfill-apply');
+        Route::post('settings/outstanding-admin-fee-backfill-preview', [SettingsController::class, 'previewBackfillOutstandingAdminFee'])->name('settings.outstanding-admin-fee-backfill-preview');
+        Route::post('settings/outstanding-admin-fee-backfill-apply', [SettingsController::class, 'runBackfillOutstandingAdminFee'])->name('settings.outstanding-admin-fee-backfill-apply');
         Route::post('settings/reset-production-preview', [SettingsController::class, 'previewResetProductionData'])->name('settings.reset-production-preview');
         Route::post('settings/reset-production-apply', [SettingsController::class, 'runResetProductionData'])->name('settings.reset-production-apply');
     });

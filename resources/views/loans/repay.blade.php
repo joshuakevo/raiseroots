@@ -20,17 +20,14 @@
                 <hr class="my-2">
                 <div class="d-flex justify-content-between mb-1"><span class="text-muted">Principal O/S</span><span class="fw-semibold text-warning">{{ number_format($loan->outstanding_principal, $dp) }}</span></div>
                 <div class="d-flex justify-content-between mb-1"><span class="text-muted">Interest O/S</span><span class="fw-semibold text-info">{{ number_format($loan->outstanding_interest, $dp) }}</span></div>
+                @if($loan->outstanding_admin_fee > 0)
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">Admin Fee O/S</span><span class="fw-semibold text-warning-emphasis">{{ number_format($loan->outstanding_admin_fee, $dp) }}</span></div>
+                @endif
                 @if($penaltyDue > 0)
                 <div class="d-flex justify-content-between mb-1"><span class="text-muted">Penalty</span><span class="fw-semibold text-danger">{{ number_format($penaltyDue, $dp) }}</span></div>
                 @endif
-                @if($adminCostPending > 0)
-                <div class="d-flex justify-content-between mb-1"><span class="text-muted">Admin Cost <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size:.6rem">pending</span></span><span class="fw-semibold text-warning-emphasis">{{ number_format($adminCostPending, $dp) }}</span></div>
-                @endif
                 <hr class="my-2">
-                <div class="d-flex justify-content-between"><span class="fw-semibold">Total Outstanding</span><span class="fw-bold text-danger">{{ number_format($loan->total_outstanding + $penaltyDue + $adminCostPending, $dp) }}</span></div>
-                @if($adminCostPending > 0)
-                <div class="text-muted mt-1" style="font-size:.68rem">Includes {{ number_format($adminCostPending, $dp) }} pending Admin Cost — collected separately, not part of the repayment below.</div>
-                @endif
+                <div class="d-flex justify-content-between"><span class="fw-semibold">Total Outstanding</span><span class="fw-bold text-danger">{{ number_format($loan->total_outstanding + $penaltyDue, $dp) }}</span></div>
             </div>
         </div>
 
@@ -158,6 +155,7 @@
                             <strong>Early Settlement:</strong>
                             Principal {{ number_format($earlySettlement['principal'], $dp) }}
                             + Interest to date {{ number_format($earlySettlement['interest'], $dp) }}
+                            @if($earlySettlement['admin_fee'] > 0) + Admin Fee {{ number_format($earlySettlement['admin_fee'], $dp) }} @endif
                             @if($earlySettlement['penalty'] > 0) + Penalty {{ number_format($earlySettlement['penalty'], $dp) }} @endif
                             = <strong>{{ number_format($earlySettlement['total'], $dp) }}</strong>
                             <span class="text-success ms-1">(saves {{ number_format($totalOwed - $earlySettlement['total'], $dp) }} in future interest)</span>
@@ -186,7 +184,7 @@
 
                     <div class="alert alert-secondary small mb-3">
                         <i class="bi bi-info-circle me-1"></i>
-                        Allocation: <strong>Penalty → then per installment (Interest → Principal), earliest first</strong>
+                        Allocation: <strong>Penalty → Interest (earliest first) → Admin Fee → Principal (earliest first)</strong>
                     </div>
 
                     <div class="d-flex gap-2">
@@ -201,9 +199,10 @@
 @endsection
 @push('scripts')
 <script>
-var penaltyDue = {{ $penaltyDue }};
-var schedules  = @json($schedulesJson);
-var dp         = {{ $dp }};
+var penaltyDue   = {{ $penaltyDue }};
+var adminFeeDue  = {{ $loan->outstanding_admin_fee }};
+var schedules    = @json($schedulesJson);
+var dp           = {{ $dp }};
 
 function fmt(val) {
     return parseFloat(val).toFixed(dp);
@@ -217,26 +216,41 @@ function setAmount(val) {
 function updateBreakdown() {
     var amount    = parseFloat(document.getElementById('amountInput').value) || 0;
     var remaining = amount;
-    var totalInterest = 0, totalPrincipal = 0, totalPenalty = 0;
-    var installmentsCovered = [];
+    var totalInterest = 0, totalPrincipal = 0, totalPenalty = 0, totalAdminFee = 0;
+    var touched = {};
 
-    // Penalty first
+    // 1. Penalty first
     var pPenalty = Math.min(remaining, penaltyDue);
     remaining -= pPenalty;
     totalPenalty = pPenalty;
 
-    // Per-installment: interest then principal
     var schCopy = schedules.map(function(s) { return {installment_no: s.installment_no, iRem: s.interest_rem, pRem: s.principal_rem}; });
+
+    // 2. Interest across every due installment, earliest first
     for (var i = 0; i < schCopy.length && remaining > 0; i++) {
         var s = schCopy[i];
         var iApply = Math.min(remaining, s.iRem); remaining -= iApply; totalInterest += iApply; s.iRem -= iApply;
-        var pApply = Math.min(remaining, s.pRem); remaining -= pApply; totalPrincipal += pApply; s.pRem -= pApply;
-        if (iApply > 0 || pApply > 0) installmentsCovered.push(s.installment_no);
+        if (iApply > 0) touched[s.installment_no] = true;
     }
+
+    // 3. Admin Fee - a single loan-level amount, not tied to any installment
+    var feeApply = Math.min(remaining, adminFeeDue);
+    remaining -= feeApply;
+    totalAdminFee = feeApply;
+
+    // 4. Principal across every due installment, earliest first
+    for (var i = 0; i < schCopy.length && remaining > 0; i++) {
+        var s = schCopy[i];
+        var pApply = Math.min(remaining, s.pRem); remaining -= pApply; totalPrincipal += pApply; s.pRem -= pApply;
+        if (pApply > 0) touched[s.installment_no] = true;
+    }
+
+    var installmentsCovered = Object.keys(touched).map(Number).sort(function(a, b) { return a - b; });
 
     var parts = [];
     if (totalPenalty  > 0) parts.push('Penalty: ' + fmt(totalPenalty));
     if (totalInterest > 0) parts.push('Interest: ' + fmt(totalInterest));
+    if (totalAdminFee > 0) parts.push('Admin Fee: ' + fmt(totalAdminFee));
     if (totalPrincipal> 0) parts.push('Principal: ' + fmt(totalPrincipal));
     if (installmentsCovered.length > 0) parts.push('Installments: #' + installmentsCovered.join(', #'));
 

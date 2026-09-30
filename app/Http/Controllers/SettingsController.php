@@ -642,6 +642,26 @@ class SettingsController extends Controller
     }
 
     /**
+     * Preview app\Console\Commands\BackfillOutstandingAdminFee.php without applying it.
+     * Remove this + runBackfillOutstandingAdminFee() once the one-time fix is confirmed complete.
+     */
+    public function previewBackfillOutstandingAdminFee()
+    {
+        Artisan::call('eltech:backfill-outstanding-admin-fee');
+        $output = trim(Artisan::output());
+
+        return back()->with('outstandingAdminFeeBackfillOutput', $output);
+    }
+
+    public function runBackfillOutstandingAdminFee()
+    {
+        Artisan::call('eltech:backfill-outstanding-admin-fee', ['--commit' => true]);
+        $output = trim(Artisan::output());
+
+        return back()->with('outstandingAdminFeeBackfillOutput', $output);
+    }
+
+    /**
      * "Go-live wipe" — clears client/transaction data, keeps setup (chart of
      * accounts, products, branches, collateral categories, financial periods,
      * settings) and every user, role and permission exactly as they are.

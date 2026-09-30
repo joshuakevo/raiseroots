@@ -87,7 +87,8 @@ class LoanService
                 'insurance_fee'            => $insuranceFee,
                 'insurance_fee_rate'       => $insuranceFeeRate,
                 'insurance_fee_method'     => $insuranceFeeMethod,
-                'admin_cost'               => round((float) ($feeData['admin_cost'] ?? 0), 2),
+                'admin_cost'               => $adminCostAtDisbursement = round((float) ($feeData['admin_cost'] ?? 0), 2),
+                'outstanding_admin_fee'    => $adminCostAtDisbursement,
                 'fee_savings_account_id'   => $anySavings ? ($feeData['savings_account_id'] ?? null) : null,
             ]);
 
@@ -382,6 +383,7 @@ class LoanService
 
             $penaltyPaid   = 0;
             $interestPaid  = 0;
+            $adminFeePaid  = 0;
             $principalPaid = 0;
 
             // 1. Penalty first
@@ -391,31 +393,50 @@ class LoanService
                 $remaining  -= $penaltyPaid;
             }
 
-            // 2. Per-installment allocation (interest → principal), earliest first
             $schedules = $loan->schedules()
                 ->whereIn('status', ['pending', 'partial', 'overdue'])
                 ->orderBy('installment_no')
                 ->get();
 
+            // 2. Interest across every due installment, earliest first - before touching
+            // Admin Fee or principal on any of them.
             foreach ($schedules as $schedule) {
                 if ($remaining <= 0) break;
 
                 $iDue = $schedule->interest_due - $schedule->interest_paid;
-                if ($remaining > 0 && $iDue > 0) {
+                if ($iDue > 0) {
                     $iApply = min($remaining, $iDue);
                     $schedule->interest_paid += $iApply;
                     $interestPaid            += $iApply;
                     $remaining               -= $iApply;
                 }
+            }
+
+            // 3. Admin Fee - a one-time amount owed from disbursement, not tied to any
+            // specific installment, so it's a single loan-level draw-down rather than
+            // something spread across the schedule.
+            if ($remaining > 0 && $loan->outstanding_admin_fee > 0) {
+                $adminFeePaid = min($remaining, $loan->outstanding_admin_fee);
+                $remaining   -= $adminFeePaid;
+            }
+
+            // 4. Principal across every due installment, earliest first - only once
+            // interest and Admin Fee are both clear.
+            foreach ($schedules as $schedule) {
+                if ($remaining <= 0) break;
 
                 $pDue = $schedule->principal_due - $schedule->principal_paid;
-                if ($remaining > 0 && $pDue > 0) {
+                if ($pDue > 0) {
                     $pApply = min($remaining, $pDue);
                     $schedule->principal_paid += $pApply;
                     $principalPaid            += $pApply;
                     $remaining                -= $pApply;
                 }
+            }
 
+            // Status depends on the final interest_paid/principal_paid from both passes
+            // above, so it's set once here rather than after either pass individually.
+            foreach ($schedules as $schedule) {
                 if (
                     abs($schedule->principal_paid - $schedule->principal_due) < 0.01 &&
                     abs($schedule->interest_paid  - $schedule->interest_due)  < 0.01
@@ -433,7 +454,7 @@ class LoanService
                 ? (int) $data['payment_source_account_id']
                 : null;
 
-            $transaction = $this->postRepaymentJournal($loan, $data['payment_date'], $principalPaid, $interestPaid, $penaltyPaid, $data['reference'] ?? null, $paymentSourceAccountId);
+            $transaction = $this->postRepaymentJournal($loan, $data['payment_date'], $principalPaid, $interestPaid, $penaltyPaid, $adminFeePaid, $data['reference'] ?? null, $paymentSourceAccountId);
 
             $repayment = LoanRepayment::create([
                 'loan_id'                  => $loan->id,
@@ -442,6 +463,7 @@ class LoanService
                 'principal_paid'           => $principalPaid,
                 'interest_paid'            => $interestPaid,
                 'penalty_paid'             => $penaltyPaid,
+                'admin_fee_paid'           => $adminFeePaid,
                 'payment_method'           => $data['payment_method'] ?? 'direct',
                 'payment_source_account_id'=> $paymentSourceAccountId,
                 'reference'                => $data['reference'] ?? null,
@@ -454,14 +476,16 @@ class LoanService
             $newPrincipal = $loan->outstanding_principal - $principalPaid;
             $newInterest  = $loan->outstanding_interest  - $interestPaid;
             $newPenalty   = max(0, $loan->outstanding_penalty - $penaltyPaid);
+            $newAdminFee  = max(0, $loan->outstanding_admin_fee - $adminFeePaid);
 
             $loan->update([
                 'outstanding_principal' => max(0, $newPrincipal),
                 'outstanding_interest'  => max(0, $newInterest),
                 'outstanding_penalty'   => $newPenalty,
+                'outstanding_admin_fee' => $newAdminFee,
             ]);
 
-            if ($newPrincipal <= 0.01 && $newInterest <= 0.01 && $newPenalty <= 0.01) {
+            if ($newPrincipal <= 0.01 && $newInterest <= 0.01 && $newPenalty <= 0.01 && $newAdminFee <= 0.01) {
                 $loan->update(['status' => 'closed']);
             }
 
@@ -477,6 +501,7 @@ class LoanService
     public function calculateEarlySettlement(Loan $loan, string $date): array
     {
         $principal = $loan->outstanding_principal;
+        $adminFee  = $loan->outstanding_admin_fee;
         $penalty   = $this->calculatePenalty($loan);
 
         $schedules = $loan->schedules()
@@ -502,8 +527,9 @@ class LoanService
         return [
             'principal' => round($principal, 2),
             'interest'  => round($interestDue, 2),
+            'admin_fee' => round($adminFee, 2),
             'penalty'   => round($penalty, 2),
-            'total'     => round($principal + $interestDue + $penalty, 2),
+            'total'     => round($principal + $interestDue + $adminFee + $penalty, 2),
         ];
     }
 
@@ -676,8 +702,8 @@ class LoanService
         if ($amount <= 0.01) {
             throw new \InvalidArgumentException('Enter an amount greater than zero.');
         }
-        if ($this->hasAdminFeePosted($loan)) {
-            throw new \InvalidArgumentException('An Admin Fee has already been recorded for this loan.');
+        if ($loan->outstanding_admin_fee <= 0.01) {
+            throw new \InvalidArgumentException('This loan has no outstanding Admin Fee to record.');
         }
 
         $cashAccount = Account::where('account_code', '1001')->first();
@@ -686,29 +712,28 @@ class LoanService
             throw new \InvalidArgumentException('Required GL accounts (1001, 4009) are missing.');
         }
 
-        $this->accounting->post(
-            $paidDate,
-            "Admin cost - {$loan->loan_number}",
-            [
-                ['account_id' => $cashAccount->id, 'debit' => $amount, 'credit' => 0, 'client_id' => $loan->client_id],
-                ['account_id' => $feeAccount->id, 'debit' => 0, 'credit' => $amount],
-            ],
-            'loan',
-            $loan->id
-        );
+        DB::transaction(function () use ($loan, $amount, $paidDate, $cashAccount, $feeAccount) {
+            $this->accounting->post(
+                $paidDate,
+                "Admin cost - {$loan->loan_number}",
+                [
+                    ['account_id' => $cashAccount->id, 'debit' => $amount, 'credit' => 0, 'client_id' => $loan->client_id],
+                    ['account_id' => $feeAccount->id, 'debit' => 0, 'credit' => $amount],
+                ],
+                'loan',
+                $loan->id
+            );
+
+            $loan->update(['outstanding_admin_fee' => max(0, $loan->outstanding_admin_fee - $amount)]);
+
+            if ($loan->outstanding_principal <= 0.01 && $loan->outstanding_interest <= 0.01
+                && $loan->outstanding_penalty <= 0.01 && $loan->outstanding_admin_fee <= 0.01
+                && $loan->status === 'active') {
+                $loan->update(['status' => 'closed']);
+            }
+        });
     }
 
-    /** Whether an Admin Fee (GL 4009, tagged to this loan) has been posted yet, at any date. */
-    public function hasAdminFeePosted(Loan $loan): bool
-    {
-        return \App\Models\TransactionLine::query()
-            ->join('transactions', 'transactions.id', '=', 'transaction_lines.transaction_id')
-            ->where('transaction_lines.account_id', $this->getManagementFeeAccount())
-            ->where('transactions.module', 'loan')
-            ->where('transactions.module_id', $loan->id)
-            ->where('transaction_lines.credit', '>', 0)
-            ->exists();
-    }
 
     protected function getInsuranceFeeAccount(): int
     {
@@ -732,10 +757,10 @@ class LoanService
         return Account::where('account_code', $fallbackAccountCode)->value('id') ?? 1;
     }
 
-    protected function postRepaymentJournal(Loan $loan, string $date, float $principalPaid, float $interestPaid, float $penaltyPaid, ?string $reference = null, ?int $paymentSourceAccountId = null): \App\Models\Transaction
+    protected function postRepaymentJournal(Loan $loan, string $date, float $principalPaid, float $interestPaid, float $penaltyPaid, float $adminFeePaid = 0, ?string $reference = null, ?int $paymentSourceAccountId = null): \App\Models\Transaction
     {
         $product = $loan->product;
-        $total = $principalPaid + $interestPaid + $penaltyPaid;
+        $total = $principalPaid + $interestPaid + $penaltyPaid + $adminFeePaid;
 
         $lines = [
             [
@@ -770,6 +795,15 @@ class LoanService
                 'debit'       => 0,
                 'credit'      => $penaltyPaid,
                 'description' => "Penalty income - {$loan->loan_number}",
+            ];
+        }
+
+        if ($adminFeePaid > 0) {
+            $lines[] = [
+                'account_id'  => $this->getManagementFeeAccount(), // GL 4009 - Loan Administrative Fee
+                'debit'       => 0,
+                'credit'      => $adminFeePaid,
+                'description' => "Admin fee - {$loan->loan_number}",
             ];
         }
 

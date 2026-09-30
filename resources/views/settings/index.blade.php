@@ -728,6 +728,44 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- One-time: initialize outstanding_admin_fee now that Admin Fee is part of the loan balance --}}
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-octagon text-danger"></i>
+        <span>Initialize Outstanding Admin Fee (existing loans)</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            One-time fix: Admin Fee is now part of the loan balance, collected through ordinary repayments
+            (priority: penalty → interest → admin fee → principal), not tracked separately. Every loan that
+            already has an Admin Cost figure recorded needs its new "still owed" balance initialized to match —
+            minus whatever's already been collected for it, so a loan like LN-2026-00177 (already settled via a
+            manual entry) correctly starts at 0, not the full amount. Closed loans are left alone. Safe to
+            re-run — always recalculated from the ledger, so it won't undo real repayment progress.
+            <strong>Preview first</strong> to confirm exactly what will change.
+        </p>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ route('settings.outstanding-admin-fee-backfill-preview') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </button>
+            </form>
+            <form method="POST" action="{{ route('settings.outstanding-admin-fee-backfill-apply') }}"
+                  onsubmit="return confirm('This sets the outstanding Admin Fee balance on every affected loan. Only proceed after reviewing the Preview output. Continue?')">
+                @csrf
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-check2-circle me-2"></i>Apply
+                </button>
+            </form>
+        </div>
+
+        @if(session('outstandingAdminFeeBackfillOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('outstandingAdminFeeBackfillOutput') }}</pre>
+        @endif
+    </div>
+</div>
+
 {{-- Go-live wipe: clears client/transaction data, keeps setup + one superadmin --}}
 <div class="card mt-4 border-danger">
     <div class="card-header d-flex align-items-center gap-2">

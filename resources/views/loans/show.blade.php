@@ -27,7 +27,7 @@
                 <i class="bi bi-send me-1"></i>Disburse Loan
             </button>
         @endif
-        @if(!$adminFeeCollected)
+        @if($loan->outstanding_admin_fee > 0.01)
             <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#adminFeeModal">
                 <i class="bi bi-cash-coin me-1"></i>Record Admin Fee
             </button>
@@ -98,12 +98,15 @@
                     </dd>
                     @endif
                     @endif
-                    @if($loan->admin_cost > 0 || $adminFeeCollected)
+                    @if($loan->admin_cost > 0)
                     <dt class="col-6 fw-normal text-muted">Admin Cost</dt>
-                    <dd class="col-6">{{ number_format($adminFeeCollected ? $adminFeeInfo->amount : $loan->admin_cost, $dp) }}
+                    <dd class="col-6">{{ number_format($loan->admin_cost, $dp) }}
                         @if($adminFeeCollected)
                             <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:.65rem"
-                                  title="Collected {{ \Carbon\Carbon::parse($adminFeeInfo->paid_date)->format('d M Y') }}">collected</span>
+                                  title="{{ $adminFeePaidDate ? 'Collected '.\Carbon\Carbon::parse($adminFeePaidDate)->format('d M Y') : 'Collected' }}">collected</span>
+                        @elseif($adminFeePartial)
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1" style="font-size:.65rem"
+                                  title="{{ number_format($loan->outstanding_admin_fee, $dp) }} still outstanding">partial</span>
                         @else
                             <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size:.65rem">pending</span>
                         @endif
@@ -480,9 +483,10 @@
                             <input type="number" name="admin_cost" id="adminCostInput" class="form-control" step="any" min="0"
                                    value="{{ round($loan->principal * 0.122, 2) }}">
                             <div class="form-text">
-                                Defaults to 12.2% of principal — adjust if needed. Recorded on the loan as pending;
-                                not yet collected, so nothing is posted to the books until it's actually paid
-                                (record that later from Accounting &gt; Journal Entries, or once collected).
+                                Defaults to 12.2% of principal — adjust if needed. Added to the loan's balance and
+                                collected through the client's ordinary repayments (priority: interest → admin fee
+                                → principal) — nothing is posted to the books at disbursement, only as it's
+                                actually collected.
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -506,7 +510,7 @@
                                 </div>
                                 <div class="col-4">
                                     <div class="text-muted">Admin Cost</div>
-                                    <div class="fw-bold text-warning">Pending, not deducted</div>
+                                    <div class="fw-bold text-warning">Added to balance, not deducted here</div>
                                 </div>
                             </div>
                         </div>
@@ -529,9 +533,9 @@
 @endcan
 @endif
 
-{{-- Record Admin Fee Modal — available at any stage, whenever it's actually collected --}}
+{{-- Record Admin Fee Modal — for collecting it on its own, outside an ordinary repayment --}}
 @can('disburse loans')
-@if(!$adminFeeCollected)
+@if($loan->outstanding_admin_fee > 0.01)
 <div class="modal fade" id="adminFeeModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -543,17 +547,15 @@
                 @csrf
                 <div class="modal-body">
                     <p class="text-muted small">
-                        Use this once the Admin Cost is actually collected — at disbursement or, more often, later.
-                        Posts a journal entry (debit Cash, credit GL 4009), the same effect as a manual Journal
-                        Entry.
+                        Admin Cost is normally collected as part of an ordinary repayment (interest → admin fee →
+                        principal). Use this only if the client is paying it on its own, separate from a repayment.
+                        Posts a journal entry (debit Cash, credit GL 4009) and reduces the outstanding balance below.
                     </p>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Amount <span class="text-danger">*</span></label>
                         <input type="number" name="amount" class="form-control" step="any" min="0.01" required
-                               value="{{ $loan->admin_cost > 0 ? $loan->admin_cost : '' }}">
-                        @if($loan->admin_cost > 0)
-                            <div class="form-text">Pre-filled from the pending Admin Cost recorded at disbursement — adjust if the amount collected differs.</div>
-                        @endif
+                               value="{{ $loan->outstanding_admin_fee }}">
+                        <div class="form-text">{{ number_format($loan->outstanding_admin_fee, $dp) }} still outstanding.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Date Paid <span class="text-danger">*</span></label>

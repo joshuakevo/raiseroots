@@ -86,8 +86,13 @@
                         @if($loan->admin_fee_paid)
                             <div class="fw-semibold text-success">{{ number_format($loan->admin_fee_amount, $dp) }}</div>
                             <span class="badge bg-success-subtle text-success border border-success-subtle" style="{{ $tinyBadge }}"
-                                  title="Paid on {{ \Carbon\Carbon::parse($loan->admin_fee_paid_date)->format('d M Y') }}">
+                                  title="{{ $loan->admin_fee_paid_date ? 'Paid on '.\Carbon\Carbon::parse($loan->admin_fee_paid_date)->format('d M Y') : 'Paid' }}">
                                 Paid
+                            </span>
+                        @elseif($loan->admin_fee_partial)
+                            <div class="fw-semibold text-info-emphasis">{{ number_format($loan->admin_fee_amount, $dp) }}</div>
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" style="{{ $tinyBadge }}" title="Still outstanding — part of it has been collected">
+                                Partial
                             </span>
                         @elseif($loan->admin_cost > 0)
                             <div class="fw-semibold text-warning-emphasis">{{ number_format($loan->admin_cost, $dp) }}</div>
