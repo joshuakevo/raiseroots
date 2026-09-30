@@ -55,6 +55,7 @@
             <thead><tr>
                 <th class="ps-3">Loan #</th><th>Client</th><th>Product</th>
                 <th class="text-end">Outstanding</th>
+                <th class="text-center" title="GL account 4009 — Loan Administrative Fee">Admin Fee</th>
                 <th>Disbursed</th><th>Loan Officer</th><th>Status</th><th class="pe-3">Actions</th>
             </tr></thead>
             <tbody>
@@ -80,6 +81,18 @@
                         title="Principal {{ number_format($loan->outstanding_principal, $dp) }} + Interest {{ number_format($loan->outstanding_interest, $dp) }}">
                         {{ number_format($outstandingTotal, $dp) }}
                     </td>
+                    <td class="text-center">
+                        @if($loan->admin_fee_paid)
+                            <span class="badge bg-success-subtle text-success border border-success-subtle"
+                                  title="{{ number_format($loan->admin_fee_amount, $dp) }} on {{ \Carbon\Carbon::parse($loan->admin_fee_paid_date)->format('d M Y') }}">
+                                <i class="bi bi-check-circle me-1"></i>{{ number_format($loan->admin_fee_amount, $dp) }}
+                            </span>
+                        @else
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="No admin fee payment recorded for this loan yet">
+                                <i class="bi bi-x-circle me-1"></i>Not paid
+                            </span>
+                        @endif
+                    </td>
                     <td class="small text-muted">{{ $loan->disbursement_date?->format('d M Y') ?? '—' }}</td>
                     <td class="small text-muted">{{ $loan->client?->relationshipManager?->name ?? '—' }}</td>
                     <td>
@@ -98,7 +111,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="text-center text-muted py-4">No loans found.</td></tr>
+                <tr><td colspan="9" class="text-center text-muted py-4">No loans found.</td></tr>
             @endforelse
             </tbody>
         </table>

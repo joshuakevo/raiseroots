@@ -43,6 +43,8 @@ class LoanController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $this->attachAdminFeeStatus($loans);
+
         // Relationship managers ("Loan Officer" here) are any active staff user -
         // excludes client-portal-only logins.
         $relationshipManagers = \App\Models\User::where('is_active', true)
@@ -51,6 +53,46 @@ class LoanController extends Controller
             ->get();
 
         return view('loans.index', compact('loans', 'relationshipManagers'));
+    }
+
+    /**
+     * Sets a non-persisted `admin_fee_paid`/`admin_fee_paid_date` attribute on each loan in
+     * the given collection: whether an Admin/Management Fee (GL account 4009 - see
+     * LoanService::getManagementFeeAccount() and LoanImportService's "Admin cost" postings,
+     * which both use it) has actually been credited for that loan yet. Both routes post it
+     * under module='loan', module_id=<loan id> - a bundled line on the disbursement journal
+     * for a normally-created loan, or its own standalone "Admin cost - <loan number>" entry
+     * for an imported one, posted whenever it's actually collected (which may be well after
+     * disbursement) - so "has a 4009 credit been posted for this loan" is the real signal,
+     * not a stored flag that would need someone to remember to keep in sync.
+     */
+    private function attachAdminFeeStatus($loans): void
+    {
+        $loanIds = collect($loans->items())->pluck('id');
+        if ($loanIds->isEmpty()) {
+            return;
+        }
+
+        $feeAccountId = \App\Models\Account::where('account_code', '4009')->value('id');
+
+        $paid = $feeAccountId
+            ? \App\Models\TransactionLine::query()
+                ->join('transactions', 'transactions.id', '=', 'transaction_lines.transaction_id')
+                ->where('transaction_lines.account_id', $feeAccountId)
+                ->where('transactions.module', 'loan')
+                ->whereIn('transactions.module_id', $loanIds)
+                ->groupBy('transactions.module_id')
+                ->selectRaw('transactions.module_id as loan_id, SUM(transaction_lines.credit) as amount, MAX(transactions.date) as paid_date')
+                ->get()
+                ->keyBy('loan_id')
+            : collect();
+
+        foreach ($loans as $loan) {
+            $row = $paid->get($loan->id);
+            $loan->admin_fee_paid      = (float) ($row->amount ?? 0) > 0.01;
+            $loan->admin_fee_amount    = $row->amount ?? null;
+            $loan->admin_fee_paid_date = $row->paid_date ?? null;
+        }
     }
 
     /**
