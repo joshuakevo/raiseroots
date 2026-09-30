@@ -80,7 +80,7 @@
     $scheduleData = $loan->schedules->isNotEmpty() ? $loan->schedules : collect($schedulePreview);
     $totalPrincipal = $scheduleData->sum('principal_due');
     $totalInterest  = $scheduleData->sum('interest_due');
-    $totalDue       = $scheduleData->sum('total_due');
+    $totalDue       = $scheduleData->sum('total_due') + $loan->admin_cost;
 @endphp
 
 <div class="summary-box">
@@ -96,7 +96,15 @@
             <td class="val" style="color:#991b1b">{{ number_format($currentPenalty, $dp) }}</td>
             <td class="lbl">Penalty Rate</td><td class="val">{{ $loan->product->penalty_rate }}%/day on overdue</td>
             <td class="lbl">Total Owing Now</td>
-            <td class="val" style="color:#991b1b;font-size:13px">{{ number_format($loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty, $dp) }}</td>
+            <td class="val" style="color:#991b1b;font-size:13px">{{ number_format($loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty + $loan->outstanding_admin_fee, $dp) }}</td>
+        </tr>
+        @endif
+        @if($loan->admin_cost > 0)
+        <tr>
+            <td class="lbl">Admin Fee</td>
+            <td class="val">{{ number_format($loan->admin_cost, $dp) }}</td>
+            <td class="lbl">Admin Fee Outstanding</td>
+            <td class="val" style="color:{{ $loan->outstanding_admin_fee > 0.01 ? '#991b1b' : '#065f46' }}">{{ number_format($loan->outstanding_admin_fee, $dp) }}</td>
         </tr>
         @endif
     </table>
@@ -156,6 +164,24 @@
             </td>
         </tr>
     @endforeach
+    @if($loan->admin_cost > 0)
+        @php $adminFeePaid = $loan->admin_cost - $loan->outstanding_admin_fee; @endphp
+        <tr style="background:#fffbeb">
+            <td class="text-center">—</td>
+            <td>Admin Fee <span style="color:#9ca3af">(collected from any repayment, after interest)</span></td>
+            <td class="text-right" style="color:#9ca3af">—</td>
+            <td class="text-right" style="color:#9ca3af">—</td>
+            <td class="text-right" style="color:#9ca3af">—</td>
+            <td class="text-right" style="font-weight:bold">{{ number_format($loan->admin_cost, $dp) }}</td>
+            <td class="text-right">{{ number_format($loan->outstanding_admin_fee, $dp) }}</td>
+            <td class="text-center">
+                @if($loan->outstanding_admin_fee <= 0.01) <span class="status-paid">COLLECTED</span>
+                @elseif($adminFeePaid > 0.01) <span class="status-partial">PARTIAL</span>
+                @else <span class="status-pending">PENDING</span>
+                @endif
+            </td>
+        </tr>
+    @endif
     </tbody>
     <tfoot>
         <tr style="background:#0f2444;color:#fff;font-weight:bold;">

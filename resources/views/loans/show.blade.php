@@ -148,7 +148,7 @@
             <div class="col-4">
                 <div class="stat-card text-center">
                     <div class="text-muted small">Total Outstanding</div>
-                    @php $liveTotal = $loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty; @endphp
+                    @php $liveTotal = $loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty + $loan->outstanding_admin_fee; @endphp
                     <div class="fw-bold fs-5 text-danger">{{ number_format($liveTotal, $dp) }}</div>
                 </div>
             </div>
@@ -457,6 +457,30 @@
                 @empty
                     <tr><td colspan="8" class="text-center text-muted py-3">No schedule generated yet.</td></tr>
                 @endforelse
+                @if($loan->admin_cost > 0)
+                @php
+                    $adminFeePaid   = $loan->admin_cost - $loan->outstanding_admin_fee;
+                    $adminFeeStatus = $loan->outstanding_admin_fee <= 0.01 ? 'collected' : ($adminFeePaid > 0.01 ? 'partial' : 'pending');
+                @endphp
+                <tr class="table-warning bg-opacity-10">
+                    <td class="ps-3">—</td>
+                    <td><span class="fw-semibold">Admin Fee</span><span class="text-muted d-block" style="font-size:.68rem">Collected from any repayment, after interest</span></td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end fw-semibold">{{ number_format($loan->admin_cost, $dp) }}</td>
+                    <td class="text-end pe-3">{{ number_format($loan->outstanding_admin_fee, $dp) }}</td>
+                    <td>
+                        @if($adminFeeStatus === 'collected')
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Collected</span>
+                        @elseif($adminFeeStatus === 'partial')
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Partial</span>
+                        @else
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Pending</span>
+                        @endif
+                    </td>
+                </tr>
+                @endif
             @endif
             </tbody>
         </table>

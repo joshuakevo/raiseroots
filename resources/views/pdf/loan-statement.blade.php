@@ -91,10 +91,15 @@
     <td><span class="stat-label">Outstanding Principal</span><span class="stat-value">{{ number_format($loan->outstanding_principal, $dp) }}</span></td>
     <td><span class="stat-label">Outstanding Interest</span><span class="stat-value">{{ number_format($loan->outstanding_interest, $dp) }}</span></td>
     <td><span class="stat-label">Accrued Penalty</span><span class="stat-value" style="color:#991b1b">{{ number_format($currentPenalty, $dp) }}</span>@if($currentPenalty > 0)<span class="stat-label">{{ $loan->product->penalty_rate }}%/day on overdue</span>@endif</td>
-    @php $liveTotal = $loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty; @endphp
+    @php $liveTotal = $loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty + $loan->outstanding_admin_fee; @endphp
     <td><span class="stat-label">Total Outstanding</span><span class="stat-value" style="color:#991b1b">{{ number_format($liveTotal, $dp) }}</span></td>
     <td><span class="stat-label">Total Paid</span><span class="stat-value" style="color:#065f46">{{ number_format($loan->total_paid, $dp) }}</span></td>
 </tr>
+@if($loan->admin_cost > 0)
+<tr>
+    <td><span class="stat-label">Outstanding Admin Fee</span><span class="stat-value" style="color:#991b1b">{{ number_format($loan->outstanding_admin_fee, $dp) }}</span></td>
+</tr>
+@endif
 </table>
 
 {{-- Repayment History --}}

@@ -81,7 +81,7 @@
         <div class="card text-center border-danger">
             <div class="card-body py-2">
                 <div class="small text-muted">Total Outstanding</div>
-                @php $liveTotal = $loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty; @endphp
+                @php $liveTotal = $loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty + $loan->outstanding_admin_fee; @endphp
                 <div class="fw-bold fs-6 text-danger">{{ number_format($liveTotal, $dp) }}</div>
             </div>
         </div>

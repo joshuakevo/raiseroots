@@ -42,6 +42,21 @@
             <div class="col-md-3 text-center"><div class="text-muted small">Rate / Method</div><div class="fw-bold">{{ $loan->interest_rate }}% {{ ucfirst($loan->interest_method) }}</div></div>
             <div class="col-md-3 text-center"><div class="text-muted small">Term</div><div class="fw-bold">{{ $loan->term_months }} months</div></div>
             <div class="col-md-3 text-center"><div class="text-muted small">Total Interest</div><div class="fw-bold">{{ number_format($totalInterestSum, $dp) }}</div></div>
+            @if($loan->admin_cost > 0 && !$isPreview)
+            <div class="col-md-3 text-center">
+                <div class="text-muted small">Admin Fee Outstanding</div>
+                <div class="fw-bold">
+                    {{ number_format($loan->outstanding_admin_fee, $dp) }}
+                    @if($loan->outstanding_admin_fee <= 0.01)
+                        <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:.6rem">Collected</span>
+                    @elseif($loan->outstanding_admin_fee < $loan->admin_cost)
+                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1" style="font-size:.6rem">Partial</span>
+                    @else
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size:.6rem">Pending</span>
+                    @endif
+                </div>
+            </div>
+            @endif
             @if($currentPenalty > 0)
             <div class="col-12">
                 <div class="alert alert-danger py-2 mb-0 small d-flex align-items-center gap-2">
@@ -111,6 +126,32 @@
                 @empty
                     <tr><td colspan="9" class="text-center text-muted py-4">No schedule generated.</td></tr>
                 @endforelse
+                @if($loan->admin_cost > 0)
+                @php
+                    $adminFeePaid   = $loan->admin_cost - $loan->outstanding_admin_fee;
+                    $adminFeeStatus = $loan->outstanding_admin_fee <= 0.01 ? 'collected' : ($adminFeePaid > 0.01 ? 'partial' : 'pending');
+                    $totalDue      += $loan->admin_cost;
+                @endphp
+                <tr class="table-warning bg-opacity-10">
+                    <td class="ps-3">—</td>
+                    <td><span class="fw-semibold">Admin Fee</span><span class="text-muted d-block" style="font-size:.68rem">Collected from any repayment, after interest</span></td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end text-muted">—</td>
+                    <td class="text-end fw-semibold">{{ number_format($loan->admin_cost, $dp) }}</td>
+                    <td class="text-end text-success">{{ number_format($adminFeePaid, $dp) }}</td>
+                    <td class="text-end pe-3">{{ number_format($loan->outstanding_admin_fee, $dp) }}</td>
+                    <td>
+                        @if($adminFeeStatus === 'collected')
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Collected</span>
+                        @elseif($adminFeeStatus === 'partial')
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Partial</span>
+                        @else
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Pending</span>
+                        @endif
+                    </td>
+                </tr>
+                @endif
             @endif
             </tbody>
             <tfoot class="table-light fw-semibold">

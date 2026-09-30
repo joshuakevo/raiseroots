@@ -51,7 +51,7 @@
     <div class="col-sm-3">
         <div class="stat-card text-center">
             <div class="text-muted small mb-1">Total Owing</div>
-            @php $totalOwing = $loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty; @endphp
+            @php $totalOwing = $loan->outstanding_principal + $loan->outstanding_interest + $currentPenalty + $loan->outstanding_admin_fee; @endphp
             <div class="fw-bold fs-5 text-danger">{{ number_format($totalOwing, 2) }}</div>
         </div>
     </div>

@@ -76,9 +76,9 @@
                         @endif
                     </td>
                     <td class="small text-muted">{{ $loan->product->name }}</td>
-                    @php $outstandingTotal = $loan->outstanding_principal + $loan->outstanding_interest; @endphp
+                    @php $outstandingTotal = $loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_admin_fee; @endphp
                     <td class="text-end fw-semibold {{ $outstandingTotal > 0 ? 'text-warning' : 'text-success' }}"
-                        title="Principal {{ number_format($loan->outstanding_principal, $dp) }} + Interest {{ number_format($loan->outstanding_interest, $dp) }}">
+                        title="Principal {{ number_format($loan->outstanding_principal, $dp) }} + Interest {{ number_format($loan->outstanding_interest, $dp) }}{{ $loan->outstanding_admin_fee > 0 ? ' + Admin Fee '.number_format($loan->outstanding_admin_fee, $dp) : '' }}">
                         {{ number_format($outstandingTotal, $dp) }}
                     </td>
                     @php $tinyBadge = 'font-size:.58rem;padding:.12rem .4rem;line-height:1;'; @endphp
