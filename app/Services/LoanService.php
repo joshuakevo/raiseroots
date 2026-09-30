@@ -98,26 +98,12 @@ class LoanService
                 $insuranceFee,   $insuranceFeeMethod
             );
 
-            // Admin Fee: a separate cash charge collected alongside the loan, not deducted
-            // from it - the client still receives the full principal. Posted as its own
-            // standalone transaction (same account/description convention LoanImportService
-            // uses for historical disbursements), so it's picked up by the same "has an admin
-            // fee been collected for this loan" check the Loans list uses, however/whenever
-            // it's recorded - here at disbursement, or later via a manual journal entry if it
-            // wasn't collected yet.
+            // Admin Fee, if given here (the common case - collected right at disbursement).
+            // If it was already recorded earlier (see recordAdminFee()), it's left alone -
+            // never posted twice for the same loan.
             $adminFee = round((float) ($feeData['admin_fee_amount'] ?? 0), 2);
-            if ($adminFee > 0.01) {
-                $cashAccount = Account::where('account_code', '1001')->firstOrFail();
-                $this->accounting->post(
-                    $disbursementDate,
-                    "Admin cost - {$loan->loan_number}",
-                    [
-                        ['account_id' => $cashAccount->id, 'debit' => $adminFee, 'credit' => 0, 'client_id' => $loan->client_id],
-                        ['account_id' => $this->getManagementFeeAccount(), 'debit' => 0, 'credit' => $adminFee],
-                    ],
-                    'loan',
-                    $loan->id
-                );
+            if ($adminFee > 0.01 && !$this->hasAdminFeePosted($loan)) {
+                $this->postAdminFee($loan, $adminFee, $disbursementDate);
             }
 
             // Deduct savings-method fees from the savings account
@@ -191,6 +177,61 @@ class LoanService
 
             return $loan->fresh();
         });
+    }
+
+    /**
+     * Record an Admin Fee already collected for this loan, independent of disbursement - e.g.
+     * a client paying it at application or approval, before the loan is disbursed. Posts the
+     * same GL entry disburseLoan() would post at disbursement time, dated to whenever it was
+     * actually paid. Refuses if one's already been recorded for this loan (see
+     * hasAdminFeePosted()) - a correction goes through a normal journal reversal, not a second
+     * lump on top.
+     */
+    public function recordAdminFee(Loan $loan, float $amount, string $paidDate): void
+    {
+        $amount = round($amount, 2);
+        if ($amount <= 0.01) {
+            throw new \InvalidArgumentException('Enter an amount greater than zero.');
+        }
+        if ($this->hasAdminFeePosted($loan)) {
+            throw new \InvalidArgumentException('An Admin Fee has already been recorded for this loan.');
+        }
+
+        $this->postAdminFee($loan, $amount, $paidDate);
+    }
+
+    /** Whether an Admin Fee (GL 4009, tagged to this loan) has been posted yet, at any date. */
+    public function hasAdminFeePosted(Loan $loan): bool
+    {
+        return \App\Models\TransactionLine::query()
+            ->join('transactions', 'transactions.id', '=', 'transaction_lines.transaction_id')
+            ->where('transaction_lines.account_id', $this->getManagementFeeAccount())
+            ->where('transactions.module', 'loan')
+            ->where('transactions.module_id', $loan->id)
+            ->where('transaction_lines.credit', '>', 0)
+            ->exists();
+    }
+
+    /**
+     * Admin Fee is a separate cash charge collected alongside the loan, not deducted from
+     * it - the client still receives the full principal. Posted as its own standalone
+     * transaction (same account/description convention LoanImportService uses for historical
+     * disbursements), so it's picked up by the same "has an admin fee been collected for this
+     * loan" check the Loans list uses, however/whenever it's recorded.
+     */
+    private function postAdminFee(Loan $loan, float $amount, string $date): void
+    {
+        $cashAccount = Account::where('account_code', '1001')->firstOrFail();
+        $this->accounting->post(
+            $date,
+            "Admin cost - {$loan->loan_number}",
+            [
+                ['account_id' => $cashAccount->id, 'debit' => $amount, 'credit' => 0, 'client_id' => $loan->client_id],
+                ['account_id' => $this->getManagementFeeAccount(), 'debit' => 0, 'credit' => $amount],
+            ],
+            'loan',
+            $loan->id
+        );
     }
 
     /**

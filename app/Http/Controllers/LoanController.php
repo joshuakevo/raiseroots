@@ -280,6 +280,23 @@ class LoanController extends Controller
         return redirect()->route('loans.show', $loan)->with('success', 'Loan disbursed successfully. Schedule generated.');
     }
 
+    /** Records an Admin Fee collected independent of disbursement - e.g. paid at application or approval, before the loan is disbursed. */
+    public function recordAdminFee(Request $request, Loan $loan)
+    {
+        $request->validate([
+            'amount'    => 'required|numeric|min:0.01',
+            'paid_date' => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
+        ]);
+
+        try {
+            $this->loanService->recordAdminFee($loan, (float) $request->amount, $request->paid_date);
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Admin Fee recorded for ' . $loan->loan_number . '.');
+    }
+
     public function repayForm(Loan $loan)
     {
         if (!in_array($loan->status, ['active', 'defaulted'])) {

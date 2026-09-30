@@ -27,6 +27,11 @@
                 <i class="bi bi-send me-1"></i>Disburse Loan
             </button>
         @endif
+        @if(!$loan->admin_fee_paid)
+            <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#adminFeeModal">
+                <i class="bi bi-cash-coin me-1"></i>Record Admin Fee
+            </button>
+        @endif
         @endcan
         @can('create loans')
         @if(in_array($loan->status, ['pending', 'approved']))
@@ -485,11 +490,19 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Admin Fee</label>
-                        <input type="number" name="admin_fee_amount" class="form-control" value="0" step="1000" min="0">
-                        <div class="form-text">
-                            Collected separately in cash, alongside the loan — not deducted from the principal above.
-                            Leave at 0 if not collected yet; it can be recorded later from Accounting &gt; Journal Entries.
-                        </div>
+                        @if($loan->admin_fee_paid)
+                            <div class="form-control bg-light text-success fw-semibold">
+                                <i class="bi bi-check-circle me-1"></i>Already recorded — {{ number_format($loan->admin_fee_amount, $dp) }}
+                                on {{ \Carbon\Carbon::parse($loan->admin_fee_paid_date)->format('d M Y') }}
+                            </div>
+                            <input type="hidden" name="admin_fee_amount" value="0">
+                        @else
+                            <input type="number" name="admin_fee_amount" class="form-control" value="0" step="1000" min="0">
+                            <div class="form-text">
+                                Collected separately in cash, alongside the loan — not deducted from the principal above.
+                                Leave at 0 if not collected yet; use "Record Admin Fee" on this page to add it later.
+                            </div>
+                        @endif
                     </div>
 
                     <div class="mb-3">
@@ -509,6 +522,43 @@
 </div>
 @endcan
 @endif
+
+{{-- Record Admin Fee Modal — available at any stage, before or after disbursement --}}
+@can('disburse loans')
+@if(!$loan->admin_fee_paid)
+<div class="modal fade" id="adminFeeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-cash-coin me-1"></i>Record Admin Fee — {{ $loan->loan_number }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('loans.admin-fee', $loan) }}">
+                @csrf
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        Use this when the Admin Fee was collected separately from disbursement — e.g. paid at
+                        application or approval, before the loan was disbursed.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Amount <span class="text-danger">*</span></label>
+                        <input type="number" name="amount" class="form-control" step="1000" min="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Date Paid <span class="text-danger">*</span></label>
+                        <input type="date" name="paid_date" class="form-control" value="{{ today()->toDateString() }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm btn-success"><i class="bi bi-check-lg me-1"></i>Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+@endcan
 
 {{-- Delete Loan Modal --}}
 @can('create loans')
