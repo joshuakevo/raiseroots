@@ -662,6 +662,54 @@ class LoanService
         return Account::where('account_code', '4009')->value('id') ?? 1;
     }
 
+    /**
+     * Record an Admin Fee actually collected - at disbursement or, more often, well
+     * after it, whenever the client actually pays. Posts a standalone transaction
+     * (Cash debited, GL 4009 credited), same convention LoanImportService uses for
+     * historical disbursements and the same account the Disburse screen's Admin Cost
+     * field is checked against. Refuses if one's already been recorded for this loan -
+     * a correction goes through a normal journal reversal, not a second entry on top.
+     */
+    public function recordAdminFee(Loan $loan, float $amount, string $paidDate): void
+    {
+        $amount = round($amount, 2);
+        if ($amount <= 0.01) {
+            throw new \InvalidArgumentException('Enter an amount greater than zero.');
+        }
+        if ($this->hasAdminFeePosted($loan)) {
+            throw new \InvalidArgumentException('An Admin Fee has already been recorded for this loan.');
+        }
+
+        $cashAccount = Account::where('account_code', '1001')->first();
+        $feeAccount  = Account::where('account_code', '4009')->first();
+        if (!$cashAccount || !$feeAccount) {
+            throw new \InvalidArgumentException('Required GL accounts (1001, 4009) are missing.');
+        }
+
+        $this->accounting->post(
+            $paidDate,
+            "Admin cost - {$loan->loan_number}",
+            [
+                ['account_id' => $cashAccount->id, 'debit' => $amount, 'credit' => 0, 'client_id' => $loan->client_id],
+                ['account_id' => $feeAccount->id, 'debit' => 0, 'credit' => $amount],
+            ],
+            'loan',
+            $loan->id
+        );
+    }
+
+    /** Whether an Admin Fee (GL 4009, tagged to this loan) has been posted yet, at any date. */
+    public function hasAdminFeePosted(Loan $loan): bool
+    {
+        return \App\Models\TransactionLine::query()
+            ->join('transactions', 'transactions.id', '=', 'transaction_lines.transaction_id')
+            ->where('transaction_lines.account_id', $this->getManagementFeeAccount())
+            ->where('transactions.module', 'loan')
+            ->where('transactions.module_id', $loan->id)
+            ->where('transaction_lines.credit', '>', 0)
+            ->exists();
+    }
+
     protected function getInsuranceFeeAccount(): int
     {
         return Account::where('account_code', '4010')->value('id') ?? 1;

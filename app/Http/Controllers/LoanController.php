@@ -235,8 +235,61 @@ class LoanController extends Controller
 
         $currentPenalty   = $this->loanService->calculatePenaltyPublic($loan);
         $penaltyBreakdown = $this->loanService->penaltyBreakdown($loan);
+        $adminFeeInfo      = $this->adminFeeCollectedInfo($loan);
+        $adminFeeCollected = $adminFeeInfo !== null;
 
-        return view('loans.show', compact('loan', 'schedulePreview', 'clientSavingsAccounts', 'currentPenalty', 'penaltyBreakdown'));
+        return view('loans.show', compact('loan', 'schedulePreview', 'clientSavingsAccounts', 'currentPenalty', 'penaltyBreakdown', 'adminFeeCollected', 'adminFeeInfo'));
+    }
+
+    /**
+     * The actual collected Admin Fee for this loan (GL account 4009, tagged to it) -
+     * amount + date, or null if nothing's been posted yet. Independent of the loan's
+     * stored `admin_cost` reference figure, which is only ever set/expected, never
+     * itself a record of payment - so this also catches a fee recorded via
+     * recordAdminFee() on a loan whose admin_cost was never set (e.g. disbursed before
+     * this field existed). Shared by the loan page (show/hide "Record Admin Fee", the
+     * Loan Details line), the repayment screen (whether to still count it as owed), and
+     * recordAdminFee() (refuse a duplicate).
+     */
+    private function adminFeeCollectedInfo(Loan $loan): ?object
+    {
+        $feeAccountId = \App\Models\Account::where('account_code', '4009')->value('id');
+        if (!$feeAccountId) {
+            return null;
+        }
+
+        $row = \App\Models\TransactionLine::query()
+            ->join('transactions', 'transactions.id', '=', 'transaction_lines.transaction_id')
+            ->where('transaction_lines.account_id', $feeAccountId)
+            ->where('transactions.module', 'loan')
+            ->where('transactions.module_id', $loan->id)
+            ->where('transaction_lines.credit', '>', 0)
+            ->selectRaw('SUM(transaction_lines.credit) as amount, MAX(transactions.date) as paid_date')
+            ->first();
+
+        return ($row && (float) $row->amount > 0) ? $row : null;
+    }
+
+    private function isAdminFeeCollected(Loan $loan): bool
+    {
+        return $this->adminFeeCollectedInfo($loan) !== null;
+    }
+
+    /** Records an Admin Fee actually collected - independent of and possibly well after disbursement. */
+    public function recordAdminFee(Request $request, Loan $loan)
+    {
+        $request->validate([
+            'amount'    => 'required|numeric|min:0.01',
+            'paid_date' => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
+        ]);
+
+        try {
+            $this->loanService->recordAdminFee($loan, (float) $request->amount, $request->paid_date);
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Admin Fee recorded for ' . $loan->loan_number . '.');
     }
 
     public function approve(Loan $loan)
@@ -343,18 +396,9 @@ class LoanController extends Controller
         // Loan Details on the loan page) - shown alongside Total Outstanding for
         // visibility only. It's not part of the loan schedule, so it's never added to
         // the actual repayment amount/allocation below.
-        $adminCostPending = 0.0;
-        if ($loan->admin_cost > 0) {
-            $feeAccountId = \App\Models\Account::where('account_code', '4009')->value('id');
-            $alreadyCollected = $feeAccountId && \App\Models\TransactionLine::query()
-                ->join('transactions', 'transactions.id', '=', 'transaction_lines.transaction_id')
-                ->where('transaction_lines.account_id', $feeAccountId)
-                ->where('transactions.module', 'loan')
-                ->where('transactions.module_id', $loan->id)
-                ->where('transaction_lines.credit', '>', 0)
-                ->exists();
-            $adminCostPending = $alreadyCollected ? 0.0 : (float) $loan->admin_cost;
-        }
+        $adminCostPending = ($loan->admin_cost > 0 && !$this->isAdminFeeCollected($loan))
+            ? (float) $loan->admin_cost
+            : 0.0;
 
         return view('loans.repay', compact(
             'loan', 'nextInstallment', 'overdueInstallments', 'overdueAmount',

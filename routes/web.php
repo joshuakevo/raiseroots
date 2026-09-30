@@ -195,6 +195,8 @@ Route::middleware('auth')->group(function () {
         ->name('loans.approve')->middleware('permission:approve loans');
     Route::post('loans/{loan}/disburse', [LoanController::class, 'disburse'])
         ->name('loans.disburse')->middleware('permission:disburse loans');
+    Route::post('loans/{loan}/admin-fee', [LoanController::class, 'recordAdminFee'])
+        ->name('loans.admin-fee')->middleware('permission:disburse loans');
     Route::get('loans/{loan}/repay', [LoanController::class, 'repayForm'])
         ->name('loans.repay-form')->middleware('permission:repay loans');
     Route::post('loans/{loan}/repay', [LoanController::class, 'repay'])
