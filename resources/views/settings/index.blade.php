@@ -654,6 +654,43 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- One-time: remove "Admin cost" entries the loan import wrongly posted as already collected --}}
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-octagon text-danger"></i>
+        <span>Remove Admin Cost Entries (Aug/Sep Loan Import)</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            One-time corrective fix: the August/September loan disbursement import posted each loan's Admin
+            Cost as already collected in cash. These were not actually collected — this removes those journal
+            entries entirely so Admin Cost shows as not yet recorded, to be posted individually once each one
+            is genuinely paid. Only "Admin cost" entries are touched — Processing Fee entries, and the loan's
+            own status/schedule/balances, are untouched. <strong>Preview first</strong> to confirm exactly
+            what will be removed.
+        </p>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ route('settings.admin-cost-fix-preview') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </button>
+            </form>
+            <form method="POST" action="{{ route('settings.admin-cost-fix-apply') }}"
+                  onsubmit="return confirm('This permanently deletes every \'Admin cost\' journal entry from the loan import. Only proceed after reviewing the Preview output. Continue?')">
+                @csrf
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash3 me-2"></i>Remove Entries
+                </button>
+            </form>
+        </div>
+
+        @if(session('adminCostFixOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('adminCostFixOutput') }}</pre>
+        @endif
+    </div>
+</div>
+
 {{-- Go-live wipe: clears client/transaction data, keeps setup + one superadmin --}}
 <div class="card mt-4 border-danger">
     <div class="card-header d-flex align-items-center gap-2">

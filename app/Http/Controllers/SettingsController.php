@@ -602,6 +602,26 @@ class SettingsController extends Controller
     }
 
     /**
+     * Preview app\Console\Commands\DeleteAdminCostEntries.php without applying it.
+     * Remove this + runDeleteAdminCostEntries() once the one-time fix is confirmed complete.
+     */
+    public function previewDeleteAdminCostEntries()
+    {
+        Artisan::call('eltech:delete-admin-cost-entries');
+        $output = trim(Artisan::output());
+
+        return back()->with('adminCostFixOutput', $output);
+    }
+
+    public function runDeleteAdminCostEntries()
+    {
+        Artisan::call('eltech:delete-admin-cost-entries', ['--commit' => true]);
+        $output = trim(Artisan::output());
+
+        return back()->with('adminCostFixOutput', $output);
+    }
+
+    /**
      * "Go-live wipe" — clears client/transaction data, keeps setup (chart of
      * accounts, products, branches, collateral categories, financial periods,
      * settings) and every user, role and permission exactly as they are.
