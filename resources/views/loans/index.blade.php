@@ -87,6 +87,11 @@
                                   title="{{ number_format($loan->admin_fee_amount, $dp) }} on {{ \Carbon\Carbon::parse($loan->admin_fee_paid_date)->format('d M Y') }}">
                                 <i class="bi bi-check-circle me-1"></i>{{ number_format($loan->admin_fee_amount, $dp) }}
                             </span>
+                        @elseif($loan->admin_cost > 0)
+                            <div class="fw-semibold text-warning-emphasis">{{ number_format($loan->admin_cost, $dp) }}</div>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.65rem" title="Expected but not yet collected">
+                                <i class="bi bi-x-circle me-1"></i>Not paid
+                            </span>
                         @else
                             <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="No admin fee payment recorded for this loan yet">
                                 <i class="bi bi-x-circle me-1"></i>Not paid
