@@ -467,7 +467,7 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Admin Cost</label>
-                            <input type="number" name="admin_cost" id="adminCostInput" class="form-control" step="1000" min="0"
+                            <input type="number" name="admin_cost" id="adminCostInput" class="form-control" step="any" min="0"
                                    value="{{ round($loan->principal * 0.122, 2) }}">
                             <div class="form-text">
                                 Defaults to 12.2% of principal — adjust if needed. Recorded on the loan as pending;
@@ -477,7 +477,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Processing Fees</label>
-                            <input type="number" name="processing_fee_amount" class="form-control" step="1000" min="0" value="0">
+                            <input type="number" name="processing_fee_amount" class="form-control" step="any" min="0" value="0">
                             <div class="form-text">Collected in cash now — posted as received, alongside the loan.</div>
                         </div>
                     </div>
