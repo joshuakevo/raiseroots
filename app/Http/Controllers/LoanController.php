@@ -43,7 +43,7 @@ class LoanController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $this->attachAdminFeeStatus($loans->items());
+        $this->attachAdminFeeStatus($loans);
 
         // Relationship managers ("Loan Officer" here) are any active staff user -
         // excludes client-portal-only logins.
@@ -65,13 +65,10 @@ class LoanController extends Controller
      * for an imported one, posted whenever it's actually collected (which may be well after
      * disbursement) - so "has a 4009 credit been posted for this loan" is the real signal,
      * not a stored flag that would need someone to remember to keep in sync.
-     *
-     * @param  iterable<\App\Models\Loan>  $loans
      */
-    private function attachAdminFeeStatus(iterable $loans): void
+    private function attachAdminFeeStatus($loans): void
     {
-        $loans   = collect($loans);
-        $loanIds = $loans->pluck('id');
+        $loanIds = collect($loans->items())->pluck('id');
         if ($loanIds->isEmpty()) {
             return;
         }
@@ -231,11 +228,15 @@ class LoanController extends Controller
             ? $this->loanService->previewSchedule($loan)
             : [];
 
+        // Savings accounts for this client (for fee deduction)
+        $clientSavingsAccounts = $notYetDisbursed
+            ? SavingsAccount::where('client_id', $loan->client_id)->where('status', 'active')->with('product')->get()
+            : collect();
+
         $currentPenalty   = $this->loanService->calculatePenaltyPublic($loan);
         $penaltyBreakdown = $this->loanService->penaltyBreakdown($loan);
-        $this->attachAdminFeeStatus([$loan]);
 
-        return view('loans.show', compact('loan', 'schedulePreview', 'currentPenalty', 'penaltyBreakdown'));
+        return view('loans.show', compact('loan', 'schedulePreview', 'clientSavingsAccounts', 'currentPenalty', 'penaltyBreakdown'));
     }
 
     public function approve(Loan $loan)
@@ -256,9 +257,25 @@ class LoanController extends Controller
     public function disburse(Request $request, Loan $loan)
     {
         $request->validate([
-            'disbursement_date' => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
-            'admin_fee_amount'  => 'nullable|numeric|min:0',
+            'disbursement_date'        => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
+            'application_fee_amount'   => 'required|numeric|min:0',
+            'application_fee_method'   => 'required|in:loan,savings',
+            'management_fee_rate'      => 'required|numeric|min:0|max:100',
+            'management_fee_method'    => 'required|in:loan,savings',
+            'insurance_fee_rate'       => 'required|numeric|min:0|max:100',
+            'insurance_fee_method'     => 'required|in:loan,savings',
+            'fee_savings_account_id'   => 'nullable|exists:savings_accounts,id',
         ]);
+
+        // Savings account required if any fee method is savings
+        $needsSavings = in_array('savings', [
+            $request->application_fee_method,
+            $request->management_fee_method,
+            $request->insurance_fee_method,
+        ]);
+        if ($needsSavings && empty($request->fee_savings_account_id)) {
+            return back()->withErrors(['fee_savings_account_id' => 'A savings account is required when any fee is set to deduct from savings.'])->withInput();
+        }
 
         if ($loan->status !== 'approved') {
             return back()->with('error', 'Only approved loans can be disbursed. Get this loan approved first.');
@@ -266,10 +283,13 @@ class LoanController extends Controller
 
         try {
             $loan = $this->loanService->disburseLoan($loan, $request->disbursement_date, [
-                'application_fee_amount' => 0,
-                'management_fee_rate'    => 0,
-                'insurance_fee_rate'     => 0,
-                'admin_fee_amount'       => $request->admin_fee_amount ?? 0,
+                'savings_account_id'      => $request->fee_savings_account_id,
+                'application_fee_amount'  => $request->application_fee_amount,
+                'application_fee_method'  => $request->application_fee_method,
+                'management_fee_rate'     => $request->management_fee_rate,
+                'management_fee_method'   => $request->management_fee_method,
+                'insurance_fee_rate'      => $request->insurance_fee_rate,
+                'insurance_fee_method'    => $request->insurance_fee_method,
             ]);
         } catch (\InvalidArgumentException $e) {
             return back()->with('error', $e->getMessage());
@@ -278,23 +298,6 @@ class LoanController extends Controller
         $this->loanNotifier->loanDisbursed($loan);
 
         return redirect()->route('loans.show', $loan)->with('success', 'Loan disbursed successfully. Schedule generated.');
-    }
-
-    /** Records an Admin Fee collected independent of disbursement - e.g. paid at application or approval, before the loan is disbursed. */
-    public function recordAdminFee(Request $request, Loan $loan)
-    {
-        $request->validate([
-            'amount'    => 'required|numeric|min:0.01',
-            'paid_date' => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
-        ]);
-
-        try {
-            $this->loanService->recordAdminFee($loan, (float) $request->amount, $request->paid_date);
-        } catch (\InvalidArgumentException $e) {
-            return back()->with('error', $e->getMessage());
-        }
-
-        return back()->with('success', 'Admin Fee recorded for ' . $loan->loan_number . '.');
     }
 
     public function repayForm(Loan $loan)
