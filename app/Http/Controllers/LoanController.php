@@ -257,25 +257,10 @@ class LoanController extends Controller
     public function disburse(Request $request, Loan $loan)
     {
         $request->validate([
-            'disbursement_date'        => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
-            'application_fee_amount'   => 'required|numeric|min:0',
-            'application_fee_method'   => 'required|in:loan,savings',
-            'management_fee_rate'      => 'required|numeric|min:0|max:100',
-            'management_fee_method'    => 'required|in:loan,savings',
-            'insurance_fee_rate'       => 'required|numeric|min:0|max:100',
-            'insurance_fee_method'     => 'required|in:loan,savings',
-            'fee_savings_account_id'   => 'nullable|exists:savings_accounts,id',
+            'disbursement_date'      => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
+            'admin_cost'             => 'nullable|numeric|min:0',
+            'processing_fee_amount'  => 'nullable|numeric|min:0',
         ]);
-
-        // Savings account required if any fee method is savings
-        $needsSavings = in_array('savings', [
-            $request->application_fee_method,
-            $request->management_fee_method,
-            $request->insurance_fee_method,
-        ]);
-        if ($needsSavings && empty($request->fee_savings_account_id)) {
-            return back()->withErrors(['fee_savings_account_id' => 'A savings account is required when any fee is set to deduct from savings.'])->withInput();
-        }
 
         if ($loan->status !== 'approved') {
             return back()->with('error', 'Only approved loans can be disbursed. Get this loan approved first.');
@@ -283,13 +268,14 @@ class LoanController extends Controller
 
         try {
             $loan = $this->loanService->disburseLoan($loan, $request->disbursement_date, [
-                'savings_account_id'      => $request->fee_savings_account_id,
-                'application_fee_amount'  => $request->application_fee_amount,
-                'application_fee_method'  => $request->application_fee_method,
-                'management_fee_rate'     => $request->management_fee_rate,
-                'management_fee_method'   => $request->management_fee_method,
-                'insurance_fee_rate'      => $request->insurance_fee_rate,
-                'insurance_fee_method'    => $request->insurance_fee_method,
+                // Suppress the old application/management/insurance fee mechanism entirely -
+                // its rate fields default to 1.5%/1.5% when absent, so they must be zeroed
+                // explicitly rather than just left out.
+                'application_fee_amount' => 0,
+                'management_fee_rate'    => 0,
+                'insurance_fee_rate'     => 0,
+                'admin_cost'             => $request->admin_cost ?? 0,
+                'processing_fee_amount'  => $request->processing_fee_amount ?? 0,
             ]);
         } catch (\InvalidArgumentException $e) {
             return back()->with('error', $e->getMessage());

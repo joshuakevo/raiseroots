@@ -18,6 +18,7 @@ class Loan extends Model
         'application_fee', 'application_fee_rate', 'application_fee_method',
         'management_fee', 'management_fee_rate', 'management_fee_method',
         'insurance_fee', 'insurance_fee_rate', 'insurance_fee_method',
+        'admin_cost',
         'fee_savings_account_id',
         'status', 'approved_by', 'approved_at', 'created_by', 'notes',
     ];
@@ -34,6 +35,7 @@ class Loan extends Model
         'management_fee_rate'   => 'float',
         'insurance_fee'         => 'float',
         'insurance_fee_rate'    => 'float',
+        'admin_cost'            => 'float',
         'disbursement_date'     => 'date',
         'maturity_date'         => 'date',
         'approved_at'           => 'datetime',

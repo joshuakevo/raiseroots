@@ -87,6 +87,7 @@ class LoanService
                 'insurance_fee'            => $insuranceFee,
                 'insurance_fee_rate'       => $insuranceFeeRate,
                 'insurance_fee_method'     => $insuranceFeeMethod,
+                'admin_cost'               => round((float) ($feeData['admin_cost'] ?? 0), 2),
                 'fee_savings_account_id'   => $anySavings ? ($feeData['savings_account_id'] ?? null) : null,
             ]);
 
@@ -97,6 +98,29 @@ class LoanService
                 $managementFee,  $managementFeeMethod,
                 $insuranceFee,   $insuranceFeeMethod
             );
+
+            // Processing Fee: collected in cash alongside the loan (not deducted from the
+            // principal above), posted as its own transaction - same account/description
+            // convention LoanImportService uses for historical disbursements. Admin Cost is
+            // NOT posted here - it's expected but not yet collected (stored on the loan
+            // itself above), and gets its own entry only once actually paid.
+            $processingFee = round((float) ($feeData['processing_fee_amount'] ?? 0), 2);
+            if ($processingFee > 0.01) {
+                $cashAccount = Account::where('account_code', '1001')->first();
+                $processingFeeAccount = Account::where('account_code', '4005')->first();
+                if ($cashAccount && $processingFeeAccount) {
+                    $this->accounting->post(
+                        $disbursementDate,
+                        "Processing fee - {$loan->loan_number}",
+                        [
+                            ['account_id' => $cashAccount->id, 'debit' => $processingFee, 'credit' => 0, 'client_id' => $loan->client_id],
+                            ['account_id' => $processingFeeAccount->id, 'debit' => 0, 'credit' => $processingFee],
+                        ],
+                        'loan',
+                        $loan->id
+                    );
+                }
+            }
 
             // Deduct savings-method fees from the savings account
             if ($anySavings && !empty($feeData['savings_account_id'])) {
