@@ -15,11 +15,12 @@ use Illuminate\Console\Command;
  * row to the one loan it created. Only touches admin_cost - no GL entry, no other
  * column - so it's purely filling in a reference figure, not re-collecting anything.
  *
- * Reads storage/app/imports/admin-cost-backfill.csv (upload docs/disbursements.csv
- * there under that name first, via File Manager) - deliberately a different path from
- * storage/app/imports/loan-disbursements.csv, so this can never be confused with (or
- * accidentally trigger) the "Import Loan Disbursements" button, which creates new loans
- * and is unsafe to re-run.
+ * Reads the same file already uploaded for the loan import -
+ * storage/app/imports/loan-disbursements.csv - no separate upload needed. This command
+ * only ever reads that file; it never touches the "Import Loan Disbursements" button/
+ * route, so there's no risk of it re-triggering that (unsafe-to-rerun) import. If a
+ * different file - wrong columns - ends up at that path, the header check below fails
+ * loudly rather than silently matching nothing or the wrong rows.
  *
  * Remove this command (and its Settings buttons) once the fix has been confirmed
  * complete on production.
@@ -33,10 +34,10 @@ class BackfillAdminCostFromCsv extends Command
     public function handle(): int
     {
         $commit = (bool) $this->option('commit');
-        $path = storage_path('app/imports/admin-cost-backfill.csv');
+        $path = storage_path('app/imports/loan-disbursements.csv');
 
         if (!file_exists($path)) {
-            $this->error("No file found at storage/app/imports/admin-cost-backfill.csv — upload docs/disbursements.csv there first (via File Manager), then run this again.");
+            $this->error('No file found at storage/app/imports/loan-disbursements.csv — upload it there first (via File Manager), then run this again.');
             return self::FAILURE;
         }
 

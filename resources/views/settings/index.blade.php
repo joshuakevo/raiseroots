@@ -701,11 +701,10 @@ $groupIcons = [
         <p class="text-muted small mb-3">
             One-time corrective fix: the 272 loans from the August/September disbursement import predate the
             Admin Cost field, so the Loans list shows "Not paid" for them with no expected amount. This reads
-            the original sheet and fills in that expected figure — matching each row to its loan by client,
-            disbursement date and principal — without posting anything to the GL. Upload
-            <code>docs/disbursements.csv</code> to <code>storage/app/imports/admin-cost-backfill.csv</code>
-            first (via File Manager — a different path from the loan import file, so this can't be confused
-            with it). <strong>Preview first</strong> to confirm exactly what will change.
+            the same <code>storage/app/imports/loan-disbursements.csv</code> already uploaded for that import
+            and fills in the expected figure — matching each row to its loan by client, disbursement date and
+            principal — without posting anything to the GL or touching the import itself.
+            <strong>Preview first</strong> to confirm exactly what will change.
         </p>
         <div class="d-flex gap-2">
             <form method="POST" action="{{ route('settings.admin-cost-backfill-preview') }}">
