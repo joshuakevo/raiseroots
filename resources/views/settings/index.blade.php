@@ -691,6 +691,44 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- One-time: fill in the expected Admin Cost figure for loans that predate that column --}}
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-octagon text-danger"></i>
+        <span>Backfill Admin Cost (Aug/Sep Loan Import)</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            One-time corrective fix: the 272 loans from the August/September disbursement import predate the
+            Admin Cost field, so the Loans list shows "Not paid" for them with no expected amount. This reads
+            the original sheet and fills in that expected figure — matching each row to its loan by client,
+            disbursement date and principal — without posting anything to the GL. Upload
+            <code>docs/disbursements.csv</code> to <code>storage/app/imports/admin-cost-backfill.csv</code>
+            first (via File Manager — a different path from the loan import file, so this can't be confused
+            with it). <strong>Preview first</strong> to confirm exactly what will change.
+        </p>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ route('settings.admin-cost-backfill-preview') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </button>
+            </form>
+            <form method="POST" action="{{ route('settings.admin-cost-backfill-apply') }}"
+                  onsubmit="return confirm('This sets the Admin Cost figure on every matched loan. Only proceed after reviewing the Preview output. Continue?')">
+                @csrf
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-check2-circle me-2"></i>Apply Backfill
+                </button>
+            </form>
+        </div>
+
+        @if(session('adminCostBackfillOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('adminCostBackfillOutput') }}</pre>
+        @endif
+    </div>
+</div>
+
 {{-- Go-live wipe: clears client/transaction data, keeps setup + one superadmin --}}
 <div class="card mt-4 border-danger">
     <div class="card-header d-flex align-items-center gap-2">

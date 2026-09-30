@@ -367,6 +367,8 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/loan-receivable-fix-apply', [SettingsController::class, 'runLoanReceivableFix'])->name('settings.loan-receivable-fix-apply');
         Route::post('settings/admin-cost-fix-preview', [SettingsController::class, 'previewDeleteAdminCostEntries'])->name('settings.admin-cost-fix-preview');
         Route::post('settings/admin-cost-fix-apply', [SettingsController::class, 'runDeleteAdminCostEntries'])->name('settings.admin-cost-fix-apply');
+        Route::post('settings/admin-cost-backfill-preview', [SettingsController::class, 'previewBackfillAdminCost'])->name('settings.admin-cost-backfill-preview');
+        Route::post('settings/admin-cost-backfill-apply', [SettingsController::class, 'runBackfillAdminCost'])->name('settings.admin-cost-backfill-apply');
         Route::post('settings/reset-production-preview', [SettingsController::class, 'previewResetProductionData'])->name('settings.reset-production-preview');
         Route::post('settings/reset-production-apply', [SettingsController::class, 'runResetProductionData'])->name('settings.reset-production-apply');
     });

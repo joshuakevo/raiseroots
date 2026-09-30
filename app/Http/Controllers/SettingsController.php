@@ -622,6 +622,26 @@ class SettingsController extends Controller
     }
 
     /**
+     * Preview app\Console\Commands\BackfillAdminCostFromCsv.php without applying it.
+     * Remove this + runBackfillAdminCost() once the one-time fix is confirmed complete.
+     */
+    public function previewBackfillAdminCost()
+    {
+        Artisan::call('eltech:backfill-admin-cost');
+        $output = trim(Artisan::output());
+
+        return back()->with('adminCostBackfillOutput', $output);
+    }
+
+    public function runBackfillAdminCost()
+    {
+        Artisan::call('eltech:backfill-admin-cost', ['--commit' => true]);
+        $output = trim(Artisan::output());
+
+        return back()->with('adminCostBackfillOutput', $output);
+    }
+
+    /**
      * "Go-live wipe" — clears client/transaction data, keeps setup (chart of
      * accounts, products, branches, collateral categories, financial periods,
      * settings) and every user, role and permission exactly as they are.
