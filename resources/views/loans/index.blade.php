@@ -108,18 +108,20 @@
                     <td class="small text-muted">{{ $loan->disbursement_date?->format('d M Y') ?? '—' }}</td>
                     <td class="small text-muted">{{ $loan->client?->relationshipManager?->name ?? '—' }}</td>
                     <td>
-                        <span class="badge badge-status-{{ $loan->status }}">{{ ucfirst($loan->status) }}</span>
+                        <span class="badge badge-status-{{ $loan->status }}" style="font-size:.62rem;padding:.15rem .5rem">{{ ucfirst($loan->status) }}</span>
                         @if($needsAction)
                             <div class="fw-semibold" style="font-size:.68rem">{{ $loan->status === 'pending' ? 'Awaiting approval' : 'Awaiting disbursement' }}</div>
                         @endif
                     </td>
-                    <td class="pe-3">
+                    <td class="pe-3 text-nowrap">
+                        <div class="d-flex gap-1">
                         <a href="{{ route('loans.show', $loan) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                         @can('repay loans')
                         @if(in_array($loan->status, ['active', 'defaulted']))
                             <a href="{{ route('loans.repay-form', $loan) }}" class="btn btn-sm btn-success"><i class="bi bi-cash"></i></a>
                         @endif
                         @endcan
+                        </div>
                     </td>
                 </tr>
             @empty
