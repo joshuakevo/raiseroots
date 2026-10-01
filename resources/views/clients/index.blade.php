@@ -23,15 +23,23 @@
 <div class="card">
     <div class="card-body pb-0">
         <form class="row g-2 mb-3" method="GET">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <input type="text" name="search" class="form-control" placeholder="Search name, number, phone..." value="{{ request('search') }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select name="status" class="form-select">
                     <option value="">All Statuses</option>
                     <option value="active" @selected(request('status')=='active')>Active</option>
                     <option value="inactive" @selected(request('status')=='inactive')>Inactive</option>
                     <option value="blacklisted" @selected(request('status')=='blacklisted')>Blacklisted</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="relationship_manager_id" class="form-select">
+                    <option value="">All Loan Officers</option>
+                    @foreach($relationshipManagers as $officer)
+                        <option value="{{ $officer->id }}" @selected(request('relationship_manager_id')==$officer->id)>{{ $officer->name }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="col-auto"><button class="btn btn-outline-primary">Filter</button></div>
@@ -89,7 +97,8 @@
                         </span>
                     </td>
                     @endif
-                    <td class="pe-3">
+                    <td class="pe-3 text-nowrap">
+                        <div class="d-flex gap-1">
                         <a href="{{ route('clients.show', $client) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                         @can('edit clients')
                         <a href="{{ route('clients.edit', $client) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
@@ -108,6 +117,7 @@
                         @endif
                         @endif
                         @endcan
+                        </div>
                     </td>
                 </tr>
             @empty

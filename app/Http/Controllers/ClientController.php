@@ -23,7 +23,8 @@ class ClientController extends Controller
                     ->orWhere('client_number', 'like', "%{$request->search}%")
                     ->orWhere('phone', 'like', "%{$request->search}%");
             }))
-            ->when($request->status, fn($q) => $q->where('status', $request->status));
+            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when($request->relationship_manager_id, fn($q) => $q->where('relationship_manager_id', $request->relationship_manager_id));
 
         if ($request->format === 'pdf') {
             $clients = (clone $query)->with('branch')->latest()->get();
