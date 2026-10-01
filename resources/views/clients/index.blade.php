@@ -54,7 +54,7 @@
                 <th>Name</th>
                 <th>Loan Officer</th>
                 <th>Phone</th>
-                <th>Email</th>
+                <th style="width:140px">Email</th>
                 <th>Status</th>
                 @if(\App\Models\SystemSetting::get('membership_fee_module_enabled', '1'))
                 <th>Membership</th>
@@ -69,7 +69,7 @@
                     <td class="fw-semibold">{{ $client->name }}</td>
                     <td class="small">
                         @can('assign relationship manager')
-                        <select class="form-select form-select-sm loan-officer-select" style="min-width:170px"
+                        <select class="form-select form-select-sm loan-officer-select" style="min-width:130px;font-size:.76rem;padding-top:.15rem;padding-bottom:.15rem"
                             data-action="{{ route('clients.relationship-manager', $client) }}"
                             data-original="{{ $client->relationship_manager_id }}"
                             aria-label="Loan Officer for {{ $client->name }}">
@@ -82,11 +82,11 @@
                             @endif
                         </select>
                         @else
-                        {{ $client->relationship_manager_name ?? '—' }}
+                        <span style="font-size:.78rem">{{ $client->relationship_manager_name ?? '—' }}</span>
                         @endcan
                     </td>
                     <td>{{ $client->phone ?? '—' }}</td>
-                    <td>{{ $client->email ?? '—' }}</td>
+                    <td><span class="d-inline-block text-truncate" style="max-width:130px" title="{{ $client->email }}">{{ $client->email ?? '—' }}</span></td>
                     <td>
                         <span class="badge badge-status-{{ $client->status }}">{{ ucfirst($client->status) }}</span>
                     </td>
