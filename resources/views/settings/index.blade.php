@@ -804,6 +804,44 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- One-time: free up client_number on clients already soft-deleted before the fix existed --}}
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-octagon text-danger"></i>
+        <span>Free Up Deleted Clients' Numbers</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            One-time fix: Client Number has a database-level unique constraint that doesn't know
+            about soft deletes — so deleting a client didn't actually free up its number, and a
+            new client, an edit, or a CSV import trying to reuse that same number was rejected.
+            Deleting a client now frees its number automatically going forward; this backfills
+            every client already deleted before that fix existed. Only ever touches a client
+            once; safe to re-run.
+            <strong>Preview first</strong> to confirm exactly what will change.
+        </p>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ route('settings.deleted-client-numbers-backfill-preview') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </button>
+            </form>
+            <form method="POST" action="{{ route('settings.deleted-client-numbers-backfill-apply') }}"
+                  onsubmit="return confirm('This changes the client_number stored on every already-deleted client. Only proceed after reviewing the Preview output. Continue?')">
+                @csrf
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-check2-circle me-2"></i>Apply
+                </button>
+            </form>
+        </div>
+
+        @if(session('deletedClientNumbersBackfillOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('deletedClientNumbersBackfillOutput') }}</pre>
+        @endif
+    </div>
+</div>
+
 {{-- Go-live wipe: clears client/transaction data, keeps setup + one superadmin --}}
 <div class="card mt-4 border-danger">
     <div class="card-header d-flex align-items-center gap-2">

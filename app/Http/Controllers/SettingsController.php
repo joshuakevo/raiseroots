@@ -682,6 +682,26 @@ class SettingsController extends Controller
     }
 
     /**
+     * Preview app\Console\Commands\BackfillDeletedClientNumbers.php without applying it.
+     * Remove this + runBackfillDeletedClientNumbers() once the one-time fix is confirmed complete.
+     */
+    public function previewBackfillDeletedClientNumbers()
+    {
+        Artisan::call('eltech:backfill-deleted-client-numbers');
+        $output = trim(Artisan::output());
+
+        return back()->with('deletedClientNumbersBackfillOutput', $output);
+    }
+
+    public function runBackfillDeletedClientNumbers()
+    {
+        Artisan::call('eltech:backfill-deleted-client-numbers', ['--commit' => true]);
+        $output = trim(Artisan::output());
+
+        return back()->with('deletedClientNumbersBackfillOutput', $output);
+    }
+
+    /**
      * "Go-live wipe" — clears client/transaction data, keeps setup (chart of
      * accounts, products, branches, collateral categories, financial periods,
      * settings) and every user, role and permission exactly as they are.

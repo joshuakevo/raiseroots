@@ -28,6 +28,24 @@ class Client extends Model
     ];
 
     /**
+     * client_number has a DB-level unique index, which doesn't know about soft deletes - the
+     * row (and its number) stays in the table, so the number stays blocked for reuse even
+     * though the client is gone everywhere in the app. MySQL has no partial/filtered unique
+     * index to exclude trashed rows, so instead the number itself is freed up at the moment
+     * of deletion by tagging it with the client's id, leaving the original number free for a
+     * new client, an edit, or a CSV import to claim immediately.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Client $client) {
+            if ($client->client_number && !str_contains($client->client_number, '~deleted~')) {
+                $client->client_number .= '~deleted~' . $client->id;
+                $client->saveQuietly();
+            }
+        });
+    }
+
+    /**
      * Best-effort split of a single "full name" string into first/middle/last, for records
      * (bulk CSV imports, legacy data) that only ever had one combined name field. First word
      * is first_name, last word is last_name, anything between is middle_name. A single-word

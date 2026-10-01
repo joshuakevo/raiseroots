@@ -377,6 +377,8 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/outstanding-admin-fee-backfill-apply', [SettingsController::class, 'runBackfillOutstandingAdminFee'])->name('settings.outstanding-admin-fee-backfill-apply');
         Route::post('settings/client-names-backfill-preview', [SettingsController::class, 'previewBackfillClientNames'])->name('settings.client-names-backfill-preview');
         Route::post('settings/client-names-backfill-apply', [SettingsController::class, 'runBackfillClientNames'])->name('settings.client-names-backfill-apply');
+        Route::post('settings/deleted-client-numbers-backfill-preview', [SettingsController::class, 'previewBackfillDeletedClientNumbers'])->name('settings.deleted-client-numbers-backfill-preview');
+        Route::post('settings/deleted-client-numbers-backfill-apply', [SettingsController::class, 'runBackfillDeletedClientNumbers'])->name('settings.deleted-client-numbers-backfill-apply');
         Route::post('settings/reset-production-preview', [SettingsController::class, 'previewResetProductionData'])->name('settings.reset-production-preview');
         Route::post('settings/reset-production-apply', [SettingsController::class, 'runResetProductionData'])->name('settings.reset-production-apply');
     });
