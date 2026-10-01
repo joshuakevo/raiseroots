@@ -27,6 +27,35 @@ class Client extends Model
         'joining_date'  => 'date',
     ];
 
+    /**
+     * Best-effort split of a single "full name" string into first/middle/last, for records
+     * (bulk CSV imports, legacy data) that only ever had one combined name field. First word
+     * is first_name, last word is last_name, anything between is middle_name. A single-word
+     * name leaves middle/last blank rather than duplicating the word into last_name - the
+     * Edit form's update() recombines first+middle+last back into name, so a duplicate would
+     * corrupt the name the moment someone re-saves the form without noticing.
+     *
+     * @return array{0: string, 1: string, 2: string} [first_name, middle_name, last_name]
+     */
+    public static function splitName(string $name): array
+    {
+        $parts = preg_split('/\s+/', trim($name), -1, PREG_SPLIT_NO_EMPTY);
+        $count = count($parts);
+
+        if ($count === 0) {
+            return ['', '', ''];
+        }
+        if ($count === 1) {
+            return [$parts[0], '', ''];
+        }
+
+        return [
+            $parts[0],
+            $count > 2 ? implode(' ', array_slice($parts, 1, $count - 2)) : '',
+            $parts[$count - 1],
+        ];
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'created_by');

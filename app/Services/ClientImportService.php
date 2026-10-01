@@ -182,10 +182,15 @@ class ClientImportService
                     }
                 }
 
+                [$firstName, $middleName, $lastName] = Client::splitName($name);
+
                 Client::create([
                     'client_number'           => $clientNumber !== '' ? $clientNumber : $this->generateClientNumber(),
                     'client_type'             => $clientType,
                     'name'                    => $name,
+                    'first_name'              => $firstName,
+                    'middle_name'             => $middleName !== '' ? $middleName : null,
+                    'last_name'               => $lastName,
                     'phone'                   => $phone !== '' ? $phone : null,
                     'email'                   => $email !== '' ? $email : null,
                     'id_number'               => $idNumber !== '' ? $idNumber : null,

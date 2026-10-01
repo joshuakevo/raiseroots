@@ -662,6 +662,26 @@ class SettingsController extends Controller
     }
 
     /**
+     * Preview app\Console\Commands\BackfillClientNames.php without applying it.
+     * Remove this + runBackfillClientNames() once the one-time fix is confirmed complete.
+     */
+    public function previewBackfillClientNames()
+    {
+        Artisan::call('eltech:backfill-client-names');
+        $output = trim(Artisan::output());
+
+        return back()->with('clientNamesBackfillOutput', $output);
+    }
+
+    public function runBackfillClientNames()
+    {
+        Artisan::call('eltech:backfill-client-names', ['--commit' => true]);
+        $output = trim(Artisan::output());
+
+        return back()->with('clientNamesBackfillOutput', $output);
+    }
+
+    /**
      * "Go-live wipe" — clears client/transaction data, keeps setup (chart of
      * accounts, products, branches, collateral categories, financial periods,
      * settings) and every user, role and permission exactly as they are.

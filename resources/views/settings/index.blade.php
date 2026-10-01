@@ -766,6 +766,44 @@ $groupIcons = [
     </div>
 </div>
 
+{{-- One-time: split clients.name into first_name/middle_name/last_name for bulk-imported clients --}}
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-octagon text-danger"></i>
+        <span>Fix Missing Client Names (bulk-imported clients)</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            One-time fix: the bulk CSV client import only ever saved the full name, not the
+            separate First/Middle/Last Name fields the Edit Client form uses — so any client
+            brought in that way shows a blank name on Edit. Splits the saved name (first word →
+            First Name, last word → Last Name, anything between → Middle Name) for every client
+            still missing it. A single-word name leaves Last Name blank rather than guessing —
+            fill those in by hand afterward. Only ever touches a client once; safe to re-run.
+            <strong>Preview first</strong> to confirm exactly what will change.
+        </p>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ route('settings.client-names-backfill-preview') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </button>
+            </form>
+            <form method="POST" action="{{ route('settings.client-names-backfill-apply') }}"
+                  onsubmit="return confirm('This sets First/Middle/Last Name on every affected client. Only proceed after reviewing the Preview output. Continue?')">
+                @csrf
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-check2-circle me-2"></i>Apply
+                </button>
+            </form>
+        </div>
+
+        @if(session('clientNamesBackfillOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('clientNamesBackfillOutput') }}</pre>
+        @endif
+    </div>
+</div>
+
 {{-- Go-live wipe: clears client/transaction data, keeps setup + one superadmin --}}
 <div class="card mt-4 border-danger">
     <div class="card-header d-flex align-items-center gap-2">
