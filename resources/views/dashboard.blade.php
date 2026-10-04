@@ -162,11 +162,14 @@
             </div>
             <div class="card-body">
                 @php
-                    $totalIncome   = $monthlyIncome->sum();
-                    $totalExpenses = $monthlyExpenses->sum();
-                    $totalProfit   = $totalIncome - $totalExpenses;
+                    $totalIncome         = $monthlyIncome->sum();
+                    $totalExpenses       = $monthlyExpenses->sum();
+                    $totalProfit         = $totalIncome - $totalExpenses;
+                    $totalAdminFees      = $monthlyAdminFees->sum();
+                    $totalProcessingFees = $monthlyProcessingFees->sum();
+                    $totalStampDuty      = $monthlyStampDuty->sum();
                 @endphp
-                <div class="row g-3 mb-3">
+                <div class="row g-3 mb-2">
                     <div class="col-4 text-center">
                         <div class="text-muted small mb-1">Total Income</div>
                         <div class="fw-bold text-success">{{ number_format($totalIncome, $dp) }}</div>
@@ -178,6 +181,20 @@
                     <div class="col-4 text-center">
                         <div class="text-muted small mb-1">Net Profit</div>
                         <div class="fw-bold {{ $totalProfit >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($totalProfit, $dp) }}</div>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-4 text-center">
+                        <div class="text-muted small mb-1">Admin Fees</div>
+                        <div class="fw-bold text-warning-emphasis">{{ number_format($totalAdminFees, $dp) }}</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="text-muted small mb-1">Processing Fees</div>
+                        <div class="fw-bold text-info-emphasis">{{ number_format($totalProcessingFees, $dp) }}</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="text-muted small mb-1">Stamp Duty Collected</div>
+                        <div class="fw-bold" style="color:#9333ea">{{ number_format($totalStampDuty, $dp) }}</div>
                     </div>
                 </div>
                 <canvas id="profitabilityChart" height="180"></canvas>
@@ -543,6 +560,9 @@ const income   = @json($monthlyIncome->values());
 const expenses = @json($monthlyExpenses->values());
 const profit   = @json($monthlyProfit->values());
 const loans    = @json($monthlyLoanDisbursements->values());
+const adminFees      = @json($monthlyAdminFees->values());
+const processingFees = @json($monthlyProcessingFees->values());
+const stampDuty       = @json($monthlyStampDuty->values());
 
 const gridColor = 'rgba(0,0,0,.05)';
 const font = { family: "'Segoe UI', system-ui, sans-serif", size: 11 };
@@ -555,13 +575,27 @@ new Chart(document.getElementById('profitabilityChart'), {
         datasets: [
             { label: 'Income',   data: income,   backgroundColor: 'rgba(34,197,94,.7)',  borderRadius: 4 },
             { label: 'Expenses', data: expenses, backgroundColor: 'rgba(239,68,68,.7)',  borderRadius: 4 },
+            { label: 'Admin Fees',      data: adminFees,      backgroundColor: 'rgba(245,158,11,.7)', borderRadius: 4 },
+            { label: 'Processing Fees', data: processingFees, backgroundColor: 'rgba(14,165,233,.7)', borderRadius: 4 },
+            { label: 'Stamp Duty',      data: stampDuty,      backgroundColor: 'rgba(147,51,234,.7)', borderRadius: 4 },
             { label: 'Profit',   data: profit,   backgroundColor: 'rgba(59,130,246,.7)', borderRadius: 4, type: 'line',
               borderColor: 'rgba(59,130,246,.9)', tension: 0.4, fill: false, pointRadius: 3 },
         ]
     },
     options: {
         responsive: true, maintainAspectRatio: true,
-        plugins: { legend: { labels: { font } } },
+        plugins: {
+            legend: { labels: { font } },
+            tooltip: {
+                callbacks: {
+                    footer: items => {
+                        const i = items[0].dataIndex;
+                        const totalFees = adminFees[i] + processingFees[i] + stampDuty[i];
+                        return 'Total Fees this month: ' + totalFees.toLocaleString();
+                    }
+                }
+            }
+        },
         scales: {
             x: { grid: { color: gridColor }, ticks: { font } },
             y: { grid: { color: gridColor }, ticks: { font, callback: v => v.toLocaleString() } }

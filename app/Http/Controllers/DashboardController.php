@@ -96,6 +96,27 @@ class DashboardController extends Controller
 
         $monthlyProfit = $monthlyIncome->zip($monthlyExpenses)->map(fn($pair) => round($pair[0] - $pair[1], 2));
 
+        // Fee breakdown (collected side only — Stamp Duty's later remittance is just a normal
+        // expense already folded into monthlyExpenses above, not deducted here).
+        $adminFeeAccountId      = Account::where('account_code', '4009')->value('id');
+        $processingFeeAccountId = Account::where('account_code', '4005')->value('id');
+        $stampDutyAccountId     = Account::where('account_code', '4012')->value('id');
+
+        $monthlyByAccount = function (?int $accountId) use ($months) {
+            if (!$accountId) {
+                return $months->map(fn () => 0.0);
+            }
+            return $months->map(fn ($m) => (float) TransactionLine::where('account_id', $accountId)
+                ->whereHas('transaction', fn ($q) => $q
+                    ->whereYear('date', $m->year)
+                    ->whereMonth('date', $m->month))
+                ->sum('credit'));
+        };
+
+        $monthlyAdminFees      = $monthlyByAccount($adminFeeAccountId);
+        $monthlyProcessingFees = $monthlyByAccount($processingFeeAccountId);
+        $monthlyStampDuty      = $monthlyByAccount($stampDutyAccountId);
+
         $monthlyLoanDisbursements = $months->map(function ($m) {
             return (float) Loan::whereYear('disbursement_date', $m->year)
                 ->whereMonth('disbursement_date', $m->month)
@@ -191,6 +212,7 @@ class DashboardController extends Controller
             'officerPerformance',
             'stats', 'loanStatusBreakdown', 'upcomingInstallments', 'topBorrowers',
             'monthLabels', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit', 'monthlyLoanDisbursements',
+            'monthlyAdminFees', 'monthlyProcessingFees', 'monthlyStampDuty',
             'par30', 'defaultRate',
             'activeBorrowers', 'totalClients',
             'loanGrowth', 'recommendations',
