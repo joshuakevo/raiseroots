@@ -633,6 +633,51 @@ class TransactionController extends Controller
 
         if (str_contains($desc, 'loan disbursement')) {
             $this->reverseLoanDisbursementImpact($transaction);
+
+            return;
+        }
+
+        $this->reverseLoanAccrualImpact($transaction, $desc);
+    }
+
+    /**
+     * Journals that move interest/admin fee through GL 2006 (Unearned Interest & Fees)
+     * outside a repayment or disbursement - put the loan back the way it was before them.
+     */
+    private function reverseLoanAccrualImpact(Transaction $transaction, string $desc): void
+    {
+        $loan = Loan::find($transaction->module_id);
+        $unearnedId = Account::where('account_code', '2006')->value('id');
+        if (!$loan || !$unearnedId) {
+            return;
+        }
+
+        $lines = $transaction->lines()->where('account_id', $unearnedId)->get();
+
+        // Opening accrual (eltech:accrue-loan-receivables): loan goes back to un-accrued.
+        if (str_contains($desc, 'loan receivable accrual (opening)')) {
+            $loan->update(['income_accrued' => false]);
+
+            return;
+        }
+
+        // Admin Cost added after disbursement (LoanService::setAdminCost).
+        if (str_contains($desc, 'loan receivable accrual (admin fee)')) {
+            $amount = (float) $lines->sum('credit');
+            $loan->update([
+                'admin_cost'            => max(0, $loan->admin_cost - $amount),
+                'outstanding_admin_fee' => max(0, $loan->outstanding_admin_fee - $amount),
+            ]);
+
+            return;
+        }
+
+        // Admin Fee collected on an accrued loan (LoanService::recordAdminFee) - it's owed again.
+        if (str_contains($desc, 'admin cost') && $lines->sum('debit') > 0) {
+            $loan->update([
+                'outstanding_admin_fee' => $loan->outstanding_admin_fee + (float) $lines->sum('debit'),
+                'status'                => $loan->status === 'closed' ? 'active' : $loan->status,
+            ]);
         }
     }
 
@@ -651,6 +696,7 @@ class TransactionController extends Controller
             'outstanding_principal' => 0,
             'outstanding_interest'  => 0,
             'outstanding_penalty'   => 0,
+            'income_accrued'        => false,
         ]);
     }
 
@@ -775,6 +821,7 @@ class TransactionController extends Controller
             'outstanding_principal' => $loan->outstanding_principal + $repayment->principal_paid,
             'outstanding_interest'  => $loan->outstanding_interest  + $repayment->interest_paid,
             'outstanding_penalty'   => $loan->outstanding_penalty   + $repayment->penalty_paid,
+            'outstanding_admin_fee' => $loan->outstanding_admin_fee + $repayment->admin_fee_paid,
             'status'                => $loan->status === 'closed' ? 'active' : $loan->status,
         ]);
 

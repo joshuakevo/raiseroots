@@ -99,6 +99,7 @@ class LoanService
                 $managementFee,  $managementFeeMethod,
                 $insuranceFee,   $insuranceFeeMethod
             );
+            $loan->update(['income_accrued' => true]);
 
             // Processing Fee: collected in cash alongside the loan (not deducted from the
             // principal above), posted as its own transaction - same account/description
@@ -644,6 +645,25 @@ class LoanService
             ],
         ];
 
+        // Interest (from the schedule just generated) and Admin Cost are owed from day one,
+        // so they sit in Loan Receivables too - offset by Unearned Interest & Fees until
+        // they're actually paid, when postRepaymentJournal() moves them into income.
+        $accrued = round($loan->outstanding_interest + $loan->outstanding_admin_fee, 2);
+        if ($accrued > 0.01) {
+            $lines[] = [
+                'account_id'  => $this->resolveGlAccountId($product->receivable_account_id, '1101'),
+                'debit'       => $accrued,
+                'credit'      => 0,
+                'description' => "Interest & admin fee receivable - {$loan->loan_number}",
+            ];
+            $lines[] = [
+                'account_id'  => $this->getUnearnedIncomeAccount(),
+                'debit'       => 0,
+                'credit'      => $accrued,
+                'description' => "Unearned interest & admin fee - {$loan->loan_number}",
+            ];
+        }
+
         if ($applicationFeeMethod === 'loan' && $applicationFee > 0) {
             $lines[] = [
                 'account_id'  => $this->getApplicationFeeAccount(),
@@ -713,13 +733,21 @@ class LoanService
         }
 
         DB::transaction(function () use ($loan, $amount, $paidDate, $cashAccount, $feeAccount) {
+            $lines = [
+                ['account_id' => $cashAccount->id, 'debit' => $amount, 'credit' => 0, 'client_id' => $loan->client_id],
+                ['account_id' => $feeAccount->id, 'debit' => 0, 'credit' => $amount],
+            ];
+            // Accrued loans carry the fee in the receivable - clear it from there and
+            // release it from Unearned Interest & Fees (cash still matches the income line).
+            if ($loan->income_accrued) {
+                $lines[] = ['account_id' => $this->resolveGlAccountId($loan->product->receivable_account_id, '1101'), 'debit' => 0, 'credit' => $amount, 'client_id' => $loan->client_id];
+                $lines[] = ['account_id' => $this->getUnearnedIncomeAccount(), 'debit' => $amount, 'credit' => 0];
+            }
+
             $this->accounting->post(
                 $paidDate,
                 "Admin cost - {$loan->loan_number}",
-                [
-                    ['account_id' => $cashAccount->id, 'debit' => $amount, 'credit' => 0, 'client_id' => $loan->client_id],
-                    ['account_id' => $feeAccount->id, 'debit' => 0, 'credit' => $amount],
-                ],
+                $lines,
                 'loan',
                 $loan->id
             );
@@ -750,10 +778,39 @@ class LoanService
             throw new \InvalidArgumentException('This loan already has an Admin Cost recorded.');
         }
 
-        $loan->update([
-            'admin_cost'            => $amount,
-            'outstanding_admin_fee' => $amount,
-        ]);
+        DB::transaction(function () use ($loan, $amount) {
+            $loan->update([
+                'admin_cost'            => $amount,
+                'outstanding_admin_fee' => $amount,
+            ]);
+
+            // Keep the receivable in step with what's now owed on an accrued loan.
+            if ($loan->income_accrued) {
+                $this->accounting->post(
+                    now()->toDateString(),
+                    "Loan receivable accrual (admin fee) - {$loan->loan_number}",
+                    [
+                        ['account_id' => $this->resolveGlAccountId($loan->product->receivable_account_id, '1101'), 'debit' => $amount, 'credit' => 0, 'client_id' => $loan->client_id],
+                        ['account_id' => $this->getUnearnedIncomeAccount(), 'debit' => 0, 'credit' => $amount],
+                    ],
+                    'loan',
+                    $loan->id
+                );
+            }
+        });
+    }
+
+    /**
+     * GL 2006 - interest + admin fee owed on accrued loans but not yet paid
+     * (the offset to their share of Loan Receivables).
+     */
+    public function getUnearnedIncomeAccount(): int
+    {
+        $id = Account::where('account_code', '2006')->value('id');
+        if (!$id) {
+            throw new \InvalidArgumentException('GL account 2006 (Unearned Interest & Fees) is missing - run migrations.');
+        }
+        return $id;
     }
 
     protected function getInsuranceFeeAccount(): int
@@ -792,12 +849,29 @@ class LoanService
             ],
         ];
 
-        if ($principalPaid > 0) {
+        // Accrued loans already carry interest + admin fee in the receivable, so those
+        // portions clear it too, and are released from Unearned Interest & Fees into the
+        // income lines below. Older loans (not accrued) only ever had principal there.
+        $accruedPaid = $loan->income_accrued ? $interestPaid + $adminFeePaid : 0;
+        $receivablePaid = $principalPaid + $accruedPaid;
+
+        if ($receivablePaid > 0) {
             $lines[] = [
                 'account_id'  => $this->resolveGlAccountId($product->receivable_account_id, '1101'),
                 'debit'       => 0,
-                'credit'      => $principalPaid,
-                'description' => "Principal repayment - {$loan->loan_number}",
+                'credit'      => $receivablePaid,
+                'description' => $accruedPaid > 0
+                    ? "Principal, interest & admin fee repayment - {$loan->loan_number}"
+                    : "Principal repayment - {$loan->loan_number}",
+            ];
+        }
+
+        if ($accruedPaid > 0) {
+            $lines[] = [
+                'account_id'  => $this->getUnearnedIncomeAccount(),
+                'debit'       => $accruedPaid,
+                'credit'      => 0,
+                'description' => "Unearned interest & admin fee released - {$loan->loan_number}",
             ];
         }
 

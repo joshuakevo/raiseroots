@@ -842,6 +842,42 @@ $groupIcons = [
     </div>
 </div>
 
+<div class="card mt-4 border-danger">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-octagon text-danger"></i>
+        <span>Bring Interest &amp; Admin Fees into Loan Receivables</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            One-time fix: new loans now carry their interest and admin fee in Loan Receivables
+            from disbursement (offset by 2006 Unearned Interest &amp; Fees, released into income
+            as they're paid). This posts the same for every active/defaulted loan disbursed
+            before that change, using what's still owed on each. Profit figures don't change.
+            Only ever touches a loan once; safe to re-run.
+            <strong>Preview first</strong> to confirm exactly what will change.
+        </p>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ route('settings.accrue-loan-receivables-preview') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </button>
+            </form>
+            <form method="POST" action="{{ route('settings.accrue-loan-receivables-apply') }}"
+                  onsubmit="return confirm('This posts a journal entry for every listed loan. Only proceed after reviewing the Preview output. Continue?')">
+                @csrf
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-check2-circle me-2"></i>Apply
+                </button>
+            </form>
+        </div>
+
+        @if(session('accrueLoanReceivablesOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('accrueLoanReceivablesOutput') }}</pre>
+        @endif
+    </div>
+</div>
+
 {{-- Go-live wipe: clears client/transaction data, keeps setup + one superadmin --}}
 <div class="card mt-4 border-danger">
     <div class="card-header d-flex align-items-center gap-2">

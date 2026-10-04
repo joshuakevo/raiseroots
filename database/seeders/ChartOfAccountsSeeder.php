@@ -34,6 +34,7 @@ class ChartOfAccountsSeeder extends Seeder
             ['code' => '2003', 'name' => 'Interest Payable (FD)',       'type' => 'liability', 'parent' => '2000'],
             ['code' => '2004', 'name' => 'Accrued Expenses',            'type' => 'liability', 'parent' => '2000'],
             ['code' => '2005', 'name' => 'Group Member Savings',        'type' => 'liability', 'parent' => '2000'],
+            ['code' => '2006', 'name' => 'Unearned Interest & Fees',    'type' => 'liability', 'parent' => '2000'],
             ['code' => '2100', 'name' => 'Long-Term Liabilities',       'type' => 'liability', 'parent' => null],
             ['code' => '2101', 'name' => 'Borrowings',                  'type' => 'liability', 'parent' => '2100'],
 

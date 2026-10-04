@@ -380,6 +380,8 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/client-names-backfill-apply', [SettingsController::class, 'runBackfillClientNames'])->name('settings.client-names-backfill-apply');
         Route::post('settings/deleted-client-numbers-backfill-preview', [SettingsController::class, 'previewBackfillDeletedClientNumbers'])->name('settings.deleted-client-numbers-backfill-preview');
         Route::post('settings/deleted-client-numbers-backfill-apply', [SettingsController::class, 'runBackfillDeletedClientNumbers'])->name('settings.deleted-client-numbers-backfill-apply');
+        Route::post('settings/accrue-loan-receivables-preview', [SettingsController::class, 'previewAccrueLoanReceivables'])->name('settings.accrue-loan-receivables-preview');
+        Route::post('settings/accrue-loan-receivables-apply', [SettingsController::class, 'runAccrueLoanReceivables'])->name('settings.accrue-loan-receivables-apply');
         Route::post('settings/reset-production-preview', [SettingsController::class, 'previewResetProductionData'])->name('settings.reset-production-preview');
         Route::post('settings/reset-production-apply', [SettingsController::class, 'runResetProductionData'])->name('settings.reset-production-apply');
     });

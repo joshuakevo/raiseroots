@@ -702,6 +702,26 @@ class SettingsController extends Controller
     }
 
     /**
+     * Preview app\Console\Commands\AccrueLoanReceivables.php without applying it.
+     * Remove this + runAccrueLoanReceivables() once the one-time fix is confirmed complete.
+     */
+    public function previewAccrueLoanReceivables()
+    {
+        Artisan::call('eltech:accrue-loan-receivables');
+        $output = trim(Artisan::output());
+
+        return back()->with('accrueLoanReceivablesOutput', $output);
+    }
+
+    public function runAccrueLoanReceivables()
+    {
+        Artisan::call('eltech:accrue-loan-receivables', ['--commit' => true]);
+        $output = trim(Artisan::output());
+
+        return back()->with('accrueLoanReceivablesOutput', $output);
+    }
+
+    /**
      * "Go-live wipe" — clears client/transaction data, keeps setup (chart of
      * accounts, products, branches, collateral categories, financial periods,
      * settings) and every user, role and permission exactly as they are.
