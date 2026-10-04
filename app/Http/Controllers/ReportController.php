@@ -270,6 +270,60 @@ class ReportController extends Controller
         return view('reports.loan-portfolio', compact('loans', 'summary', 'relationshipManagers'));
     }
 
+    /**
+     * Per-loan breakdown of what's still owed (principal, interest, admin fee) on
+     * active/defaulted loans - the drill-down behind the dashboard's outstanding figures.
+     */
+    public function outstandingBalances(Request $request)
+    {
+        $statuses = in_array($request->status, ['active', 'defaulted'], true)
+            ? [$request->status]
+            : ['active', 'defaulted'];
+
+        $loans = Loan::with('client.relationshipManager', 'product')
+            ->whereIn('status', $statuses)
+            ->when($request->relationship_manager_id, fn($q) => $q->whereHas(
+                'client', fn($q2) => $q2->where('relationship_manager_id', $request->relationship_manager_id)
+            ))
+            ->orderByRaw('(outstanding_principal + outstanding_interest + outstanding_admin_fee) DESC')
+            ->get();
+
+        $relationshipManagers = \App\Models\User::where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['client', 'group_member', 'group_leader']))
+            ->orderBy('name')
+            ->get();
+
+        $totals = [
+            'principal' => $loans->sum('outstanding_principal'),
+            'interest'  => $loans->sum('outstanding_interest'),
+            'admin_fee' => $loans->sum('outstanding_admin_fee'),
+        ];
+        $totals['total'] = $totals['principal'] + $totals['interest'] + $totals['admin_fee'];
+
+        if ($request->format === 'excel') {
+            $rows = [];
+            $rows[] = ['Loan #', 'Client', 'Relationship Manager', 'Product', 'Status', 'Outstanding Principal', 'Outstanding Interest', 'Outstanding Admin Fee', 'Total Outstanding'];
+            foreach ($loans as $loan) {
+                $rows[] = [
+                    $loan->loan_number,
+                    $loan->client->name,
+                    $loan->client->relationshipManager?->name ?? '',
+                    $loan->product->name,
+                    ucfirst($loan->status),
+                    $loan->outstanding_principal,
+                    $loan->outstanding_interest,
+                    $loan->outstanding_admin_fee,
+                    $loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_admin_fee,
+                ];
+            }
+            $rows[] = [];
+            $rows[] = ['', 'TOTALS', '', '', '', $totals['principal'], $totals['interest'], $totals['admin_fee'], $totals['total']];
+            return $this->csvDownload($rows, 'outstanding-balances-' . now()->format('Y-m-d'));
+        }
+
+        return view('reports.outstanding-balances', compact('loans', 'totals', 'relationshipManagers'));
+    }
+
     public function loanAging(Request $request)
     {
         $asOf = $request->as_of ?? now()->toDateString();

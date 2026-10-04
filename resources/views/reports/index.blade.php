@@ -13,6 +13,7 @@
         ['title'=>'Balance Sheet','icon'=>'bi-building','desc'=>'Assets, liabilities, and equity snapshot','route'=>'reports.balance-sheet','color'=>'info'],
         ['title'=>'General Ledger','icon'=>'bi-journal-text','desc'=>'All transactions for a specific account','route'=>'reports.general-ledger','color'=>'secondary'],
         ['title'=>'Loan Portfolio','icon'=>'bi-cash-stack','desc'=>'Full overview of all loans','route'=>'reports.loan-portfolio','color'=>'warning'],
+        ['title'=>'Outstanding Balances','icon'=>'bi-wallet2','desc'=>'Principal, interest and admin fee still owed per loan','route'=>'reports.outstanding-balances','color'=>'warning'],
         ['title'=>'Loan Aging','icon'=>'bi-clock-history','desc'=>'Overdue loans by age bucket','route'=>'reports.loan-aging','color'=>'danger'],
         ['title'=>'Repayment Schedule','icon'=>'bi-calendar3','desc'=>'Full schedule for a selected loan','route'=>'reports.repayment-schedule','color'=>'primary'],
         ['title'=>'Interest Income','icon'=>'bi-currency-dollar','desc'=>'Interest earned over a period','route'=>'reports.interest-income','color'=>'success'],

@@ -300,6 +300,7 @@ Route::middleware('auth')->group(function () {
         Route::get('balance-sheet', [ReportController::class, 'balanceSheet'])->name('balance-sheet');
         Route::get('general-ledger', [ReportController::class, 'generalLedger'])->name('general-ledger');
         Route::get('loan-portfolio', [ReportController::class, 'loanPortfolio'])->name('loan-portfolio');
+        Route::get('outstanding-balances', [ReportController::class, 'outstandingBalances'])->name('outstanding-balances');
         Route::get('loan-aging', [ReportController::class, 'loanAging'])->name('loan-aging');
         Route::get('repayment-schedule', [ReportController::class, 'repaymentSchedule'])->name('repayment-schedule');
         Route::get('interest-income', [ReportController::class, 'interestIncome'])->name('interest-income');
