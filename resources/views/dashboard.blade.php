@@ -139,12 +139,12 @@
         </a>
     </div>
     <div class="col-6 col-md-4">
-        <a href="{{ route('reports.interest-income') }}" class="stat-card text-decoration-none text-reset d-block">
+        <a href="{{ route('reports.loan-portfolio') }}" class="stat-card text-decoration-none text-reset d-block">
             <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-graph-up-arrow"></i></div>
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-receipt"></i></div>
                 <div>
-                    <div class="text-muted small">Total Interest Earned</div>
-                    <div class="fw-bold fs-5">{{ number_format($stats['total_interest_earned'], $dp) }}</div>
+                    <div class="text-muted small">Outstanding Admin Costs</div>
+                    <div class="fw-bold fs-5">{{ number_format($stats['outstanding_admin_fee'], $dp) }}</div>
                 </div>
             </div>
         </a>

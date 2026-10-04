@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Loan;
-use App\Models\LoanRepayment;
 use App\Models\LoanSchedule;
 use App\Models\TransactionLine;
 use App\Models\Account;
@@ -37,7 +36,7 @@ class DashboardController extends Controller
             'active_loans_amount'   => Loan::where('status', 'active')->sum('principal'),
             'total_outstanding'     => $totalOutstanding,
             'outstanding_interest'  => Loan::whereIn('status', ['active', 'defaulted'])->sum('outstanding_interest'),
-            'total_interest_earned' => LoanRepayment::sum('interest_paid'),
+            'outstanding_admin_fee' => Loan::whereIn('status', ['active', 'defaulted'])->sum('outstanding_admin_fee'),
             'overdue_loans'         => Loan::where('status', 'defaulted')->count(),
             'overdue_loans_amount'  => Loan::where('status', 'defaulted')->sum('principal'),
             'pending_loans'         => Loan::where('status', 'pending')->count(),
