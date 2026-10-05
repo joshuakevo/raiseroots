@@ -35,7 +35,7 @@
                 <div class="branch-hero-stat-label">Active Loans</div>
             </div>
             <div class="branch-hero-stat">
-                <div class="branch-hero-stat-val">{{ number_format($stats['total_outstanding'], 0) }}</div>
+                <div class="branch-hero-stat-val">{{ number_format($stats['total_outstanding'] + $stats['outstanding_interest'] + $stats['outstanding_admin_fee'], 0) }}</div>
                 <div class="branch-hero-stat-label">Outstanding</div>
             </div>
         </div>
