@@ -37,6 +37,11 @@
                 <i class="bi bi-pencil-square me-1"></i>Set Admin Cost
             </button>
         @endif
+        @if(in_array($loan->status, ['active', 'defaulted']))
+            <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#correctLoanModal">
+                <i class="bi bi-wrench-adjustable me-1"></i>Correct Loan
+            </button>
+        @endif
         @endcan
         @can('create loans')
         @if(in_array($loan->status, ['pending', 'approved']))
@@ -617,8 +622,9 @@
                 <div class="modal-body">
                     <p class="text-muted small">
                         This loan was disbursed without an Admin Cost recorded. Setting it here adds it to the
-                        loan's balance, to be collected through ordinary repayments (priority: interest → admin
-                        fee → principal) — nothing is posted to the books here, only as it's actually collected.
+                        loan's balance (and to Loan Receivables, offset by Unearned Interest &amp; Fees), to be
+                        collected through ordinary repayments (priority: interest → admin fee → principal) — it
+                        only counts as income once it's actually collected.
                     </p>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Admin Cost <span class="text-danger">*</span></label>
@@ -632,6 +638,70 @@
                     <button class="btn btn-sm btn-warning"><i class="bi bi-check-lg me-1"></i>Set Admin Cost</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+@endif
+@endcan
+
+{{-- Correct Loan Modal: wrong amount/date at disbursement, before any repayment --}}
+@can('disburse loans')
+@if(in_array($loan->status, ['active', 'defaulted']))
+<div class="modal fade" id="correctLoanModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-wrench-adjustable me-1"></i>Correct Loan — {{ $loan->loan_number }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            @if($correctionBlocker)
+                <div class="modal-body">
+                    <div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>{{ $correctionBlocker }}</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            @else
+            <form method="POST" action="{{ route('loans.correct', $loan) }}"
+                  onsubmit="return confirm('Re-post this loan with the figures entered? The original entries will be reversed on their own dates.')">
+                @csrf
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        For a loan disbursed with the wrong amount or date. The original disbursement and
+                        processing fee entries are reversed <strong>on their original dates</strong>, then the loan is
+                        re-disbursed with the figures below: same loan number, new schedule, interest and
+                        balances worked out again. Only possible before any repayment.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Principal <span class="text-danger">*</span></label>
+                            <input type="number" name="principal" class="form-control" step="any" min="1" required value="{{ $loan->principal + 0 }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Disbursement Date <span class="text-danger">*</span></label>
+                            <input type="date" name="disbursement_date" class="form-control" required max="{{ today()->toDateString() }}" value="{{ $loan->disbursement_date?->toDateString() }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Admin Cost</label>
+                            <input type="number" name="admin_cost" class="form-control" step="any" min="0" value="{{ $loan->admin_cost + 0 }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Processing Fee</label>
+                            <input type="number" name="processing_fee_amount" class="form-control" step="any" min="0" value="{{ $currentProcessingFee + 0 }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Reason <span class="text-danger">*</span></label>
+                            <input type="text" name="reason" class="form-control" maxlength="200" required placeholder="e.g. Entered 50,000 instead of 500,000">
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">Interest rate, term and repayment frequency stay as they are. The maturity date moves with the disbursement date.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm btn-danger"><i class="bi bi-check-lg me-1"></i>Correct Loan</button>
+                </div>
+            </form>
+            @endif
         </div>
     </div>
 </div>

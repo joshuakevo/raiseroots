@@ -245,9 +245,16 @@ class LoanController extends Controller
         $adminFeePartial   = $loan->outstanding_admin_fee > 0.01 && $loan->outstanding_admin_fee < $loan->admin_cost;
         $adminFeePaidDate  = $adminFeeCollected ? $this->latestAdminFeeGlDate($loan) : null;
 
+        // "Correct Loan" (wrong amount/date at disbursement) - only before any repayment.
+        $correctionBlocker    = $this->loanService->correctionBlocker($loan);
+        $currentProcessingFee = in_array($loan->status, ['active', 'defaulted'])
+            ? $this->loanService->currentProcessingFee($loan)
+            : 0;
+
         return view('loans.show', compact(
             'loan', 'schedulePreview', 'clientSavingsAccounts', 'currentPenalty', 'penaltyBreakdown',
-            'adminFeeCollected', 'adminFeePartial', 'adminFeePaidDate'
+            'adminFeeCollected', 'adminFeePartial', 'adminFeePaidDate',
+            'correctionBlocker', 'currentProcessingFee'
         ));
     }
 
@@ -298,6 +305,36 @@ class LoanController extends Controller
         }
 
         return back()->with('success', 'Admin Cost of ' . number_format($request->amount, 2) . ' set for ' . $loan->loan_number . '.');
+    }
+
+    /**
+     * Fix a loan disbursed with the wrong amount/date/Admin Cost/Processing Fee, before
+     * any repayment - see LoanService::correctDisbursement().
+     */
+    public function correct(Request $request, Loan $loan)
+    {
+        $request->validate([
+            'principal'             => 'required|numeric|min:1',
+            'disbursement_date'     => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
+            'admin_cost'            => 'nullable|numeric|min:0',
+            'processing_fee_amount' => 'nullable|numeric|min:0',
+            'reason'                => 'required|string|max:200',
+        ]);
+
+        try {
+            $loan = $this->loanService->correctDisbursement(
+                $loan,
+                (float) $request->principal,
+                $request->disbursement_date,
+                (float) ($request->admin_cost ?? 0),
+                (float) ($request->processing_fee_amount ?? 0),
+                $request->reason
+            );
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('loans.show', $loan)->with('success', 'Loan corrected: ' . number_format($loan->principal, 2) . ' disbursed on ' . $loan->disbursement_date->format('d M Y') . '. Schedule regenerated.');
     }
 
     public function approve(Loan $loan)

@@ -10,6 +10,7 @@ use App\Models\LoanRepayment;
 use App\Models\LoanSchedule;
 use App\Models\SavingsAccount;
 use App\Models\SavingsTransaction;
+use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -104,25 +105,9 @@ class LoanService
             // Processing Fee: collected in cash alongside the loan (not deducted from the
             // principal above), posted as its own transaction - same account/description
             // convention LoanImportService uses for historical disbursements. Admin Cost is
-            // NOT posted here - it's expected but not yet collected (stored on the loan
-            // itself above), and gets its own entry only once actually paid.
-            $processingFee = round((float) ($feeData['processing_fee_amount'] ?? 0), 2);
-            if ($processingFee > 0.01) {
-                $cashAccount = Account::where('account_code', '1001')->first();
-                $processingFeeAccount = Account::where('account_code', '4005')->first();
-                if ($cashAccount && $processingFeeAccount) {
-                    $this->accounting->post(
-                        $disbursementDate,
-                        "Processing fee - {$loan->loan_number}",
-                        [
-                            ['account_id' => $cashAccount->id, 'debit' => $processingFee, 'credit' => 0, 'client_id' => $loan->client_id],
-                            ['account_id' => $processingFeeAccount->id, 'debit' => 0, 'credit' => $processingFee],
-                        ],
-                        'loan',
-                        $loan->id
-                    );
-                }
-            }
+            // carried in the receivable by the disbursement journal above (offset by 2006)
+            // and only becomes income once actually paid.
+            $this->postProcessingFee($loan, $disbursementDate, (float) ($feeData['processing_fee_amount'] ?? 0));
 
             // Deduct savings-method fees from the savings account
             if ($anySavings && !empty($feeData['savings_account_id'])) {
@@ -797,6 +782,142 @@ class LoanService
                     $loan->id
                 );
             }
+        });
+    }
+
+    protected function postProcessingFee(Loan $loan, string $date, float $amount): void
+    {
+        $amount = round($amount, 2);
+        if ($amount <= 0.01) {
+            return;
+        }
+
+        $cashAccount = Account::where('account_code', '1001')->first();
+        $processingFeeAccount = Account::where('account_code', '4005')->first();
+        if ($cashAccount && $processingFeeAccount) {
+            $this->accounting->post(
+                $date,
+                "Processing fee - {$loan->loan_number}",
+                [
+                    ['account_id' => $cashAccount->id, 'debit' => $amount, 'credit' => 0, 'client_id' => $loan->client_id],
+                    ['account_id' => $processingFeeAccount->id, 'debit' => 0, 'credit' => $amount],
+                ],
+                'loan',
+                $loan->id
+            );
+        }
+    }
+
+    /**
+     * Why a disbursed loan can't be corrected via correctDisbursement(), or null if it can.
+     */
+    public function correctionBlocker(Loan $loan): ?string
+    {
+        if (!in_array($loan->status, ['active', 'defaulted'], true)) {
+            return 'Only a disbursed (active or defaulted) loan can be corrected.';
+        }
+        if ($loan->repayments()->exists()) {
+            return 'This loan already has repayments. Reverse them first (Journal Entries), then correct the loan.';
+        }
+        if ($loan->outstanding_admin_fee < $loan->admin_cost - 0.01) {
+            return 'Part of this loan\'s Admin Fee has already been collected. Reverse that entry first, then correct the loan.';
+        }
+        if ($loan->fee_savings_account_id) {
+            return 'This loan had fees deducted from savings - correct it by reversing its journals manually.';
+        }
+        return null;
+    }
+
+    /** The loan's journals that a correction re-posts: disbursement, its accruals, and the processing fee. */
+    protected function correctableJournals(Loan $loan)
+    {
+        return Transaction::where('module', 'loan')
+            ->where('module_id', $loan->id)
+            ->whereNull('reversed_by')
+            ->where(fn ($q) => $q->where('description', 'like', 'Loan disbursement:%')
+                ->orWhere('description', 'like', 'Loan receivable accrual%')
+                ->orWhere('description', 'like', 'Processing fee - %'))
+            ->with('lines')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /** Processing fee currently on the books for this loan (shown as the correction form's default). */
+    public function currentProcessingFee(Loan $loan): float
+    {
+        $feeAccountId = Account::where('account_code', '4005')->value('id');
+
+        return (float) $this->correctableJournals($loan)
+            ->filter(fn ($t) => str_starts_with($t->description, 'Processing fee - '))
+            ->sum(fn ($t) => $t->lines->where('account_id', $feeAccountId)->sum('credit'));
+    }
+
+    /**
+     * Fix a loan disbursed with the wrong amount, date, Admin Cost or Processing Fee,
+     * before any repayment. Each original journal (disbursement, accruals, processing fee)
+     * is reversed ON ITS OWN DATE - so reports for any past date read as if it never
+     * happened - then the loan is re-disbursed with the correct figures on the correct
+     * date: new schedule, new GL postings, same loan number.
+     */
+    public function correctDisbursement(Loan $loan, float $principal, string $date, float $adminCost, float $processingFee, string $reason): Loan
+    {
+        if ($blocker = $this->correctionBlocker($loan)) {
+            throw new \InvalidArgumentException($blocker);
+        }
+
+        $journals = $this->correctableJournals($loan);
+        foreach ($journals->pluck('date')->push($date)->unique() as $d) {
+            if (!\App\Models\FinancialPeriod::isOpen(Carbon::parse($d)->toDateString())) {
+                throw new \InvalidArgumentException('The financial period for ' . Carbon::parse($d)->format('d M Y') . ' is closed. Reopen it before correcting this loan.');
+            }
+        }
+
+        return DB::transaction(function () use ($loan, $principal, $date, $adminCost, $processingFee, $reason, $journals) {
+            foreach ($journals as $original) {
+                $reversal = $this->accounting->post(
+                    Carbon::parse($original->date)->toDateString(),
+                    'REVERSAL of ' . $original->reference . ': Loan correction - ' . $reason,
+                    $original->lines->map(fn ($l) => [
+                        'account_id'  => $l->account_id,
+                        'debit'       => $l->credit,
+                        'credit'      => $l->debit,
+                        'description' => 'Reversal: ' . $l->description,
+                    ])->toArray(),
+                    'reversal',
+                    $original->id
+                );
+                $reversal->update(['reversal_of' => $original->id, 'reversal_reason' => 'Loan correction - ' . $reason]);
+                $original->update(['reversed_by' => $reversal->id]);
+            }
+
+            $principal = round($principal, 2);
+            $adminCost = round($adminCost, 2);
+            $managementFee = round($principal * $loan->management_fee_rate / 100, 2);
+            $insuranceFee  = round($principal * $loan->insurance_fee_rate / 100, 2);
+
+            $loan->update([
+                'principal'             => $principal,
+                'disbursement_date'     => $date,
+                'maturity_date'         => Carbon::parse($date)->addMonths($loan->term_months)->toDateString(),
+                'outstanding_principal' => $principal,
+                'outstanding_penalty'   => 0,
+                'management_fee'        => $managementFee,
+                'insurance_fee'         => $insuranceFee,
+                'admin_cost'            => $adminCost,
+                'outstanding_admin_fee' => $adminCost,
+            ]);
+
+            $this->generateSchedule($loan);
+            $this->postDisbursementJournal(
+                $loan, $date,
+                (float) $loan->application_fee, $loan->application_fee_method ?? 'loan',
+                $managementFee, $loan->management_fee_method ?? 'loan',
+                $insuranceFee,  $loan->insurance_fee_method ?? 'loan'
+            );
+            $loan->update(['income_accrued' => true]);
+            $this->postProcessingFee($loan, $date, $processingFee);
+
+            return $loan->fresh();
         });
     }
 
