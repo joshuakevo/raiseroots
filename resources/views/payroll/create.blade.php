@@ -39,26 +39,30 @@
         </div>
 
         <div class="table-responsive">
-            <table class="table table-bordered table-sm" id="itemsTable">
-                <thead class="table-light">
-                    <tr class="small">
-                        <th>Employee</th>
-                        <th style="width:130px">Basic Salary</th>
-                        <th style="width:115px">Allowances</th>
-                        <th style="width:105px" class="text-end">Gross</th>
-                        <th style="width:100px" class="text-end">PAYE</th>
-                        <th style="width:95px" class="text-end">NSSF 5%</th>
-                        <th style="width:115px" title="Loan recoveries, advances, etc.">Other Deductions</th>
-                        <th style="width:110px" class="text-end table-success">Take-home</th>
-                        <th style="width:100px" class="text-end text-muted" title="Paid by the company on top of gross">Employer NSSF 10%</th>
-                        <th style="width:40px"></th>
+            <table class="table table-sm align-middle mb-0" id="itemsTable">
+                <thead>
+                    <tr class="pr-group">
+                        <th rowspan="2" class="pr-emp">Employee</th>
+                        <th colspan="3" class="text-center pr-g-earn">Earnings</th>
+                        <th colspan="3" class="text-center pr-g-ded">Deductions</th>
+                        <th rowspan="2" class="text-end pr-g-pay">Take-home</th>
+                        <th rowspan="2" class="text-end pr-g-co" title="Paid by the company on top of gross">Employer<br>NSSF 10%</th>
+                        <th rowspan="2" style="width:44px"></th>
+                    </tr>
+                    <tr class="pr-sub">
+                        <th class="text-end pr-g-earn">Basic Salary</th>
+                        <th class="text-end pr-g-earn">Allowances</th>
+                        <th class="text-end pr-g-earn">Gross</th>
+                        <th class="text-end pr-g-ded">PAYE</th>
+                        <th class="text-end pr-g-ded">NSSF 5%</th>
+                        <th class="text-end pr-g-ded" title="Loan recoveries, advances, etc.">Other</th>
                     </tr>
                 </thead>
                 <tbody id="itemsBody">
                     {{-- rows added by JS --}}
                 </tbody>
-                <tfoot class="small">
-                    <tr class="fw-bold">
+                <tfoot>
+                    <tr class="fw-bold pr-totals">
                         <td colspan="3" class="text-end">Totals:</td>
                         <td class="text-end" id="totGross">0</td>
                         <td class="text-end text-danger" id="totPaye">0</td>
@@ -69,7 +73,7 @@
                         <td></td>
                     </tr>
                     <tr>
-                        <td colspan="10" class="text-muted">
+                        <td colspan="10" class="text-muted small py-2">
                             Cost to company (gross + employer NSSF): <strong class="text-dark" id="totCost">0</strong>
                             &nbsp;&middot;&nbsp; Owed to URA (PAYE): <strong class="text-dark" id="owedUra">0</strong>
                             &nbsp;&middot;&nbsp; Owed to NSSF (5% + 10%): <strong class="text-dark" id="owedNssf">0</strong>
@@ -90,6 +94,25 @@
     </div>
 </div>
 @endsection
+@push('styles')
+<style>
+    #itemsTable { min-width: 1150px; border: 1px solid var(--bs-border-color); }
+    #itemsTable thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; font-weight: 600; color: #6b7280; white-space: nowrap; vertical-align: middle; border-bottom-width: 1px; }
+    #itemsTable .pr-group th { font-size: .74rem; padding-top: .55rem; padding-bottom: .4rem; }
+    #itemsTable .pr-emp { min-width: 260px; }
+    #itemsTable .pr-meta { font-size: .72rem; color: #6b7280; margin-top: 3px; min-height: 1em; }
+    #itemsTable .pr-input { text-align: right; min-width: 120px; font-variant-numeric: tabular-nums; }
+    #itemsTable .pr-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 100px; }
+    #itemsTable tbody td { padding: .55rem .5rem; border-bottom: 1px solid var(--bs-border-color); }
+    #itemsTable .pr-g-earn { background: #f8fafc; }
+    #itemsTable .pr-g-ded  { background: #fef6f6; }
+    #itemsTable .pr-g-pay  { background: #ecfdf3; color: #065f46; }
+    #itemsTable .pr-g-co   { background: #f8fafc; }
+    #itemsTable thead .pr-g-pay { color: #065f46; }
+    #itemsTable .pr-totals td { background: #f8fafc; border-top: 2px solid var(--bs-border-color); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #itemsTable .pr-totals td.table-success { background: #ecfdf3; color: #065f46; }
+</style>
+@endpush
 @push('scripts')
 <script>
 const employees = @json($employees);
@@ -113,20 +136,21 @@ function addRow(empId = '', basic = 0, allow = 0, deduct = 0) {
         return `<option value="${e.id}" data-salary="${e.basic_salary}" ${String(e.id) === String(empId) ? 'selected' : ''} ${isUsed ? 'disabled' : ''}>${e.name} — ${e.employee_number}${isUsed ? ' (already added)' : ''}</option>`;
     }).join('');
     const row = `<tr id="row_${i}">
-        <td>
+        <td class="pr-emp">
             <select name="items[${i}][employee_id]" class="form-select form-select-sm" onchange="onEmpChange(this,${i})" required>
-                <option value="">— Select —</option>${opts}
+                <option value="">— Select employee —</option>${opts}
             </select>
+            <div class="pr-meta" id="meta_${i}">${empMeta(empId)}</div>
         </td>
-        <td><input type="number" name="items[${i}][basic_salary]" id="basic_${i}" class="form-control form-control-sm" value="${basic}" min="0" step="1000" oninput="recalcRow(${i})" required></td>
-        <td><input type="number" name="items[${i}][allowances]" id="allow_${i}" class="form-control form-control-sm" value="${allow}" min="0" step="1000" oninput="recalcRow(${i})"></td>
-        <td class="text-end align-middle" id="gross_${i}">0</td>
-        <td class="text-end align-middle text-danger" id="paye_${i}">0</td>
-        <td class="text-end align-middle text-danger" id="nssfee_${i}">0</td>
-        <td><input type="number" name="items[${i}][deductions]" id="deduct_${i}" class="form-control form-control-sm" value="${deduct}" min="0" step="1000" oninput="recalcRow(${i})"></td>
-        <td class="text-end align-middle fw-bold table-success" id="net_${i}">0</td>
-        <td class="text-end align-middle text-muted" id="nssfer_${i}">0</td>
-        <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-outline-danger py-0" onclick="removeRow(${i})"><i class="bi bi-x"></i></button></td>
+        <td><input type="number" name="items[${i}][basic_salary]" id="basic_${i}" class="form-control form-control-sm pr-input" value="${basic}" min="0" step="1000" oninput="recalcRow(${i})" required></td>
+        <td><input type="number" name="items[${i}][allowances]" id="allow_${i}" class="form-control form-control-sm pr-input" value="${allow}" min="0" step="1000" oninput="recalcRow(${i})"></td>
+        <td class="pr-num" id="gross_${i}">0</td>
+        <td class="pr-num text-danger" id="paye_${i}">0</td>
+        <td class="pr-num text-danger" id="nssfee_${i}">0</td>
+        <td><input type="number" name="items[${i}][deductions]" id="deduct_${i}" class="form-control form-control-sm pr-input" value="${deduct}" min="0" step="1000" oninput="recalcRow(${i})"></td>
+        <td class="pr-num pr-g-pay fw-bold" id="net_${i}">0</td>
+        <td class="pr-num text-muted" id="nssfer_${i}">0</td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="removeRow(${i})" title="Remove"><i class="bi bi-x-lg"></i></button></td>
     </tr>`;
     document.getElementById('itemsBody').insertAdjacentHTML('beforeend', row);
     recalcRow(i);
@@ -146,10 +170,17 @@ function refreshDisabled() {
     });
 }
 
+function empMeta(empId) {
+    const e = employees.find(x => String(x.id) === String(empId));
+    if (!e) return '';
+    return [e.position, e.employee_number].filter(Boolean).join(' · ');
+}
+
 function onEmpChange(sel, i) {
     const opt = sel.options[sel.selectedIndex];
     const salary = opt.dataset.salary || 0;
     document.getElementById('basic_' + i).value = salary;
+    document.getElementById('meta_' + i).textContent = empMeta(sel.value);
     recalcRow(i);
     refreshDisabled();
 }
