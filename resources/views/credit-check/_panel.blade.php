@@ -4,7 +4,7 @@
 --}}
 <div class="card mb-3" id="creditCheck-{{ $panelId }}">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-shield-check text-danger me-1"></i>ElTech Credit Check
+        <span><i class="bi bi-shield-check text-danger me-1"></i>Eltech Systems Credit Check
             @if($nationalId)<span class="badge bg-light text-secondary border font-monospace fw-normal ms-1">{{ $nationalId }}</span>@endif
         </span>
         @if($nationalId)

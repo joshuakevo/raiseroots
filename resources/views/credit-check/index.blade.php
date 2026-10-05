@@ -1,11 +1,11 @@
 @extends('layouts.app')
-@section('title', 'Credit Check')
+@section('title', 'Eltech Systems Credit Check')
 @section('breadcrumb')
-    <li class="breadcrumb-item active">Credit Check</li>
+    <li class="breadcrumb-item active">Eltech Systems Credit Check</li>
 @endsection
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold mb-0"><i class="bi bi-shield-check text-danger me-2"></i>ElTech Credit Check</h4>
+    <h4 class="fw-bold mb-0"><i class="bi bi-shield-check text-danger me-2"></i>Eltech Systems Credit Check</h4>
 </div>
 <div class="card mb-3">
     <div class="card-body">

@@ -268,7 +268,7 @@
                 <i class="bi bi-people-fill"></i> Clients
             </a>
             <a href="{{ route('credit-check.index') }}" class="nav-link-item {{ request()->routeIs('credit-check.*') ? 'active' : '' }}">
-                <i class="bi bi-shield-check"></i> Credit Check
+                <i class="bi bi-shield-check"></i> Eltech Systems Credit Check
             </a>
             @endcan
             @can('manage shares')
