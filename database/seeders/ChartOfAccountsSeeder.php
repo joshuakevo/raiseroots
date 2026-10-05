@@ -19,7 +19,6 @@ class ChartOfAccountsSeeder extends Seeder
             ['code' => '1101', 'name' => 'Loans Receivable — General',  'type' => 'asset',     'parent' => '1100'],
             ['code' => '1102', 'name' => 'Loans Receivable — Business', 'type' => 'asset',     'parent' => '1100'],
             ['code' => '1103', 'name' => 'Loans Receivable — Emergency','type' => 'asset',     'parent' => '1100'],
-            ['code' => '1199', 'name' => 'Less: Unearned Interest & Fees', 'type' => 'asset', 'parent' => '1100'],
             ['code' => '1200', 'name' => 'Fixed Assets',                'type' => 'asset',     'parent' => null],
             ['code' => '1201', 'name' => 'Office Equipment',            'type' => 'asset',     'parent' => '1200'],
             ['code' => '1202', 'name' => 'Computers & IT Equipment',    'type' => 'asset',     'parent' => '1200'],
@@ -35,6 +34,7 @@ class ChartOfAccountsSeeder extends Seeder
             ['code' => '2003', 'name' => 'Interest Payable (FD)',       'type' => 'liability', 'parent' => '2000'],
             ['code' => '2004', 'name' => 'Accrued Expenses',            'type' => 'liability', 'parent' => '2000'],
             ['code' => '2005', 'name' => 'Group Member Savings',        'type' => 'liability', 'parent' => '2000'],
+            ['code' => '2006', 'name' => 'Unearned Interest & Fees',    'type' => 'liability', 'parent' => '2000'],
             ['code' => '2100', 'name' => 'Long-Term Liabilities',       'type' => 'liability', 'parent' => null],
             ['code' => '2101', 'name' => 'Borrowings',                  'type' => 'liability', 'parent' => '2100'],
 
