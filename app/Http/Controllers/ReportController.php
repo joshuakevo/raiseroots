@@ -137,7 +137,12 @@ class ReportController extends Controller
             return $this->csvDownload($rows, 'balance-sheet-' . now()->format('Y-m-d'));
         }
 
-        return view('reports.balance-sheet', compact('data', 'asOf', 'branchId', 'branches'));
+        // Net Income on the balance sheet is everything up to the as-of date, so its
+        // Income Statement link starts from the very first posting.
+        $firstPostingDate = \App\Models\Transaction::min('date');
+        $firstPostingDate = $firstPostingDate ? \Carbon\Carbon::parse($firstPostingDate)->toDateString() : $asOf;
+
+        return view('reports.balance-sheet', compact('data', 'asOf', 'branchId', 'branches', 'firstPostingDate'));
     }
 
     public function generalLedger(Request $request)
