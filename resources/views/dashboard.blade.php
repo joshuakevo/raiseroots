@@ -287,7 +287,7 @@
                 <div class="small fw-semibold text-success mb-2"><i class="bi bi-arrow-up-circle me-1"></i>Assets</div>
                 @forelse($topAssetAccounts as $row)
                 <div class="d-flex justify-content-between mb-2">
-                    <span class="small text-truncate me-2">{{ $row['account']->account_name }}</span>
+                    <a href="{{ route('reports.general-ledger', ['account_id' => $row['account']->id]) }}" class="small text-truncate me-2 text-reset text-decoration-none" title="Open in General Ledger">{{ $row['account']->account_name }}</a>
                     <span class="small fw-semibold text-nowrap">{{ number_format($row['balance'], 0) }}</span>
                 </div>
                 @empty
@@ -297,7 +297,7 @@
                 <div class="small fw-semibold text-danger mb-2"><i class="bi bi-arrow-down-circle me-1"></i>Liabilities</div>
                 @forelse($topLiabilityAccounts as $row)
                 <div class="d-flex justify-content-between mb-2">
-                    <span class="small text-truncate me-2">{{ $row['account']->account_name }}</span>
+                    <a href="{{ route('reports.general-ledger', ['account_id' => $row['account']->id]) }}" class="small text-truncate me-2 text-reset text-decoration-none" title="Open in General Ledger">{{ $row['account']->account_name }}</a>
                     <span class="small fw-semibold text-nowrap">{{ number_format($row['balance'], 0) }}</span>
                 </div>
                 @empty

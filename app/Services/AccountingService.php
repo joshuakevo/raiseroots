@@ -194,6 +194,7 @@ class AccountingService
             if ($bal['debit'] == 0 && $bal['credit'] == 0) continue;
 
             $rows[] = [
+                'account_id'   => $account->id,
                 'account_code' => $account->account_code,
                 'account_name' => $account->account_name,
                 'account_type' => $account->account_type,

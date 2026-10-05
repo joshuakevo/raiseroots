@@ -38,7 +38,7 @@
                 <tbody>
                 @forelse($data['revenue_rows'] as $row)
                     <tr>
-                        <td class="ps-3">{{ $row['account']->account_code }} — {{ $row['account']->account_name }}</td>
+                        <td class="ps-3"><a href="{{ route('reports.general-ledger', ['account_id' => $row['account']->id, 'from_date' => $fromDate, 'to_date' => $toDate, 'branch_id' => $branchId]) }}" class="text-reset text-decoration-none" title="Open in General Ledger">{{ $row['account']->account_code }} — {{ $row['account']->account_name }} <i class="bi bi-box-arrow-up-right small text-muted"></i></a></td>
                         <td class="text-end pe-3 text-success fw-semibold">{{ number_format($row['balance'], $dp) }}</td>
                     </tr>
                 @empty
@@ -63,7 +63,7 @@
                     </tr>
                     @foreach($group['rows'] as $row)
                     <tr>
-                        <td class="ps-4">{{ $row['account']->account_code }} — {{ $row['account']->account_name }}</td>
+                        <td class="ps-4"><a href="{{ route('reports.general-ledger', ['account_id' => $row['account']->id, 'from_date' => $fromDate, 'to_date' => $toDate, 'branch_id' => $branchId]) }}" class="text-reset text-decoration-none" title="Open in General Ledger">{{ $row['account']->account_code }} — {{ $row['account']->account_name }} <i class="bi bi-box-arrow-up-right small text-muted"></i></a></td>
                         <td class="text-end pe-3 text-danger fw-semibold">{{ number_format($row['balance'], $dp) }}</td>
                     </tr>
                     @endforeach

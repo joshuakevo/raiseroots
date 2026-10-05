@@ -32,7 +32,7 @@
             <table class="table mb-0">
                 <tbody>
                 @foreach($data['asset']['rows'] as $row)
-                    <tr><td class="ps-3">{{ $row['account']->account_code }} — {{ $row['account']->account_name }}</td><td class="text-end pe-3">{{ number_format($row['balance'], $dp) }}</td></tr>
+                    <tr><td class="ps-3">@if(isset($row['account']->id))<a href="{{ route('reports.general-ledger', ['account_id' => $row['account']->id, 'to_date' => $asOf, 'branch_id' => $branchId]) }}" class="text-reset text-decoration-none" title="Open in General Ledger">{{ $row['account']->account_code }} — {{ $row['account']->account_name }} <i class="bi bi-box-arrow-up-right small text-muted"></i></a>@else{{ $row['account']->account_code }} — {{ $row['account']->account_name }}@endif</td><td class="text-end pe-3">{{ number_format($row['balance'], $dp) }}</td></tr>
                 @endforeach
                 </tbody>
                 <tfoot class="table-light fw-semibold"><tr><td class="ps-3">Total Assets</td><td class="text-end pe-3 text-primary">{{ number_format($data['asset']['total'], $dp) }}</td></tr></tfoot>
@@ -46,7 +46,7 @@
             <table class="table mb-0">
                 <tbody>
                 @foreach($data['liability']['rows'] as $row)
-                    <tr><td class="ps-3">{{ $row['account']->account_code }} — {{ $row['account']->account_name }}</td><td class="text-end pe-3">{{ number_format($row['balance'], $dp) }}</td></tr>
+                    <tr><td class="ps-3">@if(isset($row['account']->id))<a href="{{ route('reports.general-ledger', ['account_id' => $row['account']->id, 'to_date' => $asOf, 'branch_id' => $branchId]) }}" class="text-reset text-decoration-none" title="Open in General Ledger">{{ $row['account']->account_code }} — {{ $row['account']->account_name }} <i class="bi bi-box-arrow-up-right small text-muted"></i></a>@else{{ $row['account']->account_code }} — {{ $row['account']->account_name }}@endif</td><td class="text-end pe-3">{{ number_format($row['balance'], $dp) }}</td></tr>
                 @endforeach
                 </tbody>
                 <tfoot class="table-light fw-semibold"><tr><td class="ps-3">Total Liabilities</td><td class="text-end pe-3 text-danger">{{ number_format($data['liability']['total'], $dp) }}</td></tr></tfoot>
@@ -57,7 +57,7 @@
             <table class="table mb-0">
                 <tbody>
                 @foreach($data['equity']['rows'] as $row)
-                    <tr><td class="ps-3">{{ $row['account']->account_code }} — {{ $row['account']->account_name }}</td><td class="text-end pe-3">{{ number_format($row['balance'], $dp) }}</td></tr>
+                    <tr><td class="ps-3">@if(isset($row['account']->id))<a href="{{ route('reports.general-ledger', ['account_id' => $row['account']->id, 'to_date' => $asOf, 'branch_id' => $branchId]) }}" class="text-reset text-decoration-none" title="Open in General Ledger">{{ $row['account']->account_code }} — {{ $row['account']->account_name }} <i class="bi bi-box-arrow-up-right small text-muted"></i></a>@else{{ $row['account']->account_code }} — {{ $row['account']->account_name }}@endif</td><td class="text-end pe-3">{{ number_format($row['balance'], $dp) }}</td></tr>
                 @endforeach
                 </tbody>
                 <tfoot class="table-light fw-semibold"><tr><td class="ps-3">Total Equity</td><td class="text-end pe-3 text-success">{{ number_format($data['equity']['total'], $dp) }}</td></tr></tfoot>

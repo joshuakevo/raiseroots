@@ -44,7 +44,7 @@
             @foreach($data['rows'] as $row)
                 <tr>
                     <td class="ps-3 font-monospace">{{ $row['account_code'] }}</td>
-                    <td>{{ $row['account_name'] }}</td>
+                    <td><a href="{{ route('reports.general-ledger', ['account_id' => $row['account_id'], 'from_date' => $fromDate, 'to_date' => $toDate, 'branch_id' => $branchId]) }}" class="text-reset text-decoration-none" title="Open in General Ledger">{{ $row['account_name'] }} <i class="bi bi-box-arrow-up-right small text-muted"></i></a></td>
                     <td>@php
                         $typeStyle = match($row['account_type']) {
                             'asset'     => 'background:#2563eb;color:#fff',
