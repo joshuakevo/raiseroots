@@ -34,6 +34,7 @@
         <tr>
             <th style="width:70px">Date</th>
             <th style="width:90px">Reference</th>
+            <th>Client</th>
             <th>Description</th>
             <th class="r" style="width:90px">Debit</th>
             <th class="r" style="width:90px">Credit</th>
@@ -45,13 +46,14 @@
     <tr>
         <td>{{ $row['line']->transaction->date->format('d M Y') }}</td>
         <td style="font-family:monospace;font-size:7px">{{ $row['line']->transaction->reference }}</td>
+        <td>{{ $row['client'] ? $row['client']->name . ' (' . $row['client']->client_number . ')' : '—' }}</td>
         <td>{{ $row['line']->description ?? $row['line']->transaction->description }}</td>
         <td class="r">{{ $row['line']->debit > 0 ? number_format($row['line']->debit, 2) : '' }}</td>
         <td class="r">{{ $row['line']->credit > 0 ? number_format($row['line']->credit, 2) : '' }}</td>
         <td class="r {{ $row['balance'] < 0 ? 'text-danger' : '' }}"><strong>{{ number_format($row['balance'], 2) }}</strong></td>
     </tr>
     @empty
-    <tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:10px">No ledger entries.</td></tr>
+    <tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:10px">No ledger entries.</td></tr>
     @endforelse
     </tbody>
 </table>

@@ -176,13 +176,16 @@ class ReportController extends Controller
             ->select('transaction_lines.*')
             ->get();
 
+        $lineClients = $this->resolveLineClients($lines);
+
         $runningBalance = 0;
-        $rows = $lines->map(function ($line) use (&$runningBalance, $account) {
+        $rows = $lines->map(function ($line) use (&$runningBalance, $account, $lineClients) {
             $runningBalance += $account->isDebitNormal()
                 ? ($line->debit - $line->credit)
                 : ($line->credit - $line->debit);
             return [
                 'line'    => $line,
+                'client'  => $lineClients[$line->id] ?? null,
                 'balance' => $runningBalance,
             ];
         });
@@ -195,11 +198,13 @@ class ReportController extends Controller
 
         if ($request->format === 'excel') {
             $csvRows = [];
-            $csvRows[] = ['Date', 'Reference', 'Description', 'Debit', 'Credit', 'Balance'];
+            $csvRows[] = ['Date', 'Reference', 'Client', 'Client No.', 'Description', 'Debit', 'Credit', 'Balance'];
             foreach ($rows as $row) {
                 $csvRows[] = [
                     $row['line']->transaction->date->format('Y-m-d'),
                     $row['line']->transaction->reference,
+                    $row['client']?->name ?? '',
+                    $row['client']?->client_number ?? '',
                     $row['line']->description ?? $row['line']->transaction->description,
                     $row['line']->debit,
                     $row['line']->credit,
@@ -210,6 +215,55 @@ class ReportController extends Controller
         }
 
         return view('reports.general-ledger', compact('account', 'rows', 'fromDate', 'toDate', 'accounts', 'branchId', 'branches'));
+    }
+
+    /**
+     * The client each GL line belongs to: the line's own client tag, else another tagged
+     * line in the same journal, else the record the journal was posted for (loan, savings
+     * account, fixed deposit, share, client). Batched - a handful of queries per report.
+     */
+    private function resolveLineClients($lines): array
+    {
+        $txnIds = $lines->pluck('transaction_id')->unique();
+
+        $taggedByTxn = TransactionLine::whereIn('transaction_id', $txnIds)
+            ->whereNotNull('client_id')
+            ->orderBy('id')
+            ->get(['transaction_id', 'client_id'])
+            ->unique('transaction_id')
+            ->pluck('client_id', 'transaction_id');
+
+        $moduleModels = [
+            'loan'          => \App\Models\Loan::class,
+            'savings'       => \App\Models\SavingsAccount::class,
+            'fixed_deposit' => \App\Models\FixedDeposit::class,
+            'member_share'  => \App\Models\MemberShare::class,
+        ];
+        $byModule = [];
+        foreach ($lines->pluck('transaction')->groupBy('module') as $module => $txns) {
+            $ids = $txns->pluck('module_id')->filter()->unique();
+            if ($module === 'client') {
+                $byModule[$module] = $ids->combine($ids)->all();
+            } elseif (isset($moduleModels[$module]) && $ids->isNotEmpty()) {
+                $byModule[$module] = $moduleModels[$module]::withoutGlobalScopes()->whereIn('id', $ids)->pluck('client_id', 'id')->all();
+            }
+        }
+
+        $clientIdByLine = [];
+        foreach ($lines as $line) {
+            $txn = $line->transaction;
+            $clientIdByLine[$line->id] = $line->client_id
+                ?? $taggedByTxn[$line->transaction_id]
+                ?? $byModule[$txn->module][$txn->module_id]
+                ?? null;
+        }
+
+        $clients = \App\Models\Client::withoutGlobalScopes()
+            ->whereIn('id', array_filter(array_unique($clientIdByLine)))
+            ->get(['id', 'name', 'client_number'])
+            ->keyBy('id');
+
+        return array_map(fn ($id) => $id ? $clients->get($id) : null, $clientIdByLine);
     }
 
     public function loanPortfolio(Request $request)

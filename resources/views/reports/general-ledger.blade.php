@@ -42,7 +42,7 @@
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead><tr>
-                <th class="ps-3">Date</th><th>Reference</th><th>Description</th>
+                <th class="ps-3">Date</th><th>Reference</th><th>Client</th><th>Description</th>
                 <th class="text-end">Debit</th><th class="text-end">Credit</th><th class="text-end pe-3">Balance</th>
             </tr></thead>
             <tbody>
@@ -50,13 +50,21 @@
                 <tr>
                     <td class="ps-3">{{ $row['line']->transaction->date->format('d M Y') }}</td>
                     <td><a href="{{ route('transactions.show', $row['line']->transaction) }}" class="font-monospace text-decoration-none">{{ $row['line']->transaction->reference }}</a></td>
+                    <td class="small">
+                        @if($row['client'])
+                            {{ $row['client']->name }}
+                            <span class="badge bg-light text-secondary border font-monospace fw-normal ms-1">{{ $row['client']->client_number }}</span>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
                     <td class="small">{{ $row['line']->description ?? $row['line']->transaction->description }}</td>
                     <td class="text-end">{{ $row['line']->debit > 0 ? number_format($row['line']->debit, $dp) : '' }}</td>
                     <td class="text-end">{{ $row['line']->credit > 0 ? number_format($row['line']->credit, $dp) : '' }}</td>
                     <td class="text-end pe-3 fw-semibold {{ $row['balance'] < 0 ? 'text-danger' : '' }}">{{ number_format($row['balance'], $dp) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="text-center text-muted py-4">No ledger entries for this account.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-4">No ledger entries for this account.</td></tr>
             @endforelse
             </tbody>
         </table>

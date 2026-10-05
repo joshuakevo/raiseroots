@@ -436,11 +436,16 @@ class TransactionController extends Controller
 
     public function edit(Transaction $transaction)
     {
-        if ($transaction->module !== 'manual') {
-            return back()->with('error', 'Only manual journal entries can be edited.');
-        }
         if ($transaction->isReversed() || $transaction->isReversal()) {
             return back()->with('error', 'Reversed transactions cannot be edited.');
+        }
+        if ($transaction->module !== 'manual') {
+            $transaction->load('lines.account');
+            $clients         = Client::orderBy('name')->get(['id', 'client_number', 'name']);
+            $amountsEditable = $this->systemAmountsEditable($transaction);
+            $lockedHint      = $amountsEditable ? null : $this->systemLockedHint($transaction);
+
+            return view('transactions.edit-system', compact('transaction', 'clients', 'amountsEditable', 'lockedHint'));
         }
 
         $transaction->load('lines.account');
@@ -460,11 +465,11 @@ class TransactionController extends Controller
 
     public function update(Request $request, Transaction $transaction)
     {
-        if ($transaction->module !== 'manual') {
-            return back()->with('error', 'Only manual journal entries can be edited.');
-        }
         if ($transaction->isReversed() || $transaction->isReversal()) {
             return back()->with('error', 'Reversed transactions cannot be edited.');
+        }
+        if ($transaction->module !== 'manual') {
+            return $this->updateSystemTransaction($request, $transaction);
         }
 
         $request->validate([
@@ -574,6 +579,87 @@ class TransactionController extends Controller
 
         return redirect()->route('transactions.index')
             ->with('success', "Transaction {$ref} has been permanently deleted.");
+    }
+
+    // ── Editing system-generated journals ────────────────────────────────────
+
+    /**
+     * System journals whose amounts/date nothing else depends on (no sub-ledger row,
+     * loan balance or schedule built from them), so they can be edited in place.
+     */
+    private function systemAmountsEditable(Transaction $transaction): bool
+    {
+        return $transaction->module === 'loan'
+            && str_starts_with($transaction->description ?? '', 'Processing fee - ');
+    }
+
+    /** Where to go instead when a system journal's amounts/date are locked. */
+    private function systemLockedHint(Transaction $transaction): string
+    {
+        $desc = strtolower($transaction->description ?? '');
+
+        return match (true) {
+            str_contains($desc, 'loan disbursement')     => "To change the amount or date of a loan disbursement, use 'Correct Loan' on the loan's page - it re-posts the loan with a new schedule.",
+            str_contains($desc, 'loan repayment')        => "To change a repayment's amount or date, reverse this entry and record the repayment again - the loan's schedule and balances are rebuilt from it.",
+            default                                      => "Its amounts and date also drive a client's balance or statement, so they can't be changed here - reverse this entry and record it again instead.",
+        };
+    }
+
+    /**
+     * Update a system-generated journal: always the reference, description, line
+     * descriptions and client tags (none of which touch any balance); date and amounts
+     * only where systemAmountsEditable() - accounts never change.
+     */
+    private function updateSystemTransaction(Request $request, Transaction $transaction)
+    {
+        $amountsEditable = $this->systemAmountsEditable($transaction);
+        $transaction->load('lines');
+
+        $rules = [
+            'description'           => 'required|string|max:500',
+            'reference'             => 'required|string|max:100|unique:transactions,reference,' . $transaction->id,
+            'lines'                 => 'required|array',
+            'lines.*.description'   => 'nullable|string|max:255',
+            'lines.*.client_id'     => 'nullable|exists:clients,id',
+        ];
+        if ($amountsEditable) {
+            $rules += [
+                'date'            => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
+                'lines.*.debit'   => 'required|numeric|min:0',
+                'lines.*.credit'  => 'required|numeric|min:0',
+            ];
+        }
+        $request->validate($rules);
+
+        $input = $request->input('lines', []);
+
+        if ($amountsEditable) {
+            if (!\App\Models\FinancialPeriod::isOpen($transaction->date->toDateString())) {
+                return back()->withInput()->with('error', "The period for this entry's current date is closed. Reopen it before changing amounts or date.");
+            }
+            $totalDebit  = $transaction->lines->sum(fn ($l) => (float) ($input[$l->id]['debit'] ?? 0));
+            $totalCredit = $transaction->lines->sum(fn ($l) => (float) ($input[$l->id]['credit'] ?? 0));
+            if (abs($totalDebit - $totalCredit) >= 0.01 || $totalDebit <= 0) {
+                return back()->withInput()->with('error', 'Transaction is not balanced. Debits must equal credits.');
+            }
+        }
+
+        \DB::transaction(function () use ($transaction, $request, $input, $amountsEditable) {
+            $transaction->update(array_merge(
+                ['description' => $request->description, 'reference' => $request->reference],
+                $amountsEditable ? ['date' => $request->date] : []
+            ));
+
+            foreach ($transaction->lines as $line) {
+                $row = $input[$line->id] ?? [];
+                $line->update(array_merge(
+                    ['description' => $row['description'] ?? null, 'client_id' => ($row['client_id'] ?? null) ?: null],
+                    $amountsEditable ? ['debit' => (float) $row['debit'], 'credit' => (float) $row['credit']] : []
+                ));
+            }
+        });
+
+        return redirect()->route('transactions.show', $transaction)->with('success', 'Transaction updated successfully.');
     }
 
     // ── Unified module impact dispatcher ─────────────────────────────────────
