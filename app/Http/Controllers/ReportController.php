@@ -291,7 +291,7 @@ class ReportController extends Controller
         $summary = [
             'total_loans'       => $loans->count(),
             'total_disbursed'   => $loans->whereIn('status', ['active', 'closed', 'defaulted'])->sum('principal'),
-            'total_outstanding' => $loans->whereIn('status', ['active', 'defaulted'])->sum(fn($l) => $l->outstanding_principal + $l->outstanding_interest),
+            'total_outstanding' => $loans->whereIn('status', ['active', 'defaulted'])->sum(fn($l) => $l->outstanding_principal + $l->outstanding_interest + $l->outstanding_admin_fee),
             'active_loans'      => $loans->where('status', 'active')->count(),
             'closed_loans'      => $loans->where('status', 'closed')->count(),
             'defaulted_loans'   => $loans->where('status', 'defaulted')->count(),
@@ -305,7 +305,7 @@ class ReportController extends Controller
 
         if ($request->format === 'excel') {
             $rows = [];
-            $rows[] = ['Loan #', 'Client', 'Relationship Manager', 'Product', 'Method', 'Principal', 'Outstanding Principal', 'Outstanding Interest', 'Disbursed', 'Maturity', 'Status'];
+            $rows[] = ['Loan #', 'Client', 'Relationship Manager', 'Product', 'Method', 'Principal', 'Outstanding Principal', 'Outstanding Interest', 'Outstanding Admin Fee', 'Total Outstanding', 'Disbursed', 'Maturity', 'Status'];
             foreach ($loans as $loan) {
                 $rows[] = [
                     $loan->loan_number,
@@ -316,13 +316,15 @@ class ReportController extends Controller
                     $loan->principal,
                     $loan->outstanding_principal,
                     $loan->outstanding_interest,
+                    $loan->outstanding_admin_fee,
+                    $loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_admin_fee,
                     $loan->disbursement_date?->format('Y-m-d') ?? '',
                     $loan->maturity_date?->format('Y-m-d') ?? '',
                     ucfirst($loan->status),
                 ];
             }
             $rows[] = [];
-            $rows[] = ['', 'TOTALS', '', '', '', $summary['total_disbursed'], $summary['total_outstanding'], '', '', '', ''];
+            $rows[] = ['', 'TOTALS', '', '', '', $summary['total_disbursed'], '', '', '', $summary['total_outstanding'], '', '', ''];
             return $this->csvDownload($rows, 'loan-portfolio-' . now()->format('Y-m-d'));
         }
 

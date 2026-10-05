@@ -74,7 +74,7 @@
         <td style="font-size:7px;color:#6b7280">{{ $loan->product->name }}</td>
         <td style="font-size:7px">{{ ucfirst($loan->interest_method) }}</td>
         <td class="r">{{ number_format($loan->principal, 2) }}</td>
-        <td class="r"><strong>{{ number_format($loan->outstanding_principal, 2) }}</strong></td>
+        <td class="r"><strong>{{ number_format($loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_admin_fee, 2) }}</strong></td>
         <td style="font-size:7px">{{ $loan->disbursement_date?->format('d M Y') ?? '—' }}</td>
         <td style="font-size:7px">{{ $loan->maturity_date?->format('d M Y') ?? '—' }}</td>
         <td><span class="badge badge-{{ $loan->status }}">{{ ucfirst($loan->status) }}</span></td>
