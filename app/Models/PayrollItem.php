@@ -6,12 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 class PayrollItem extends Model {
     protected $fillable = [
         'payroll_run_id', 'employee_id', 'savings_account_id',
-        'basic_salary', 'allowances', 'deductions', 'net_salary',
+        'basic_salary', 'allowances', 'gross_salary', 'paye', 'nssf_employee', 'nssf_employer',
+        'deductions', 'net_salary',
     ];
 
     protected $casts = [
         'basic_salary' => 'float',
         'allowances'   => 'float',
+        'gross_salary'  => 'float',
+        'paye'          => 'float',
+        'nssf_employee' => 'float',
+        'nssf_employer' => 'float',
         'deductions'   => 'float',
         'net_salary'   => 'float',
     ];

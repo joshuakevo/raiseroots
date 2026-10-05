@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class PayrollController extends Controller {
-    public function __construct(protected AccountingService $accounting) {}
+    public function __construct(protected AccountingService $accounting, protected \App\Services\PayrollTaxService $tax) {}
 
     public function index() {
         $runs = PayrollRun::withCount('items')->latest()->paginate(20);
@@ -53,27 +53,33 @@ class PayrollController extends Controller {
             'created_by'    => auth()->id(),
         ]);
 
-        $totalGross = 0;
+        // total_gross has always held the run's total NET pay (what's paid out) - kept as is.
+        $totalNet = 0;
         foreach ($request->items as $item) {
-            $employee  = Employee::findOrFail($item['employee_id']);
-            $basic     = (float) $item['basic_salary'];
-            $allow     = (float) ($item['allowances'] ?? 0);
-            $deduct    = (float) ($item['deductions'] ?? 0);
-            $net       = $basic + $allow - $deduct;
-            $totalGross += $net;
+            $employee = Employee::findOrFail($item['employee_id']);
+            $calc     = $this->tax->calculate(
+                (float) $item['basic_salary'],
+                (float) ($item['allowances'] ?? 0),
+                (float) ($item['deductions'] ?? 0)
+            );
+            $totalNet += $calc['net'];
 
             PayrollItem::create([
                 'payroll_run_id'     => $run->id,
                 'employee_id'        => $employee->id,
                 'savings_account_id' => $employee->savings_account_id,
-                'basic_salary'       => $basic,
-                'allowances'         => $allow,
-                'deductions'         => $deduct,
-                'net_salary'         => $net,
+                'basic_salary'       => (float) $item['basic_salary'],
+                'allowances'         => (float) ($item['allowances'] ?? 0),
+                'gross_salary'       => $calc['gross'],
+                'paye'               => $calc['paye'],
+                'nssf_employee'      => $calc['nssf_employee'],
+                'nssf_employer'      => $calc['nssf_employer'],
+                'deductions'         => $calc['other_deductions'],
+                'net_salary'         => $calc['net'],
             ]);
         }
 
-        $run->update(['total_gross' => $totalGross]);
+        $run->update(['total_gross' => $totalNet]);
 
         return redirect()->route('payroll.show', $run)->with('success', 'Payroll run created. Review and process when ready.');
     }
@@ -137,9 +143,23 @@ class PayrollController extends Controller {
             }
         }
 
-        DB::transaction(function () use ($payroll, $paymentDate, $salaryExpenseAccountId) {
+        // Runs with PAYE/NSSF need their payable + employer-NSSF expense accounts.
+        $statutory = [
+            'paye'          => Account::where('account_code', '2007')->value('id'),
+            'nssf'          => Account::where('account_code', '2008')->value('id'),
+            'nssf_employer' => Account::where('account_code', '5011')->value('id'),
+        ];
+        $hasStatutory = $payroll->items->sum(fn ($i) => $i->paye + $i->nssf_employee + $i->nssf_employer) > 0;
+        if ($hasStatutory && in_array(null, $statutory, true)) {
+            throw ValidationException::withMessages([
+                'payment_date' => 'Chart of accounts is missing PAYE Payable (2007), NSSF Payable (2008) or Employer NSSF Contribution (5011). Run migrations (Settings) first.',
+            ]);
+        }
+
+        DB::transaction(function () use ($payroll, $paymentDate, $salaryExpenseAccountId, $statutory) {
             $totalNet    = 0;
             $creditLines = [];
+            $totalPaye = $totalNssfEmployee = $totalNssfEmployer = 0;
 
             // 1) Totals + journal lines (no sub-ledger writes yet)
             foreach ($payroll->items as $item) {
@@ -147,7 +167,10 @@ class PayrollController extends Controller {
                     continue;
                 }
 
-                $totalNet += $item->net_salary;
+                $totalNet          += $item->net_salary;
+                $totalPaye         += $item->paye;
+                $totalNssfEmployee += $item->nssf_employee;
+                $totalNssfEmployer += $item->nssf_employer;
 
                 $creditAccountId = $item->employee?->payment_method === 'cash'
                     ? $item->employee->payment_source_account_id
@@ -166,14 +189,26 @@ class PayrollController extends Controller {
             // 2) Post GL first so we have transaction.id for savings_transactions.transaction_id
             $journalTx = null;
             if ($totalNet > 0) {
+                // Salary expense = what employees earned before PAYE/NSSF (other deductions
+                // still just reduce pay, as before); PAYE and both NSSF shares sit in payables
+                // until remitted; the employer's 10% is its own expense.
                 $journalLines = [
                     [
                         'account_id'  => $salaryExpenseAccountId,
-                        'debit'       => $totalNet,
+                        'debit'       => $totalNet + $totalPaye + $totalNssfEmployee,
                         'credit'      => 0,
                         'description' => "Salary expense — {$payroll->run_number}",
                     ],
                 ];
+                if ($totalNssfEmployer > 0) {
+                    $journalLines[] = ['account_id' => $statutory['nssf_employer'], 'debit' => $totalNssfEmployer, 'credit' => 0, 'description' => "Employer NSSF 10% — {$payroll->run_number}"];
+                }
+                if ($totalPaye > 0) {
+                    $journalLines[] = ['account_id' => $statutory['paye'], 'debit' => 0, 'credit' => $totalPaye, 'description' => "PAYE withheld — {$payroll->run_number}"];
+                }
+                if ($totalNssfEmployee + $totalNssfEmployer > 0) {
+                    $journalLines[] = ['account_id' => $statutory['nssf'], 'debit' => 0, 'credit' => $totalNssfEmployee + $totalNssfEmployer, 'description' => "NSSF 5% + 10% — {$payroll->run_number}"];
+                }
                 foreach ($creditLines as $accountId => $amount) {
                     $journalLines[] = [
                         'account_id'  => $accountId,

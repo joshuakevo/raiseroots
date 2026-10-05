@@ -87,8 +87,12 @@
                     <th>Salary Payout</th>
                     <th class="text-end">Basic</th>
                     <th class="text-end">Allowances</th>
-                    <th class="text-end">Deductions</th>
-                    <th class="text-end fw-semibold">Net Salary</th>
+                    <th class="text-end">Gross</th>
+                    <th class="text-end">PAYE</th>
+                    <th class="text-end">NSSF 5%</th>
+                    <th class="text-end">Other Deductions</th>
+                    <th class="text-end fw-semibold">Take-home</th>
+                    <th class="text-end text-muted">Employer NSSF 10%</th>
                 </tr>
             </thead>
             <tbody class="small">
@@ -108,18 +112,34 @@
                 </td>
                 <td class="text-end">{{ number_format($item->basic_salary, 0) }}</td>
                 <td class="text-end text-success">{{ number_format($item->allowances, 0) }}</td>
+                <td class="text-end">{{ number_format($item->gross_salary ?: $item->basic_salary + $item->allowances, 0) }}</td>
+                <td class="text-end text-danger">{{ number_format($item->paye, 0) }}</td>
+                <td class="text-end text-danger">{{ number_format($item->nssf_employee, 0) }}</td>
                 <td class="text-end text-danger">{{ number_format($item->deductions, 0) }}</td>
                 <td class="text-end fw-semibold">{{ number_format($item->net_salary, 0) }}</td>
+                <td class="text-end text-muted">{{ number_format($item->nssf_employer, 0) }}</td>
             </tr>
             @endforeach
             </tbody>
+            @php $totGross = $payroll->items->sum(fn ($i) => $i->gross_salary ?: $i->basic_salary + $i->allowances); @endphp
             <tfoot class="table-light fw-bold small">
                 <tr>
                     <td colspan="3">Totals</td>
                     <td class="text-end">{{ number_format($payroll->items->sum('basic_salary'), 0) }}</td>
                     <td class="text-end text-success">{{ number_format($payroll->items->sum('allowances'), 0) }}</td>
+                    <td class="text-end">{{ number_format($totGross, 0) }}</td>
+                    <td class="text-end text-danger">{{ number_format($payroll->items->sum('paye'), 0) }}</td>
+                    <td class="text-end text-danger">{{ number_format($payroll->items->sum('nssf_employee'), 0) }}</td>
                     <td class="text-end text-danger">{{ number_format($payroll->items->sum('deductions'), 0) }}</td>
                     <td class="text-end">{{ number_format($payroll->items->sum('net_salary'), 0) }}</td>
+                    <td class="text-end text-muted">{{ number_format($payroll->items->sum('nssf_employer'), 0) }}</td>
+                </tr>
+                <tr class="fw-normal">
+                    <td colspan="11" class="text-muted">
+                        Cost to company (gross + employer NSSF): <strong class="text-dark">{{ number_format($totGross + $payroll->items->sum('nssf_employer'), 0) }}</strong>
+                        &nbsp;&middot;&nbsp; Owed to URA (PAYE): <strong class="text-dark">{{ number_format($payroll->items->sum('paye'), 0) }}</strong>
+                        &nbsp;&middot;&nbsp; Owed to NSSF (5% + 10%): <strong class="text-dark">{{ number_format($payroll->items->sum('nssf_employee') + $payroll->items->sum('nssf_employer'), 0) }}</strong>
+                    </td>
                 </tr>
             </tfoot>
         </table>
@@ -138,7 +158,10 @@
                 @csrf
                 <div class="modal-body">
                     <div class="alert alert-info py-2 small mb-3">
-                        This will credit <strong>{{ number_format($payroll->total_gross, 0) }}</strong> total to employee savings accounts and post a journal entry.
+                        This will credit <strong>{{ number_format($payroll->total_gross, 0) }}</strong> take-home pay to employees and post a journal entry.
+                        @if($payroll->items->sum('paye') + $payroll->items->sum('nssf_employee') > 0)
+                            PAYE goes to <em>PAYE Payable</em> and NSSF (5% + 10%) to <em>NSSF Payable</em> until you remit them.
+                        @endif
                     </div>
                     @error('payment_date')
                         <div class="alert alert-danger small py-2 mb-3">{{ $message }}</div>
