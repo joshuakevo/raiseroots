@@ -165,6 +165,7 @@
                     $totalIncome         = $monthlyIncome->sum();
                     $totalExpenses       = $monthlyExpenses->sum();
                     $totalProfit         = $totalIncome - $totalExpenses;
+                    $totalInterest       = $monthlyInterest->sum();
                     $totalAdminFees      = $monthlyAdminFees->sum();
                     $totalProcessingFees = $monthlyProcessingFees->sum();
                     $totalStampDuty      = $monthlyStampDuty->sum();
@@ -184,15 +185,19 @@
                     </div>
                 </div>
                 <div class="row g-3 mb-3">
-                    <div class="col-4 text-center">
+                    <div class="col-6 col-md-3 text-center">
+                        <div class="text-muted small mb-1">Interest</div>
+                        <div class="fw-bold text-success-emphasis">{{ number_format($totalInterest, $dp) }}</div>
+                    </div>
+                    <div class="col-6 col-md-3 text-center">
                         <div class="text-muted small mb-1">Admin Fees</div>
                         <div class="fw-bold text-warning-emphasis">{{ number_format($totalAdminFees, $dp) }}</div>
                     </div>
-                    <div class="col-4 text-center">
+                    <div class="col-6 col-md-3 text-center">
                         <div class="text-muted small mb-1">Processing Fees</div>
                         <div class="fw-bold text-info-emphasis">{{ number_format($totalProcessingFees, $dp) }}</div>
                     </div>
-                    <div class="col-4 text-center">
+                    <div class="col-6 col-md-3 text-center">
                         <div class="text-muted small mb-1">Stamp Duty Collected</div>
                         <div class="fw-bold" style="color:#9333ea">{{ number_format($totalStampDuty, $dp) }}</div>
                     </div>
@@ -560,6 +565,7 @@ const income   = @json($monthlyIncome->values());
 const expenses = @json($monthlyExpenses->values());
 const profit   = @json($monthlyProfit->values());
 const loans    = @json($monthlyLoanDisbursements->values());
+const interest       = @json($monthlyInterest->values());
 const adminFees      = @json($monthlyAdminFees->values());
 const processingFees = @json($monthlyProcessingFees->values());
 const stampDuty       = @json($monthlyStampDuty->values());
@@ -575,6 +581,7 @@ new Chart(document.getElementById('profitabilityChart'), {
         datasets: [
             { label: 'Income',   data: income,   backgroundColor: 'rgba(34,197,94,.7)',  borderRadius: 4 },
             { label: 'Expenses', data: expenses, backgroundColor: 'rgba(239,68,68,.7)',  borderRadius: 4 },
+            { label: 'Interest',        data: interest,       backgroundColor: 'rgba(13,148,136,.7)', borderRadius: 4 },
             { label: 'Admin Fees',      data: adminFees,      backgroundColor: 'rgba(245,158,11,.7)', borderRadius: 4 },
             { label: 'Processing Fees', data: processingFees, backgroundColor: 'rgba(14,165,233,.7)', borderRadius: 4 },
             { label: 'Stamp Duty',      data: stampDuty,      backgroundColor: 'rgba(147,51,234,.7)', borderRadius: 4 },

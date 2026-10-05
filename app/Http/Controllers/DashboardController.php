@@ -101,17 +101,25 @@ class DashboardController extends Controller
         $processingFeeAccountId = Account::where('account_code', '4005')->value('id');
         $stampDutyAccountId     = Account::where('account_code', '4012')->value('id');
 
-        $monthlyByAccount = function (?int $accountId) use ($months) {
-            if (!$accountId) {
+        // Loan interest income: the standard 4001-4003 accounts plus whatever account a
+        // loan product posts its interest to.
+        $interestAccountIds = Account::whereIn('account_code', ['4001', '4002', '4003'])->pluck('id')
+            ->merge(\App\Models\LoanProduct::whereNotNull('interest_income_account_id')->pluck('interest_income_account_id'))
+            ->unique()->values()->all();
+
+        $monthlyByAccount = function ($accountIds) use ($months) {
+            $accountIds = array_filter((array) $accountIds);
+            if (!$accountIds) {
                 return $months->map(fn () => 0.0);
             }
-            return $months->map(fn ($m) => (float) TransactionLine::where('account_id', $accountId)
+            return $months->map(fn ($m) => (float) TransactionLine::whereIn('account_id', $accountIds)
                 ->whereHas('transaction', fn ($q) => $q
                     ->whereYear('date', $m->year)
                     ->whereMonth('date', $m->month))
                 ->sum('credit'));
         };
 
+        $monthlyInterest       = $monthlyByAccount($interestAccountIds);
         $monthlyAdminFees      = $monthlyByAccount($adminFeeAccountId);
         $monthlyProcessingFees = $monthlyByAccount($processingFeeAccountId);
         $monthlyStampDuty      = $monthlyByAccount($stampDutyAccountId);
@@ -211,7 +219,7 @@ class DashboardController extends Controller
             'officerPerformance',
             'stats', 'loanStatusBreakdown', 'upcomingInstallments', 'topBorrowers',
             'monthLabels', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit', 'monthlyLoanDisbursements',
-            'monthlyAdminFees', 'monthlyProcessingFees', 'monthlyStampDuty',
+            'monthlyInterest', 'monthlyAdminFees', 'monthlyProcessingFees', 'monthlyStampDuty',
             'par30', 'defaultRate',
             'activeBorrowers', 'totalClients',
             'loanGrowth', 'recommendations',
