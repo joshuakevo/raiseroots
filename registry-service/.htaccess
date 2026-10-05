@@ -1,0 +1,8 @@
+# Only the API endpoints and admin page are reachable; config, schema and bootstrap are not.
+<FilesMatch "^(config|config\.sample|bootstrap)\.php$|\.sql$|\.md$">
+    Require all denied
+</FilesMatch>
+# Pass the Authorization header through to PHP (needed on some Apache/CGI setups).
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

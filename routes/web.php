@@ -30,6 +30,7 @@ use App\Http\Controllers\GroupPortalController;
 use App\Http\Controllers\ClientPortalController;
 use App\Http\Controllers\MarzPayWebhookController;
 use App\Http\Controllers\SmsSubscriptionController;
+use App\Http\Controllers\CreditCheckController;
 use Illuminate\Support\Facades\Route;
 
 // ── Authentication (public) ───────────────────────────────────────
@@ -95,6 +96,8 @@ Route::middleware('auth')->group(function () {
     });
 
     // ── Clients ───────────────────────────────────────────────────────
+    Route::get('credit-check', [CreditCheckController::class, 'index'])->name('credit-check.index')->middleware('permission:view clients');
+    Route::get('credit-check/panel', [CreditCheckController::class, 'panel'])->name('credit-check.panel')->middleware('permission:view clients');
     Route::resource('clients', ClientController::class)->middleware('permission:view clients');
     Route::post('clients/{client}/invite', [ClientController::class, 'invite'])
         ->name('clients.invite')->middleware('permission:edit clients');
@@ -384,6 +387,7 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/deleted-client-numbers-backfill-apply', [SettingsController::class, 'runBackfillDeletedClientNumbers'])->name('settings.deleted-client-numbers-backfill-apply');
         Route::post('settings/accrue-loan-receivables-preview', [SettingsController::class, 'previewAccrueLoanReceivables'])->name('settings.accrue-loan-receivables-preview');
         Route::post('settings/accrue-loan-receivables-apply', [SettingsController::class, 'runAccrueLoanReceivables'])->name('settings.accrue-loan-receivables-apply');
+        Route::post('settings/credit-registry-sync', [SettingsController::class, 'syncCreditRegistry'])->name('settings.credit-registry-sync');
         Route::post('settings/reset-production-preview', [SettingsController::class, 'previewResetProductionData'])->name('settings.reset-production-preview');
         Route::post('settings/reset-production-apply', [SettingsController::class, 'runResetProductionData'])->name('settings.reset-production-apply');
     });

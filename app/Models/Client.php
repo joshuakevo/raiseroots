@@ -43,6 +43,14 @@ class Client extends Model
                 $client->saveQuietly();
             }
         });
+
+        // Loans are keyed by national ID in the ElTech Credit Registry - re-push on a correction.
+        static::updated(function (Client $client) {
+            if ($client->wasChanged('id_number')) {
+                Loan::withoutGlobalScopes()->where('client_id', $client->id)->get()
+                    ->each(fn (Loan $loan) => \App\Services\CreditRegistryService::queuePush($loan));
+            }
+        });
     }
 
     /**

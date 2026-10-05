@@ -713,6 +713,15 @@ class SettingsController extends Controller
         return back()->with('accrueLoanReceivablesOutput', $output);
     }
 
+    /** Push every disbursed loan to the ElTech Credit Registry (first join, or catch-up). */
+    public function syncCreditRegistry()
+    {
+        Artisan::call('eltech:crb-sync');
+        $output = trim(Artisan::output());
+
+        return back()->with('creditRegistrySyncOutput', $output);
+    }
+
     public function runAccrueLoanReceivables()
     {
         Artisan::call('eltech:accrue-loan-receivables', ['--commit' => true]);

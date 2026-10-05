@@ -266,6 +266,9 @@
             <a href="{{ route('clients.index') }}" class="nav-link-item {{ request()->routeIs('clients.*') && !request()->routeIs('clients.shares.*') ? 'active' : '' }}">
                 <i class="bi bi-people-fill"></i> Clients
             </a>
+            <a href="{{ route('credit-check.index') }}" class="nav-link-item {{ request()->routeIs('credit-check.*') ? 'active' : '' }}">
+                <i class="bi bi-shield-check"></i> Credit Check
+            </a>
             @endcan
             @can('manage shares')
             @if(\App\Models\SystemSetting::get('shares_module_enabled', '1'))

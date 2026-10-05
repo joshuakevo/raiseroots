@@ -689,6 +689,8 @@
 </div>
 @endif {{-- $_sharesOn modals --}}
 
+@include('credit-check._panel', ['nationalId' => trim((string) $client->id_number), 'panelId' => 'client'])
+
 <!-- Loans -->
 <div class="card mb-3">
     <div class="card-header">Loans</div>

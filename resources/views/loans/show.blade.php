@@ -414,6 +414,10 @@
 </div>
 @endcan
 
+@if(in_array($loan->status, ['pending', 'approved']))
+    @include('credit-check._panel', ['nationalId' => trim((string) $loan->client->id_number), 'panelId' => 'loan'])
+@endif
+
 <!-- Schedule preview (first 5 rows) -->
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">

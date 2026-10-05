@@ -43,6 +43,15 @@ class Loan extends Model
         'approved_at'           => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        // Keep the shared ElTech Credit Registry in step - pushed once after the response.
+        $push = fn (Loan $loan) => \App\Services\CreditRegistryService::queuePush($loan);
+        static::saved($push);
+        static::deleted($push);
+        static::restored($push);
+    }
+
     public function client()
     {
         return $this->belongsTo(Client::class);

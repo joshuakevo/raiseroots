@@ -24,6 +24,7 @@ $groupIcons = [
     'mail'     => ['icon'=>'bi-envelope-fill','label'=>'Email / Mail','color'=>'info'],
     'modules'  => ['icon'=>'bi-toggles','label'=>'Modules','color'=>'warning'],
     'system'   => ['icon'=>'bi-gear','label'=>'System','color'=>'secondary'],
+    'crb'      => ['icon'=>'bi-shield-check','label'=>'ElTech Credit Registry','color'=>'danger'],
 ];
 @endphp
 
@@ -874,6 +875,29 @@ $groupIcons = [
 
         @if(session('accrueLoanReceivablesOutput'))
         <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('accrueLoanReceivablesOutput') }}</pre>
+        @endif
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-shield-check text-danger"></i>
+        <span>ElTech Credit Registry — Send All Loans</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Sends every disbursed loan (active, defaulted, closed) to the ElTech Credit Registry, with the
+            client's name and national ID, so other ElTech lenders can see them in their Credit Check. Do this
+            once after entering the Registry URL and API Key above; after that, loans are sent automatically
+            whenever they change. Re-run any time to catch up (e.g. after the registry was unreachable) and to
+            refresh days in arrears. Loans whose client has no national ID are skipped.
+        </p>
+        <form method="POST" action="{{ route('settings.credit-registry-sync') }}">
+            @csrf
+            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-cloud-upload me-2"></i>Send All Loans Now</button>
+        </form>
+        @if(session('creditRegistrySyncOutput'))
+        <pre class="bg-dark text-light p-3 rounded mt-3 mb-0 small">{{ session('creditRegistrySyncOutput') }}</pre>
         @endif
     </div>
 </div>
