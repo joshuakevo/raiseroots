@@ -31,12 +31,17 @@ use App\Http\Controllers\ClientPortalController;
 use App\Http\Controllers\MarzPayWebhookController;
 use App\Http\Controllers\SmsSubscriptionController;
 use App\Http\Controllers\CreditCheckController;
+use App\Http\Controllers\AppManifestController;
 use Illuminate\Support\Facades\Route;
 
 // ── Authentication (public) ───────────────────────────────────────
 Route::get('login', [LoginController::class, 'showLogin'])->name('login');
 Route::post('login', [LoginController::class, 'login']);
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
+
+// ── Phone home-screen install (public - fetched before login) ───────
+Route::get('manifest.webmanifest', [AppManifestController::class, 'manifest'])->name('app-manifest');
+Route::get('app-icon/{size}.png', [AppManifestController::class, 'icon'])->whereNumber('size')->name('app-icon');
 
 // ── MarzPay webhook (public — called by MarzPay, no session/CSRF) ──
 Route::post('webhooks/marzpay', [MarzPayWebhookController::class, 'handle'])->name('webhooks.marzpay');
