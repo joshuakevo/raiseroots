@@ -581,6 +581,13 @@ class TransactionController extends Controller
             ->with('success', "Transaction {$ref} has been permanently deleted.");
     }
 
+    /** Staff reimbursement journal: undo the savings credit (if paid to savings), mark it reversed. */
+    private function reverseStaffReimbursementImpact(Transaction $transaction): void
+    {
+        $this->reverseSavingsImpact($transaction);
+        \App\Models\StaffReimbursement::where('transaction_id', $transaction->id)->update(['status' => 'reversed']);
+    }
+
     // ── Editing system-generated journals ────────────────────────────────────
 
     /**
@@ -677,6 +684,7 @@ class TransactionController extends Controller
             'fixed_deposit' => $this->reverseFixedDepositImpact($transaction),
             'groups'        => $this->reverseGroupTransactionImpact($transaction),
             'manual'        => $this->reverseManualSubLedgers($transaction),
+            'staff_reimbursement' => $this->reverseStaffReimbursementImpact($transaction),
             default         => null,
         };
     }

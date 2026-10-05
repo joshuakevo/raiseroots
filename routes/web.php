@@ -32,6 +32,7 @@ use App\Http\Controllers\MarzPayWebhookController;
 use App\Http\Controllers\SmsSubscriptionController;
 use App\Http\Controllers\CreditCheckController;
 use App\Http\Controllers\AppManifestController;
+use App\Http\Controllers\StaffReimbursementController;
 use Illuminate\Support\Facades\Route;
 
 // ── Authentication (public) ───────────────────────────────────────
@@ -456,6 +457,16 @@ Route::middleware('auth')->group(function () {
     // ── Staff Analysis (Loan Officer performance) ─────────────────────
     Route::get('staff-analysis', [\App\Http\Controllers\StaffAnalysisController::class, 'index'])
         ->name('staff-analysis.index')->middleware('permission:view staff analysis');
+
+    // ── Staff reimbursements (paid immediately; reversed via its journal entry) ──
+    Route::middleware('permission:process payroll')->group(function () {
+        Route::get('staff-reimbursements/create', [StaffReimbursementController::class, 'create'])->name('staff-reimbursements.create');
+        Route::post('staff-reimbursements', [StaffReimbursementController::class, 'store'])->name('staff-reimbursements.store');
+    });
+    Route::middleware('permission:view payroll')->group(function () {
+        Route::get('staff-reimbursements', [StaffReimbursementController::class, 'index'])->name('staff-reimbursements.index');
+        Route::get('staff-reimbursements/{staffReimbursement}', [StaffReimbursementController::class, 'show'])->name('staff-reimbursements.show');
+    });
 
     // ── Payroll (payroll/create before payroll/{payroll}) ─────────────
     Route::middleware('permission:view payroll')->group(function () {
