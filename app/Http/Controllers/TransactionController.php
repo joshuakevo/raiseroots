@@ -641,13 +641,13 @@ class TransactionController extends Controller
     }
 
     /**
-     * Journals that move interest/admin fee through GL 2006 (Unearned Interest & Fees)
+     * Journals that move interest/admin fee through GL 1199 (Unearned Interest & Fees)
      * outside a repayment or disbursement - put the loan back the way it was before them.
      */
     private function reverseLoanAccrualImpact(Transaction $transaction, string $desc): void
     {
         $loan = Loan::find($transaction->module_id);
-        $unearnedId = Account::where('account_code', '2006')->value('id');
+        $unearnedId = Account::where('account_code', '1199')->value('id');
         if (!$loan || !$unearnedId) {
             return;
         }

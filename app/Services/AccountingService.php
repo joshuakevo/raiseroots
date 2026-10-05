@@ -289,7 +289,7 @@ class AccountingService
 
         $result = [];
         foreach (['asset', 'liability', 'equity'] as $type) {
-            $accounts = Account::where('account_type', $type)->where('is_active', true)->get();
+            $accounts = Account::where('account_type', $type)->where('is_active', true)->orderBy('account_code')->get();
             $rows = [];
             $total = 0;
             foreach ($accounts as $acc) {

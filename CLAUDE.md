@@ -50,8 +50,8 @@ php artisan migrate:fresh --seed  # Full reset
 4. **Savings are liabilities**: Deposit = DR Cash (1001) / CR Savings Liability
 5. **FD interest formula**: `P × R × T` (simple interest, not compound)
 6. **Loan schedules** are generated on **disbursement**, not on loan creation
-7. **Default GL account codes**: Cash = `1001`, FD Interest Payable = `2003`, Unearned Interest & Fees = `2006`
-8. **Loan receivable = principal + interest + admin fee** (loans with `income_accrued = true`): disbursement also posts DR receivable / CR `2006` for scheduled interest + admin cost; repayments credit the receivable for principal + interest + admin fee and release the interest/admin portion DR `2006` → CR income (`4001` / `4009`). Income is still recognised only when paid. Older loans are brought in via `eltech:accrue-loan-receivables` (Settings button); un-accrued loans keep the old principal-only posting.
+7. **Default GL account codes**: Cash = `1001`, FD Interest Payable = `2003`, Unearned Interest & Fees = `1199` (contra-asset under Loan Receivables `1100`)
+8. **Loan receivable = principal + interest + admin fee** (loans with `income_accrued = true`): disbursement also posts DR receivable / CR `1199` for scheduled interest + admin cost; repayments credit the receivable for principal + interest + admin fee and release the interest/admin portion DR `1199` → CR income (`4001` / `4009`). Income is still recognised only when paid. Older loans are brought in via `eltech:accrue-loan-receivables` (Settings button); un-accrued loans keep the old principal-only posting.
 
 ---
 

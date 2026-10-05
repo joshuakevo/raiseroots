@@ -801,14 +801,14 @@ class LoanService
     }
 
     /**
-     * GL 2006 - interest + admin fee owed on accrued loans but not yet paid
+     * GL 1199 (contra-asset under Loan Receivables) - interest + admin fee owed on accrued loans but not yet paid
      * (the offset to their share of Loan Receivables).
      */
     public function getUnearnedIncomeAccount(): int
     {
-        $id = Account::where('account_code', '2006')->value('id');
+        $id = Account::where('account_code', '1199')->value('id');
         if (!$id) {
-            throw new \InvalidArgumentException('GL account 2006 (Unearned Interest & Fees) is missing - run migrations.');
+            throw new \InvalidArgumentException('GL account 1199 (Unearned Interest & Fees) is missing - run migrations.');
         }
         return $id;
     }

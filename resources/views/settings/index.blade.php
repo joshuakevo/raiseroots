@@ -850,7 +850,7 @@ $groupIcons = [
     <div class="card-body">
         <p class="text-muted small mb-3">
             One-time fix: new loans now carry their interest and admin fee in Loan Receivables
-            from disbursement (offset by 2006 Unearned Interest &amp; Fees, released into income
+            from disbursement (offset by a "Less: Unearned Interest &amp; Fees" line under it, released into income
             as they're paid). This posts the same for every active/defaulted loan disbursed
             before that change, using what's still owed on each. Profit figures don't change.
             Only ever touches a loan once; safe to re-run.

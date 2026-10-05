@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * One-time catch-up for loans disbursed before interest + admin fee were accrued into
  * Loan Receivables at disbursement. For each active/defaulted loan not yet accrued,
- * posts DR Loan Receivables / CR 2006 Unearned Interest & Fees for what's still owed
+ * posts DR Loan Receivables / CR 1199 Unearned Interest & Fees (contra-asset) for what's still owed
  * (outstanding_interest + outstanding_admin_fee) and flags the loan `income_accrued`,
- * so its later repayments clear the receivable and release 2006 into income.
+ * so its later repayments clear the receivable and release 1199 into income.
  *
  * No income is recognised by this - profit figures are unchanged. Each loan gets its
  * own journal, so a single loan can be undone by reversing its entry (which un-flags
@@ -25,15 +25,15 @@ class AccrueLoanReceivables extends Command
 {
     protected $signature = 'eltech:accrue-loan-receivables {--commit : Actually apply the fix; without this flag, only previews what would change}';
 
-    protected $description = 'One-time fix: bring outstanding interest + admin fee on existing loans into Loan Receivables (offset by 2006 Unearned Interest & Fees)';
+    protected $description = 'One-time fix: bring outstanding interest + admin fee on existing loans into Loan Receivables (offset by 1199 Unearned Interest & Fees)';
 
     public function handle(AccountingService $accounting): int
     {
         $commit = (bool) $this->option('commit');
 
-        $unearnedId = Account::where('account_code', '2006')->value('id');
+        $unearnedId = Account::where('account_code', '1199')->value('id');
         if (!$unearnedId) {
-            $this->error('GL account 2006 (Unearned Interest & Fees) not found - run migrations first.');
+            $this->error('GL account 1199 (Unearned Interest & Fees) not found - run migrations first.');
             return self::FAILURE;
         }
         $fallbackReceivableId = Account::where('account_code', '1101')->value('id');
