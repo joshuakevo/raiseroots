@@ -443,9 +443,10 @@ class TransactionController extends Controller
             $transaction->load('lines.account');
             $clients         = Client::orderBy('name')->get(['id', 'client_number', 'name']);
             $amountsEditable = $this->systemAmountsEditable($transaction);
+            $dateEditable    = $this->systemDateEditable($transaction);
             $lockedHint      = $amountsEditable ? null : $this->systemLockedHint($transaction);
 
-            return view('transactions.edit-system', compact('transaction', 'clients', 'amountsEditable', 'lockedHint'));
+            return view('transactions.edit-system', compact('transaction', 'clients', 'amountsEditable', 'dateEditable', 'lockedHint'));
         }
 
         $transaction->load('lines.account');
@@ -600,6 +601,32 @@ class TransactionController extends Controller
             && str_starts_with($transaction->description ?? '', 'Processing fee - ');
     }
 
+    /**
+     * Whether the date of a system journal may be changed. Always when its amounts are
+     * editable; otherwise only with the 'edit journal dates' permission, and never for a
+     * loan disbursement (the loan's schedule is built from that date - use Correct Loan).
+     * Linked statement rows are moved to the new date by syncSubLedgerDates().
+     */
+    private function systemDateEditable(Transaction $transaction): bool
+    {
+        if ($this->systemAmountsEditable($transaction)) {
+            return true;
+        }
+        if (str_contains(strtolower($transaction->description ?? ''), 'loan disbursement')) {
+            return false;
+        }
+        return (bool) auth()->user()?->can('edit journal dates');
+    }
+
+    /** Move the member statement rows linked to a journal onto its new date. */
+    private function syncSubLedgerDates(Transaction $transaction, string $date): void
+    {
+        SavingsTransaction::where('transaction_id', $transaction->id)->update(['transaction_date' => $date]);
+        LoanRepayment::where('transaction_id', $transaction->id)->update(['payment_date' => $date]);
+        ShareTransaction::where('journal_transaction_id', $transaction->id)->update(['transaction_date' => $date]);
+        GroupTransaction::where('journal_transaction_id', $transaction->id)->update(['transaction_date' => $date]);
+    }
+
     /** Where to go instead when a system journal's amounts/date are locked. */
     private function systemLockedHint(Transaction $transaction): string
     {
@@ -620,6 +647,7 @@ class TransactionController extends Controller
     private function updateSystemTransaction(Request $request, Transaction $transaction)
     {
         $amountsEditable = $this->systemAmountsEditable($transaction);
+        $dateEditable    = $this->systemDateEditable($transaction);
         $transaction->load('lines');
 
         $rules = [
@@ -629,21 +657,25 @@ class TransactionController extends Controller
             'lines.*.description'   => 'nullable|string|max:255',
             'lines.*.client_id'     => 'nullable|exists:clients,id',
         ];
+        if ($dateEditable) {
+            $rules['date'] = ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()];
+        }
         if ($amountsEditable) {
             $rules += [
-                'date'            => ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()],
                 'lines.*.debit'   => 'required|numeric|min:0',
                 'lines.*.credit'  => 'required|numeric|min:0',
             ];
         }
         $request->validate($rules);
 
-        $input = $request->input('lines', []);
+        $input       = $request->input('lines', []);
+        $dateChanged = $dateEditable && $request->date !== $transaction->date->toDateString();
+
+        if (($amountsEditable || $dateChanged) && !\App\Models\FinancialPeriod::isOpen($transaction->date->toDateString())) {
+            return back()->withInput()->with('error', "The period for this entry's current date is closed. Reopen it before changing amounts or date.");
+        }
 
         if ($amountsEditable) {
-            if (!\App\Models\FinancialPeriod::isOpen($transaction->date->toDateString())) {
-                return back()->withInput()->with('error', "The period for this entry's current date is closed. Reopen it before changing amounts or date.");
-            }
             $totalDebit  = $transaction->lines->sum(fn ($l) => (float) ($input[$l->id]['debit'] ?? 0));
             $totalCredit = $transaction->lines->sum(fn ($l) => (float) ($input[$l->id]['credit'] ?? 0));
             if (abs($totalDebit - $totalCredit) >= 0.01 || $totalDebit <= 0) {
@@ -651,11 +683,14 @@ class TransactionController extends Controller
             }
         }
 
-        \DB::transaction(function () use ($transaction, $request, $input, $amountsEditable) {
+        \DB::transaction(function () use ($transaction, $request, $input, $amountsEditable, $dateChanged) {
             $transaction->update(array_merge(
                 ['description' => $request->description, 'reference' => $request->reference],
-                $amountsEditable ? ['date' => $request->date] : []
+                $dateChanged ? ['date' => $request->date] : []
             ));
+            if ($dateChanged) {
+                $this->syncSubLedgerDates($transaction, $request->date);
+            }
 
             foreach ($transaction->lines as $line) {
                 $row = $input[$line->id] ?? [];

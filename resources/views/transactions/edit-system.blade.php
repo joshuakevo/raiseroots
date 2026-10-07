@@ -25,7 +25,13 @@
             </div>
         @endif
 
-        @if($lockedHint)
+        @if($lockedHint && $dateEditable)
+            <div class="alert alert-info small mb-3">
+                <i class="bi bi-lock me-1"></i>This entry was posted by the system. You can edit its date, reference, description, line
+                descriptions and client tags - a new date is also applied to the linked member statement / repayment record.
+                <strong>Accounts and amounts are locked:</strong> {{ $lockedHint }}
+            </div>
+        @elseif($lockedHint)
             <div class="alert alert-info small mb-3">
                 <i class="bi bi-lock me-1"></i>This entry was posted by the system. You can edit its reference, description, line
                 descriptions and client tags. <strong>Accounts, amounts and date are locked:</strong> {{ $lockedHint }}
@@ -40,7 +46,7 @@
         <div class="row g-3 mb-3">
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Date</label>
-                @if($amountsEditable)
+                @if($dateEditable)
                     <input type="date" name="date" class="form-control form-control-sm" required max="{{ today()->toDateString() }}"
                            value="{{ old('date', $transaction->date->toDateString()) }}">
                 @else
