@@ -22,6 +22,11 @@
         <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#processModal">
             <i class="bi bi-check-circle me-1"></i>Process Payroll
         </button>
+        @can('create payroll')
+        <a href="{{ route('payroll.edit', $payroll) }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Edit
+        </a>
+        @endcan
         <form method="POST" action="{{ route('payroll.destroy', $payroll) }}"
               onsubmit="return confirm('Delete this draft run? This cannot be undone.')">
             @csrf @method('DELETE')

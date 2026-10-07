@@ -26,6 +26,62 @@ class PayrollController extends Controller {
     }
 
     public function store(Request $request) {
+        if ($error = $this->validateRun($request)) {
+            return $error;
+        }
+
+        $run = DB::transaction(function () use ($request) {
+            $run = PayrollRun::create([
+                'run_number'    => $this->generateRunNumber(),
+                'period_month'  => $request->period_month,
+                'period_year'   => $request->period_year,
+                'description'   => $request->description,
+                'total_gross'   => 0,
+                'status'        => 'draft',
+                'created_by'    => auth()->id(),
+            ]);
+            $this->saveItems($run, $request->items);
+            return $run;
+        });
+
+        return redirect()->route('payroll.show', $run)->with('success', 'Payroll run created. Review and process when ready.');
+    }
+
+    public function edit(PayrollRun $payroll) {
+        if ($payroll->status !== 'draft') {
+            return redirect()->route('payroll.show', $payroll)->with('error', 'Only draft payroll runs can be edited.');
+        }
+        $payroll->load('items');
+        // Keep employees already on the run selectable even if they have since been deactivated.
+        $employees = Employee::with('savingsAccount.product', 'paymentSourceAccount')
+            ->where(fn ($q) => $q->where('status', 'active')->orWhereIn('id', $payroll->items->pluck('employee_id')))
+            ->get();
+        return view('payroll.create', compact('employees', 'payroll'));
+    }
+
+    public function update(Request $request, PayrollRun $payroll) {
+        if ($payroll->status !== 'draft') {
+            return redirect()->route('payroll.show', $payroll)->with('error', 'Only draft payroll runs can be edited.');
+        }
+        if ($error = $this->validateRun($request)) {
+            return $error;
+        }
+
+        DB::transaction(function () use ($request, $payroll) {
+            $payroll->update([
+                'period_month' => $request->period_month,
+                'period_year'  => $request->period_year,
+                'description'  => $request->description,
+            ]);
+            $payroll->items()->delete();
+            $this->saveItems($payroll, $request->items);
+        });
+
+        return redirect()->route('payroll.show', $payroll)->with('success', 'Payroll run updated. Review and process when ready.');
+    }
+
+    /** Validates a run form; returns a redirect back on duplicate employees, null when OK. */
+    private function validateRun(Request $request) {
         $request->validate([
             'period_month'  => 'required|integer|min:1|max:12',
             'period_year'   => 'required|integer|min:2000|max:2100',
@@ -42,20 +98,13 @@ class PayrollController extends Controller {
         if (count($employeeIds) !== count(array_unique($employeeIds))) {
             return back()->withErrors(['items' => 'Duplicate employees detected. Each employee can only appear once per payroll run.'])->withInput();
         }
+        return null;
+    }
 
-        $run = PayrollRun::create([
-            'run_number'    => $this->generateRunNumber(),
-            'period_month'  => $request->period_month,
-            'period_year'   => $request->period_year,
-            'description'   => $request->description,
-            'total_gross'   => 0,
-            'status'        => 'draft',
-            'created_by'    => auth()->id(),
-        ]);
-
+    private function saveItems(PayrollRun $run, array $items): void {
         // total_gross has always held the run's total NET pay (what's paid out) - kept as is.
         $totalNet = 0;
-        foreach ($request->items as $item) {
+        foreach ($items as $item) {
             $employee = Employee::findOrFail($item['employee_id']);
             $calc     = $this->tax->calculate(
                 (float) $item['basic_salary'],
@@ -80,8 +129,6 @@ class PayrollController extends Controller {
         }
 
         $run->update(['total_gross' => $totalNet]);
-
-        return redirect()->route('payroll.show', $run)->with('success', 'Payroll run created. Review and process when ready.');
     }
 
     public function show(PayrollRun $payroll) {

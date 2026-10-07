@@ -37,6 +37,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // Transactions (journal entries)
             'view transactions', 'create transactions', 'reverse transactions',
+            'edit journal dates',
 
             // Loan Products
             'view loan-products', 'create loan-products', 'edit loan-products',

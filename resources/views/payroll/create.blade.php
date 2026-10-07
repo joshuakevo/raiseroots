@@ -1,21 +1,28 @@
 @extends('layouts.app')
-@section('title', 'New Payroll Run')
+@php $editing = isset($payroll); @endphp
+@section('title', $editing ? 'Edit Payroll Run' : 'New Payroll Run')
 @section('breadcrumb')
     <li class="breadcrumb-item"><a href="{{ route('payroll.index') }}">Payroll</a></li>
+    @if($editing)
+    <li class="breadcrumb-item"><a href="{{ route('payroll.show', $payroll) }}">{{ $payroll->run_number }}</a></li>
+    <li class="breadcrumb-item active">Edit</li>
+    @else
     <li class="breadcrumb-item active">New Run</li>
+    @endif
 @endsection
 @section('content')
 <div class="card">
-    <div class="card-header fw-semibold">New Payroll Run</div>
+    <div class="card-header fw-semibold">{{ $editing ? 'Edit Payroll Run — ' . $payroll->run_number : 'New Payroll Run' }}</div>
     <div class="card-body">
-    <form method="POST" action="{{ route('payroll.store') }}" id="payrollForm">
+    <form method="POST" action="{{ $editing ? route('payroll.update', $payroll) : route('payroll.store') }}" id="payrollForm">
         @csrf
+        @if($editing) @method('PUT') @endif
         <div class="row g-3 mb-4">
             <div class="col-md-3">
                 <label class="form-label fw-semibold">Month <span class="text-danger">*</span></label>
                 <select name="period_month" class="form-select" required>
                     @foreach(range(1,12) as $m)
-                    <option value="{{ $m }}" {{ old('period_month', now()->month) == $m ? 'selected' : '' }}>
+                    <option value="{{ $m }}" {{ old('period_month', $editing ? $payroll->period_month : now()->month) == $m ? 'selected' : '' }}>
                         {{ date('F', mktime(0,0,0,$m,1)) }}
                     </option>
                     @endforeach
@@ -23,11 +30,11 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
-                <input type="number" name="period_year" class="form-control" value="{{ old('period_year', now()->year) }}" min="2000" max="2100" required>
+                <input type="number" name="period_year" class="form-control" value="{{ old('period_year', $editing ? $payroll->period_year : now()->year) }}" min="2000" max="2100" required>
             </div>
             <div class="col-md-7">
                 <label class="form-label fw-semibold">Description</label>
-                <input type="text" name="description" class="form-control" value="{{ old('description') }}" placeholder="Optional note">
+                <input type="text" name="description" class="form-control" value="{{ old('description', $editing ? $payroll->description : '') }}" placeholder="Optional note">
             </div>
         </div>
 
@@ -87,8 +94,8 @@
         </button>
 
         <div class="d-flex gap-2 mt-2">
-            <button class="btn btn-primary">Save Payroll Run</button>
-            <a href="{{ route('payroll.index') }}" class="btn btn-outline-secondary">Cancel</a>
+            <button class="btn btn-primary">{{ $editing ? 'Update Payroll Run' : 'Save Payroll Run' }}</button>
+            <a href="{{ $editing ? route('payroll.show', $payroll) : route('payroll.index') }}" class="btn btn-outline-secondary">Cancel</a>
         </div>
     </form>
     </div>
@@ -238,5 +245,13 @@ function addAllEmployees() {
     rowIndex = 0;
     employees.forEach(e => addRow(e.id, e.basic_salary));
 }
+
+// Pre-fill rows: the previous submission (after a validation error) or the draft being edited.
+const initialItems = @json(array_values(old('items', $editing ? $payroll->items->map(fn ($i) => [
+    'employee_id' => $i->employee_id, 'basic_salary' => (float) $i->basic_salary,
+    'allowances' => (float) $i->allowances, 'deductions' => (float) $i->deductions,
+])->all() : [])));
+initialItems.forEach(it => addRow(it.employee_id, it.basic_salary || 0, it.allowances || 0, it.deductions || 0));
+refreshDisabled();
 </script>
 @endpush
