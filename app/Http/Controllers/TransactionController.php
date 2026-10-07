@@ -444,9 +444,14 @@ class TransactionController extends Controller
             $clients         = Client::orderBy('name')->get(['id', 'client_number', 'name']);
             $amountsEditable = $this->systemAmountsEditable($transaction);
             $dateEditable    = $this->systemDateEditable($transaction);
-            $lockedHint      = $amountsEditable ? null : $this->systemLockedHint($transaction);
+            $repayment       = $this->repaymentFor($transaction);
+            $repaymentBlocker = $repayment ? $this->repaymentAmountBlocker($repayment) : null;
+            $repaymentEditable = $repayment && !$repaymentBlocker;
+            $lockedHint      = $amountsEditable || $repaymentEditable ? null : ($repaymentBlocker ?? $this->systemLockedHint($transaction));
 
-            return view('transactions.edit-system', compact('transaction', 'clients', 'amountsEditable', 'dateEditable', 'lockedHint'));
+            return view('transactions.edit-system', compact(
+                'transaction', 'clients', 'amountsEditable', 'dateEditable', 'lockedHint', 'repayment', 'repaymentEditable'
+            ));
         }
 
         $transaction->load('lines.account');
@@ -621,6 +626,76 @@ class TransactionController extends Controller
         return (bool) auth()->user()?->can('edit journal dates');
     }
 
+    /** The loan repayment record behind a "Loan repayment" journal, if any. */
+    private function repaymentFor(Transaction $transaction): ?LoanRepayment
+    {
+        if ($transaction->module !== 'loan' || !str_contains($transaction->description ?? '', 'Loan repayment')) {
+            return null;
+        }
+        return LoanRepayment::where('transaction_id', $transaction->id)->first();
+    }
+
+    /**
+     * Why this repayment's amount can't be changed here, or null when it can. A changed
+     * amount is re-applied through LoanService (penalty -> interest -> admin fee -> principal)
+     * against the loan as it stood before this repayment, so it must be the loan's latest one.
+     */
+    private function repaymentAmountBlocker(LoanRepayment $repayment): ?string
+    {
+        if (!auth()->user()?->can('edit journal amounts')) {
+            return "Changing a repayment's amount needs the 'edit journal amounts' permission (Administration > Roles). Or reverse this entry and record the repayment again.";
+        }
+        if ($repayment->payment_method === 'savings') {
+            return "This repayment was taken from the client's savings (a separate savings withdrawal entry), so its amount can't be changed here - reverse this entry and the savings withdrawal, then record the repayment again.";
+        }
+        if (LoanRepayment::where('loan_id', $repayment->loan_id)->where('id', '>', $repayment->id)->exists()) {
+            return "Only the loan's most recent repayment can have its amount changed here, because later repayments were allocated after this one. Edit or reverse the later repayments first.";
+        }
+        return null;
+    }
+
+    /**
+     * Re-apply a loan repayment with a new amount: unwind it from the loan (schedule,
+     * balances, repayment record), drop its journal, and record it again through
+     * LoanService so the split and GL lines follow the normal allocation rules.
+     * Keeps the journal reference, description and who recorded it.
+     */
+    private function rebuildRepayment(Transaction $transaction, LoanRepayment $repayment, float $amount, string $date, string $reference, string $description): Transaction
+    {
+        $loan = Loan::findOrFail($repayment->loan_id);
+
+        $this->reverseLoanRepaymentImpact($transaction);
+        $loan->refresh();
+
+        $loanService = app(\App\Services\LoanService::class);
+        $maxAmount   = $loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_admin_fee
+            + $loanService->calculatePenaltyPublic($loan);
+        if ($amount > $maxAmount + 0.01) {
+            throw ValidationException::withMessages([
+                'repayment_amount' => 'Repayment cannot exceed the total outstanding balance (' . number_format($maxAmount, 2) . ').',
+            ]);
+        }
+
+        $createdBy = $transaction->created_by;
+        $transaction->lines()->delete();
+        $transaction->delete();
+
+        $new = $loanService->processRepayment($loan, [
+            'amount'                    => $amount,
+            'payment_date'              => $date,
+            'reference'                 => $reference,
+            'payment_method'            => $repayment->payment_method,
+            'payment_source_account_id' => $repayment->payment_source_account_id,
+            'notes'                     => $repayment->notes,
+        ]);
+        $new->update(['reference' => $repayment->reference, 'received_by' => $repayment->received_by]);
+
+        $journal = Transaction::findOrFail($new->transaction_id);
+        $journal->update(['description' => $description, 'created_by' => $createdBy]);
+
+        return $journal;
+    }
+
     /** Move the member statement rows linked to a journal onto its new date. */
     private function syncSubLedgerDates(Transaction $transaction, string $date): void
     {
@@ -663,6 +738,11 @@ class TransactionController extends Controller
         if ($dateEditable) {
             $rules['date'] = ['required', 'date', 'before_or_equal:today', new \App\Rules\DateInOpenPeriod()];
         }
+        $repayment = $this->repaymentFor($transaction);
+        $repaymentEditable = $repayment && !$this->repaymentAmountBlocker($repayment);
+        if ($repaymentEditable) {
+            $rules['repayment_amount'] = 'required|numeric|min:0.01';
+        }
         if ($amountsEditable) {
             $rules += [
                 'lines.*.debit'   => 'required|numeric|min:0',
@@ -676,6 +756,23 @@ class TransactionController extends Controller
 
         if (($amountsEditable || $dateChanged) && !\App\Models\FinancialPeriod::isOpen($transaction->date->toDateString())) {
             return back()->withInput()->with('error', "The period for this entry's current date is closed. Reopen it before changing amounts or date.");
+        }
+
+        if ($repaymentEditable && abs((float) $request->repayment_amount - (float) $repayment->amount) >= 0.01) {
+            if (!\App\Models\FinancialPeriod::isOpen($transaction->date->toDateString())) {
+                return back()->withInput()->with('error', "The period for this entry's current date is closed. Reopen it before changing the amount.");
+            }
+            $journal = \DB::transaction(fn () => $this->rebuildRepayment(
+                $transaction,
+                $repayment,
+                (float) $request->repayment_amount,
+                $dateChanged ? $request->date : $transaction->date->toDateString(),
+                $request->reference,
+                $request->description
+            ));
+
+            return redirect()->route('transactions.show', $journal)
+                ->with('success', 'Repayment amount changed - the loan schedule, balances and journal lines were recalculated.');
         }
 
         if ($amountsEditable) {

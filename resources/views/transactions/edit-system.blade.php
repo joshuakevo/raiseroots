@@ -25,7 +25,14 @@
             </div>
         @endif
 
-        @if($lockedHint && $dateEditable)
+        @if($repaymentEditable)
+            <div class="alert alert-info small mb-3">
+                <i class="bi bi-info-circle me-1"></i>This is a loan repayment posted by the system. You can change the
+                <strong>amount received</strong>{{ $dateEditable ? ', date' : '' }}, reference, description and client tags.
+                A new amount is re-applied to the loan the normal way (penalty &rarr; interest &rarr; admin fee &rarr; principal):
+                the schedule, loan balances, repayment record and the journal lines below are all recalculated. Accounts are locked.
+            </div>
+        @elseif($lockedHint && $dateEditable)
             <div class="alert alert-info small mb-3">
                 <i class="bi bi-lock me-1"></i>This entry was posted by the system. You can edit its date, reference, description, line
                 descriptions and client tags - a new date is also applied to the linked member statement / repayment record.
@@ -64,6 +71,19 @@
                        value="{{ old('description', $transaction->description) }}">
             </div>
         </div>
+
+        @if($repaymentEditable)
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Amount received <span class="text-danger">*</span></label>
+                <input type="number" name="repayment_amount" class="form-control form-control-sm text-end" step="any" min="0.01" required
+                       value="{{ old('repayment_amount', $repayment->amount + 0) }}">
+            </div>
+            <div class="col-md-9 d-flex align-items-end">
+                <small class="text-muted">The lines below show the current split; they are recalculated when you save a new amount.</small>
+            </div>
+        </div>
+        @endif
 
         <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
