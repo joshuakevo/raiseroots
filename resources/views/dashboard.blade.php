@@ -169,6 +169,7 @@
                     $totalAdminFees      = $monthlyAdminFees->sum();
                     $totalProcessingFees = $monthlyProcessingFees->sum();
                     $totalStampDuty      = $monthlyStampDuty->sum();
+                    $totalPenalties      = $monthlyPenalties->sum();
                 @endphp
                 <div class="row g-3 mb-2">
                     <div class="col-4 text-center">
@@ -185,21 +186,25 @@
                     </div>
                 </div>
                 <div class="row g-3 mb-3">
-                    <div class="col-6 col-md-3 text-center">
+                    <div class="col-6 col-md text-center">
                         <div class="text-muted small mb-1">Interest</div>
                         <div class="fw-bold text-success-emphasis">{{ number_format($totalInterest, $dp) }}</div>
                     </div>
-                    <div class="col-6 col-md-3 text-center">
+                    <div class="col-6 col-md text-center">
                         <div class="text-muted small mb-1">Admin Fees</div>
                         <div class="fw-bold text-warning-emphasis">{{ number_format($totalAdminFees, $dp) }}</div>
                     </div>
-                    <div class="col-6 col-md-3 text-center">
+                    <div class="col-6 col-md text-center">
                         <div class="text-muted small mb-1">Processing Fees</div>
                         <div class="fw-bold text-info-emphasis">{{ number_format($totalProcessingFees, $dp) }}</div>
                     </div>
-                    <div class="col-6 col-md-3 text-center">
+                    <div class="col-6 col-md text-center">
                         <div class="text-muted small mb-1">Stamp Duty Collected</div>
                         <div class="fw-bold" style="color:#9333ea">{{ number_format($totalStampDuty, $dp) }}</div>
+                    </div>
+                    <div class="col-6 col-md text-center">
+                        <div class="text-muted small mb-1">Penalties</div>
+                        <div class="fw-bold" style="color:#e11d48">{{ number_format($totalPenalties, $dp) }}</div>
                     </div>
                 </div>
                 <canvas id="profitabilityChart" height="180"></canvas>
@@ -569,6 +574,7 @@ const interest       = @json($monthlyInterest->values());
 const adminFees      = @json($monthlyAdminFees->values());
 const processingFees = @json($monthlyProcessingFees->values());
 const stampDuty       = @json($monthlyStampDuty->values());
+const penalties      = @json($monthlyPenalties->values());
 
 const gridColor = 'rgba(0,0,0,.05)';
 const font = { family: "'Segoe UI', system-ui, sans-serif", size: 11 };
@@ -585,6 +591,7 @@ new Chart(document.getElementById('profitabilityChart'), {
             { label: 'Admin Fees',      data: adminFees,      backgroundColor: 'rgba(245,158,11,.7)', borderRadius: 4 },
             { label: 'Processing Fees', data: processingFees, backgroundColor: 'rgba(14,165,233,.7)', borderRadius: 4 },
             { label: 'Stamp Duty',      data: stampDuty,      backgroundColor: 'rgba(147,51,234,.7)', borderRadius: 4 },
+            { label: 'Penalties',       data: penalties,      backgroundColor: 'rgba(225,29,72,.7)',  borderRadius: 4 },
             { label: 'Profit',   data: profit,   backgroundColor: 'rgba(59,130,246,.7)', borderRadius: 4, type: 'line',
               borderColor: 'rgba(59,130,246,.9)', tension: 0.4, fill: false, pointRadius: 3 },
         ]
@@ -598,7 +605,8 @@ new Chart(document.getElementById('profitabilityChart'), {
                     footer: items => {
                         const i = items[0].dataIndex;
                         const totalFees = adminFees[i] + processingFees[i] + stampDuty[i];
-                        return 'Total Fees this month: ' + totalFees.toLocaleString();
+                        return ['Total Fees this month: ' + totalFees.toLocaleString(),
+                                'Penalties this month: ' + penalties[i].toLocaleString()];
                     }
                 }
             }

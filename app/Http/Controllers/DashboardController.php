@@ -107,6 +107,11 @@ class DashboardController extends Controller
             ->merge(\App\Models\LoanProduct::whereNotNull('interest_income_account_id')->pluck('interest_income_account_id'))
             ->unique()->values()->all();
 
+        // Loan penalty income: 4004 plus any product-specific penalty income account.
+        $penaltyAccountIds = Account::where('account_code', '4004')->pluck('id')
+            ->merge(\App\Models\LoanProduct::whereNotNull('penalty_income_account_id')->pluck('penalty_income_account_id'))
+            ->unique()->values()->all();
+
         $monthlyByAccount = function ($accountIds) use ($months) {
             $accountIds = array_filter((array) $accountIds);
             if (!$accountIds) {
@@ -123,6 +128,7 @@ class DashboardController extends Controller
         $monthlyAdminFees      = $monthlyByAccount($adminFeeAccountId);
         $monthlyProcessingFees = $monthlyByAccount($processingFeeAccountId);
         $monthlyStampDuty      = $monthlyByAccount($stampDutyAccountId);
+        $monthlyPenalties      = $monthlyByAccount($penaltyAccountIds);
 
         $monthlyLoanDisbursements = $months->map(function ($m) {
             return (float) Loan::whereYear('disbursement_date', $m->year)
@@ -219,7 +225,7 @@ class DashboardController extends Controller
             'officerPerformance',
             'stats', 'loanStatusBreakdown', 'upcomingInstallments', 'topBorrowers',
             'monthLabels', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit', 'monthlyLoanDisbursements',
-            'monthlyInterest', 'monthlyAdminFees', 'monthlyProcessingFees', 'monthlyStampDuty',
+            'monthlyInterest', 'monthlyAdminFees', 'monthlyProcessingFees', 'monthlyStampDuty', 'monthlyPenalties',
             'par30', 'defaultRate',
             'activeBorrowers', 'totalClients',
             'loanGrowth', 'recommendations',
