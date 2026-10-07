@@ -21,6 +21,7 @@
                     <tr><td class="text-muted">Phone</td><td>{{ $employee->phone ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Email</td><td>{{ $employee->email ?? '—' }}</td></tr>
                     <tr><td class="text-muted">ID Number</td><td>{{ $employee->id_number ?? '—' }}</td></tr>
+                    <tr><td class="text-muted">NSSF Number</td><td class="font-monospace">{{ $employee->nssf_number ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Position</td><td>{{ $employee->position ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Department</td><td>{{ $employee->department ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Basic Salary</td><td class="fw-semibold">{{ number_format($employee->basic_salary, 0) }}</td></tr>
