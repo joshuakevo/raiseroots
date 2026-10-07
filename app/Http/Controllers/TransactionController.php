@@ -597,8 +597,11 @@ class TransactionController extends Controller
      */
     private function systemAmountsEditable(Transaction $transaction): bool
     {
+        // Opening accruals (eltech:accrue-loan-receivables) are GL-only too: nothing on the loan
+        // is built from their amount, and reversal / Correct Loan unwind them from their lines.
         return $transaction->module === 'loan'
-            && str_starts_with($transaction->description ?? '', 'Processing fee - ');
+            && (str_starts_with($transaction->description ?? '', 'Processing fee - ')
+                || str_starts_with($transaction->description ?? '', 'Loan receivable accrual (opening) - '));
     }
 
     /**
