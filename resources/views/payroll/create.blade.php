@@ -247,10 +247,23 @@ function addAllEmployees() {
 }
 
 // Pre-fill rows: the previous submission (after a validation error) or the draft being edited.
-const initialItems = @json(array_values(old('items', $editing ? $payroll->items->map(fn ($i) => [
-    'employee_id' => $i->employee_id, 'basic_salary' => (float) $i->basic_salary,
-    'allowances' => (float) $i->allowances, 'deductions' => (float) $i->deductions,
-])->all() : [])));
+@php
+    $initialItems = old('items');
+    if ($initialItems === null) {
+        $initialItems = [];
+        if (isset($payroll)) {
+            foreach ($payroll->items as $i) {
+                $initialItems[] = [
+                    'employee_id'  => $i->employee_id,
+                    'basic_salary' => (float) $i->basic_salary,
+                    'allowances'   => (float) $i->allowances,
+                    'deductions'   => (float) $i->deductions,
+                ];
+            }
+        }
+    }
+@endphp
+const initialItems = {!! json_encode(array_values($initialItems)) !!};
 initialItems.forEach(it => addRow(it.employee_id, it.basic_salary || 0, it.allowances || 0, it.deductions || 0));
 refreshDisabled();
 </script>
