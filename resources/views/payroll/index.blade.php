@@ -42,6 +42,9 @@
                 <td class="pe-3">
                     <a href="{{ route('payroll.show', $run) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                     @if($run->status === 'draft')
+                    @can('create payroll')
+                    <a href="{{ route('payroll.edit', $run) }}" class="btn btn-sm btn-outline-secondary" title="Edit draft"><i class="bi bi-pencil"></i></a>
+                    @endcan
                     <form method="POST" action="{{ route('payroll.destroy', $run) }}" class="d-inline"
                           onsubmit="return confirm('Delete draft run {{ $run->run_number }}? This cannot be undone.')">
                         @csrf @method('DELETE')

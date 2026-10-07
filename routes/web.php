@@ -475,6 +475,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:create payroll')->group(function () {
         Route::get('payroll/create', [PayrollController::class, 'create'])->name('payroll.create');
         Route::post('payroll', [PayrollController::class, 'store'])->name('payroll.store');
+        Route::get('payroll/{payroll}/edit', [PayrollController::class, 'edit'])->name('payroll.edit');
+        Route::put('payroll/{payroll}', [PayrollController::class, 'update'])->name('payroll.update');
     });
     Route::middleware('permission:view payroll')->group(function () {
         Route::get('payroll/{payroll}', [PayrollController::class, 'show'])->name('payroll.show');
