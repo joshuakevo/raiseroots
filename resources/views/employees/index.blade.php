@@ -16,6 +16,7 @@
             <thead><tr>
                 <th class="ps-3">Emp #</th>
                 <th>Name</th>
+                <th>NSSF No.</th>
                 <th>Position</th>
                 <th>Department</th>
                 <th class="text-end">Basic Salary</th>
@@ -28,6 +29,7 @@
                 <tr>
                     <td class="ps-3 font-monospace small">{{ $emp->employee_number }}</td>
                     <td class="fw-semibold">{{ $emp->name }}</td>
+                    <td class="font-monospace small">{{ $emp->nssf_number ?? '—' }}</td>
                     <td>{{ $emp->position ?? '—' }}</td>
                     <td>{{ $emp->department ?? '—' }}</td>
                     <td class="text-end">{{ number_format($emp->basic_salary, 0) }}</td>
@@ -53,7 +55,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="text-center text-muted py-4">No employees found.</td></tr>
+                <tr><td colspan="9" class="text-center text-muted py-4">No employees found.</td></tr>
             @endforelse
             </tbody>
         </table>

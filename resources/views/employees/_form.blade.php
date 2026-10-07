@@ -24,6 +24,10 @@
         <input type="text" name="id_number" class="form-control form-control-sm" value="{{ old('id_number', $employee->id_number ?? '') }}">
     </div>
     <div class="col-md-4">
+        <label class="form-label small mb-0 fw-semibold">NSSF Number</label>
+        <input type="text" name="nssf_number" class="form-control form-control-sm" maxlength="30" value="{{ old('nssf_number', $employee->nssf_number ?? '') }}">
+    </div>
+    <div class="col-md-4">
         <label class="form-label small mb-0 fw-semibold">Position</label>
         <input type="text" name="position" class="form-control form-control-sm" value="{{ old('position', $employee->position ?? '') }}">
     </div>

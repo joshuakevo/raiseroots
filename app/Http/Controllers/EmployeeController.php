@@ -72,6 +72,7 @@ class EmployeeController extends Controller {
             'phone'                     => 'nullable|string|max:20',
             'email'                     => 'nullable|email|max:150',
             'id_number'                 => 'nullable|string|max:30',
+            'nssf_number'               => 'nullable|string|max:30',
             'position'                  => 'nullable|string|max:100',
             'department'                => 'nullable|string|max:100',
             'basic_salary'              => 'required|numeric|min:0',
