@@ -458,15 +458,23 @@ Route::middleware('auth')->group(function () {
     Route::get('staff-analysis', [\App\Http\Controllers\StaffAnalysisController::class, 'index'])
         ->name('staff-analysis.index')->middleware('permission:view staff analysis');
 
-    // ── Staff reimbursements (paid immediately; reversed via its journal entry) ──
-    Route::middleware('permission:process payroll')->group(function () {
-        Route::get('staff-reimbursements/create', [StaffReimbursementController::class, 'create'])->name('staff-reimbursements.create');
-        Route::post('staff-reimbursements', [StaffReimbursementController::class, 'store'])->name('staff-reimbursements.store');
-    });
+    // ── Staff reimbursement runs (like payroll; create before {run}) ─────
     Route::middleware('permission:view payroll')->group(function () {
         Route::get('staff-reimbursements', [StaffReimbursementController::class, 'index'])->name('staff-reimbursements.index');
-        Route::get('staff-reimbursements/{staffReimbursement}', [StaffReimbursementController::class, 'show'])->name('staff-reimbursements.show');
     });
+    Route::middleware('permission:create payroll')->group(function () {
+        Route::get('staff-reimbursements/create', [StaffReimbursementController::class, 'create'])->name('staff-reimbursements.create');
+        Route::post('staff-reimbursements', [StaffReimbursementController::class, 'store'])->name('staff-reimbursements.store');
+        Route::get('staff-reimbursements/{run}/edit', [StaffReimbursementController::class, 'edit'])->name('staff-reimbursements.edit');
+        Route::put('staff-reimbursements/{run}', [StaffReimbursementController::class, 'update'])->name('staff-reimbursements.update');
+    });
+    Route::middleware('permission:view payroll')->group(function () {
+        Route::get('staff-reimbursements/{run}', [StaffReimbursementController::class, 'show'])->name('staff-reimbursements.show');
+    });
+    Route::post('staff-reimbursements/{run}/process', [StaffReimbursementController::class, 'process'])
+        ->name('staff-reimbursements.process')->middleware('permission:process payroll');
+    Route::delete('staff-reimbursements/{run}', [StaffReimbursementController::class, 'destroy'])
+        ->name('staff-reimbursements.destroy')->middleware('permission:delete payroll');
 
     // ── Payroll (payroll/create before payroll/{payroll}) ─────────────
     Route::middleware('permission:view payroll')->group(function () {

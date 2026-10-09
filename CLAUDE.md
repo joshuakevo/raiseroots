@@ -99,7 +99,8 @@ When a manual journal entry line has a `client_id` attached (`transaction_lines.
 | `groups` | `reverseGroupTransactionImpact` | `group_transactions` + any linked savings rows |
 | `manual` | `reverseManualSubLedgers` | Auto-detected manual journal sub-ledgers (savings, shares, loans, FD principal, membership fee) |
 | `client` | `reverseMembershipFeeImpact` | Membership fee paid on client (when description matches fee flow) |
-| `staff_reimbursement` | `reverseStaffReimbursementImpact` | Savings credit (if paid to the staff member's savings) via `transaction_id`; `staff_reimbursements.status` set to `reversed` |
+| `staff_reimbursement_run` | `reverseStaffReimbursementRunImpact` | Like payroll: savings credits via `transaction_id`; the `staff_reimbursement_runs` row goes back to `draft` |
+| `staff_reimbursement` | `reverseStaffReimbursementImpact` | Legacy one-at-a-time records: savings credit via `transaction_id`; `staff_reimbursements.status` set to `reversed` |
 
 **Payroll implementation rule:** `PayrollController::process` posts the GL journal **first**, then creates each salary **`savings_transactions`** row with **`transaction_id`** pointing at that journal so payroll reversals update **client savings statements and balances**.
 

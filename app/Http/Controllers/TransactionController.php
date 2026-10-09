@@ -587,7 +587,16 @@ class TransactionController extends Controller
             ->with('success', "Transaction {$ref} has been permanently deleted.");
     }
 
-    /** Staff reimbursement journal: undo the savings credit (if paid to savings), mark it reversed. */
+    /** Staff reimbursement run journal: undo the savings credits, put the run back to draft (like payroll). */
+    private function reverseStaffReimbursementRunImpact(Transaction $transaction): void
+    {
+        $this->reverseSavingsImpact($transaction);
+        \App\Models\StaffReimbursementRun::where('transaction_id', $transaction->id)->update([
+            'status' => 'draft', 'payment_date' => null, 'transaction_id' => null, 'processed_by' => null, 'processed_at' => null,
+        ]);
+    }
+
+    /** Staff reimbursement journal (old one-at-a-time records): undo the savings credit, mark it reversed. */
     private function reverseStaffReimbursementImpact(Transaction $transaction): void
     {
         $this->reverseSavingsImpact($transaction);
@@ -820,6 +829,7 @@ class TransactionController extends Controller
             'groups'        => $this->reverseGroupTransactionImpact($transaction),
             'manual'        => $this->reverseManualSubLedgers($transaction),
             'staff_reimbursement' => $this->reverseStaffReimbursementImpact($transaction),
+            'staff_reimbursement_run' => $this->reverseStaffReimbursementRunImpact($transaction),
             default         => null,
         };
     }
