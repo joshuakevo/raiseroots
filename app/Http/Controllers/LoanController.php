@@ -342,6 +342,10 @@ class LoanController extends Controller
         if ($loan->status !== 'pending') {
             return back()->with('error', 'Only pending loans can be approved.');
         }
+        if (!auth()->user()->canApproveLoanAmount((float) $loan->principal)) {
+            return back()->with('error', 'This loan (' . number_format($loan->principal) . ') is above your approval limit of '
+                . number_format(auth()->user()->loanApprovalLimit()) . '. An admin needs to approve it.');
+        }
 
         $loan->update([
             'status'      => 'approved',

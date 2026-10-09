@@ -13,12 +13,21 @@
     <div class="d-flex gap-2">
         @can('approve loans')
         @if($loan->status === 'pending')
+            @if(auth()->user()->canApproveLoanAmount((float) $loan->principal))
             <form method="POST" action="{{ route('loans.approve', $loan) }}" onsubmit="return confirm('Approve this loan for disbursement?')">
                 @csrf
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-check2-circle me-1"></i>Approve Loan
                 </button>
             </form>
+            @else
+            <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip"
+                  title="Above your approval limit of {{ number_format(auth()->user()->loanApprovalLimit()) }} — an admin needs to approve it.">
+                <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                    <i class="bi bi-lock me-1"></i>Approve Loan (needs admin)
+                </button>
+            </span>
+            @endif
         @endif
         @endcan
         @can('disburse loans')
