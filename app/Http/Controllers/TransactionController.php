@@ -443,24 +443,8 @@ class TransactionController extends Controller
     public function receipt(Transaction $transaction)
     {
         $transaction->load('lines.account', 'createdBy');
-
-        // Who it's for: a client tagged on a line, else the record the journal was posted for.
-        $clientId = $transaction->lines->firstWhere('client_id', '!=', null)?->client_id;
-        $loan     = null;
-        if ($transaction->module === 'loan' && $transaction->module_id) {
-            $loan = Loan::withoutGlobalScopes()->find($transaction->module_id);
-            $clientId = $clientId ?: $loan?->client_id;
-        } elseif (!$clientId && $transaction->module_id) {
-            $model = [
-                'savings'       => SavingsAccount::class,
-                'fixed_deposit' => FixedDeposit::class,
-                'member_share'  => MemberShare::class,
-            ][$transaction->module] ?? null;
-            $clientId = $model
-                ? $model::withoutGlobalScopes()->whereKey($transaction->module_id)->value('client_id')
-                : ($transaction->module === 'client' ? $transaction->module_id : null);
-        }
-        $client = $clientId ? Client::withoutGlobalScopes()->find($clientId) : null;
+        [$client, $loan] = $this->documentParty($transaction);
+        $kind = 'receipt';
 
         $repayment = LoanRepayment::where('transaction_id', $transaction->id)->first();
         if ($repayment) {
@@ -484,7 +468,60 @@ class TransactionController extends Controller
             ? $loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_admin_fee + $loan->outstanding_penalty
             : null;
 
-        return view('transactions.receipt', compact('transaction', 'client', 'loan', 'repayment', 'items', 'total', 'loanBalance'));
+        return view('transactions.receipt', compact('kind', 'transaction', 'client', 'loan', 'repayment', 'items', 'total', 'loanBalance'));
+    }
+
+    /**
+     * Printable payment voucher for money going OUT (disbursements, expenses, payroll,
+     * reimbursements...). Particulars are the entry's debit lines - what the money was
+     * spent on - leaving out the internal interest/admin-fee accrual; "Paid from" lists the
+     * cash/bank (payment source) accounts credited.
+     */
+    public function voucher(Transaction $transaction)
+    {
+        $transaction->load('lines.account', 'createdBy');
+        [$client, $loan] = $this->documentParty($transaction);
+        $kind = 'voucher';
+
+        $unearnedId = Account::where('account_code', '2006')->value('id');
+        $items = $transaction->lines
+            ->filter(fn ($l) => $l->debit > 0 && $l->account_id !== $unearnedId
+                && !str_starts_with((string) $l->description, 'Interest & admin fee receivable'))
+            ->map(fn ($l) => ['label' => $l->description ?: $l->account?->account_name, 'amount' => (float) $l->debit])
+            ->values();
+        $total = $items->sum('amount');
+
+        $paidFrom = $transaction->lines
+            ->filter(fn ($l) => $l->credit > 0 && $l->account?->is_payment_source)
+            ->map(fn ($l) => ['account' => $l->account->account_name, 'amount' => (float) $l->credit])
+            ->values();
+
+        $repayment = null;
+        $loanBalance = null;
+
+        return view('transactions.receipt', compact('kind', 'transaction', 'client', 'loan', 'repayment', 'items', 'total', 'loanBalance', 'paidFrom'));
+    }
+
+    /** [client, loan] a receipt/voucher is for: a client tagged on a line, else the record the journal was posted for. */
+    private function documentParty(Transaction $transaction): array
+    {
+        $clientId = $transaction->lines->firstWhere('client_id', '!=', null)?->client_id;
+        $loan     = null;
+        if ($transaction->module === 'loan' && $transaction->module_id) {
+            $loan = Loan::withoutGlobalScopes()->find($transaction->module_id);
+            $clientId = $clientId ?: $loan?->client_id;
+        } elseif (!$clientId && $transaction->module_id) {
+            $model = [
+                'savings'       => SavingsAccount::class,
+                'fixed_deposit' => FixedDeposit::class,
+                'member_share'  => MemberShare::class,
+            ][$transaction->module] ?? null;
+            $clientId = $model
+                ? $model::withoutGlobalScopes()->whereKey($transaction->module_id)->value('client_id')
+                : ($transaction->module === 'client' ? $transaction->module_id : null);
+        }
+
+        return [$clientId ? Client::withoutGlobalScopes()->find($clientId) : null, $loan];
     }
 
     public function edit(Transaction $transaction)

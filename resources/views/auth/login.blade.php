@@ -102,7 +102,7 @@
         <button type="button" class="install-pill" data-bs-toggle="modal" data-bs-target="#installAppModal">
             <i class="bi bi-qr-code me-1"></i>Install the app · scan QR code
         </button>
-        <div class="brand-footer">Financial management for SACCOs &amp; microfinance</div>
+        <div class="brand-footer">Financial Management System</div>
     </div>
 
     {{-- Sign-in side --}}

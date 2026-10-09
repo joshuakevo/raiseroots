@@ -173,6 +173,8 @@ Route::middleware('auth')->group(function () {
         ->name('transactions.show')->middleware('permission:view transactions');
     Route::get('transactions/{transaction}/receipt', [TransactionController::class, 'receipt'])
         ->name('transactions.receipt')->middleware('permission:view transactions');
+    Route::get('transactions/{transaction}/voucher', [TransactionController::class, 'voucher'])
+        ->name('transactions.voucher')->middleware('permission:view transactions');
     Route::get('transactions/{transaction}/edit', [TransactionController::class, 'edit'])
         ->name('transactions.edit')->middleware('permission:create transactions');
     Route::put('transactions/{transaction}', [TransactionController::class, 'update'])

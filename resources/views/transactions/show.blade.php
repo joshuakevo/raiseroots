@@ -35,6 +35,9 @@
                     <a href="{{ route('transactions.receipt', $transaction) }}" target="_blank" class="btn btn-outline-primary btn-sm">
                         <i class="bi bi-printer me-1"></i>Print Receipt
                     </a>
+                    <a href="{{ route('transactions.voucher', $transaction) }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-file-earmark-text me-1"></i>Print Voucher
+                    </a>
                     @if(!$transaction->isReversed() && !$transaction->isReversal())
                     @can('create transactions')
                     <a href="{{ route('transactions.edit', $transaction) }}" class="btn btn-outline-secondary btn-sm">
