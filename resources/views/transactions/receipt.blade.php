@@ -6,13 +6,15 @@
     $orgLogo    = \App\Models\SystemSetting::get('org_logo');
     $currency   = \App\Models\SystemSetting::get('currency', 'UGX');
     $isReversed = $transaction->isReversed() || $transaction->isReversal();
+    $isVoucher  = ($kind ?? 'receipt') === 'voucher';
+    $docTitle   = $isVoucher ? 'PAYMENT VOUCHER' : 'RECEIPT';
 @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt {{ $transaction->reference }} — {{ $orgName }}</title>
+    <title>{{ $isVoucher ? 'Voucher' : 'Receipt' }} {{ $transaction->reference }} — {{ $orgName }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         * { box-sizing: border-box; }
@@ -71,7 +73,7 @@
     </div>
 
     <div class="title">
-        <h1>RECEIPT</h1>
+        <h1>{{ $docTitle }}</h1>
         <div class="meta">
             No. <strong>{{ $transaction->reference }}</strong><br>
             Date: {{ $transaction->date->format('d M Y') }}
@@ -79,13 +81,18 @@
     </div>
 
     <div class="party">
-        <div><div class="lbl">Received from</div><strong>{{ $client?->name ?? '—' }}</strong></div>
+        <div><div class="lbl">{{ $isVoucher ? 'Paid to' : 'Received from' }}</div><strong>{{ $client?->name ?? ($isVoucher ? '' : '—') }}</strong>@if($isVoucher && !$client)<span style="display:inline-block;width:160px;border-bottom:1px dotted #9ca3af">&nbsp;</span>@endif</div>
         <div><div class="lbl">Client No.</div>{{ $client?->client_number ?? '—' }}</div>
         @if($loan)
             <div><div class="lbl">Loan No.</div>{{ $loan->loan_number }}</div>
+            @unless($isVoucher)
             <div><div class="lbl">Payment method</div>{{ $repayment ? ucfirst(str_replace('_', ' ', $repayment->payment_method ?? 'cash')) : '—' }}</div>
+            @endunless
         @endif
-        <div style="grid-column: 1 / -1"><div class="lbl">Being payment for</div>{{ $transaction->description }}</div>
+        @if($isVoucher && !empty($paidFrom) && count($paidFrom))
+            <div><div class="lbl">Paid from</div>{{ collect($paidFrom)->map(fn ($p) => $p['account'] . (count($paidFrom) > 1 ? ' (' . number_format($p['amount'], $dp) . ')' : ''))->implode(', ') }}</div>
+        @endif
+        <div style="grid-column: 1 / -1"><div class="lbl">{{ $isVoucher ? 'Being payment of' : 'Being payment for' }}</div>{{ $transaction->description }}</div>
     </div>
 
     <table>
@@ -105,10 +112,18 @@
         <div class="balance"><i class="bi bi-info-circle"></i> Loan balance remaining: <strong>{{ $currency }} {{ number_format($loanBalance, $dp) }}</strong></div>
     @endif
 
+    @if($isVoucher)
+    <div class="sign">
+        <div>Prepared by: {{ $transaction->createdBy?->name }}</div>
+        <div>Approved by</div>
+        <div>Received by (signature)</div>
+    </div>
+    @else
     <div class="sign">
         <div>Received by: {{ $transaction->createdBy?->name }}</div>
         <div>Client signature</div>
     </div>
+    @endif
 
     <div class="foot">Printed {{ now()->format('d M Y H:i') }} · Thank you.</div>
 </div>
