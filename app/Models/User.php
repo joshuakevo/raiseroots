@@ -107,6 +107,28 @@ class User extends Authenticatable
      * portal roles (client, group_leader, group_member — already scoped to
      * their own client_id) are exempt.
      */
+    /**
+     * The largest loan principal this user may approve, or null for no limit. Admins are
+     * never capped; everyone else (managers etc.) is held to the organisation's
+     * "Manager Loan Approval Limit" in Settings (0 / blank = no limit).
+     */
+    public function loanApprovalLimit(): ?float
+    {
+        if ($this->hasAnyRole(['super_admin', 'admin'])) {
+            return null;
+        }
+        $limit = (float) SystemSetting::get('manager_loan_approval_limit', 0);
+
+        return $limit > 0 ? $limit : null;
+    }
+
+    public function canApproveLoanAmount(float $principal): bool
+    {
+        $limit = $this->loanApprovalLimit();
+
+        return $limit === null || $principal <= $limit;
+    }
+
     public function isBranchScoped(): bool
     {
         return !$this->hasAnyRole(['super_admin', 'admin', 'client', 'group_leader', 'group_member']);
