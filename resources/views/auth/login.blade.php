@@ -27,9 +27,47 @@
         .btn-login { background: var(--accent); border: none; border-radius: 8px; padding: .65rem 1rem; font-weight: 600; font-size: .875rem; width: 100%; transition: background .15s; }
         .btn-login:hover { background: #1d4ed8; }
         .hint-text { color: #9ca3af; font-size: .73rem; text-align: center; }
+
+        /* Full-screen "signing in" loader, shown on submit */
+        .login-loader { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                        background: rgba(15, 36, 68, .72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+                        opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility .25s; }
+        .login-loader.show { opacity: 1; visibility: visible; }
+        .loader-ring { position: relative; width: 104px; height: 104px; display: flex; align-items: center; justify-content: center; }
+        .loader-ring::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+                               border: 4px solid rgba(255,255,255,.15); border-top-color: #60a5fa; border-right-color: #60a5fa;
+                               animation: loader-spin 1s linear infinite; }
+        .loader-badge { width: 72px; height: 72px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center;
+                        overflow: hidden; box-shadow: 0 6px 24px rgba(0,0,0,.25); animation: loader-pulse 1.6s ease-in-out infinite; }
+        .loader-badge img { max-width: 78%; max-height: 78%; object-fit: contain; }
+        .loader-badge i { font-size: 1.9rem; color: var(--accent); }
+        .loader-text { color: #fff; font-weight: 600; margin-top: 1.25rem; font-size: 1rem; letter-spacing: .01em; }
+        .loader-sub { color: rgba(255,255,255,.65); font-size: .8rem; margin-top: .35rem; min-height: 1.2em; text-align: center; padding: 0 1rem; transition: opacity .3s; }
+        .loader-dots::after { content: ""; animation: loader-dots 1.4s steps(4, end) infinite; }
+        @keyframes loader-spin  { to { transform: rotate(360deg); } }
+        @keyframes loader-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(.94); } }
+        @keyframes loader-dots  { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+        @media (prefers-reduced-motion: reduce) {
+            .loader-ring::before, .loader-badge, .loader-dots::after { animation: none; }
+        }
     </style>
 </head>
 <body>
+@php $loginLogo = \App\Models\SystemSetting::get('org_logo'); @endphp
+<div class="login-loader" id="loginLoader" role="status" aria-live="polite" aria-hidden="true">
+    <div class="loader-ring">
+        <div class="loader-badge">
+            @if($loginLogo && file_exists(public_path($loginLogo)))
+                <img src="{{ asset($loginLogo) }}" alt="">
+            @else
+                <i class="bi bi-bank"></i>
+            @endif
+        </div>
+    </div>
+    <div class="loader-text">Signing you in<span class="loader-dots"></span></div>
+    <div class="loader-sub" id="loaderSub">Checking your details</div>
+</div>
+
 <div class="login-wrap">
 <div class="login-card">
     <div class="login-header">
@@ -78,15 +116,46 @@
 </div>
 </div>
 <script>
-document.addEventListener('submit', function (e) {
-    var form = e.target;
-    form.querySelectorAll('button:not([type="button"]):not([type="reset"]), input[type="submit"]').forEach(function (btn) {
-        btn.disabled = true;
-        if (btn.tagName === 'BUTTON') {
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Signing in…';
-        }
+(function () {
+    var loader = document.getElementById('loginLoader');
+    var sub    = document.getElementById('loaderSub');
+    var timers = [];
+    var buttonHtml = {};
+
+    function setSub(text) {
+        sub.style.opacity = 0;
+        setTimeout(function () { sub.textContent = text; sub.style.opacity = 1; }, 200);
+    }
+
+    document.addEventListener('submit', function (e) {
+        var form = e.target;
+        form.querySelectorAll('button:not([type="button"]):not([type="reset"]), input[type="submit"]').forEach(function (btn, i) {
+            buttonHtml[i] = btn.innerHTML;
+            btn.disabled = true;
+            if (btn.tagName === 'BUTTON') {
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Signing in…';
+            }
+        });
+        loader.classList.add('show');
+        loader.setAttribute('aria-hidden', 'false');
+        sub.textContent = 'Checking your details';
+        timers.push(setTimeout(function () { setSub('Loading your dashboard'); }, 2500));
+        timers.push(setTimeout(function () { setSub('Still working — this can take a moment on a slow connection'); }, 7000));
     });
-});
+
+    // Coming back with the Back button restores the page from cache - don't leave it stuck behind the loader.
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        timers.forEach(clearTimeout);
+        timers = [];
+        loader.classList.remove('show');
+        loader.setAttribute('aria-hidden', 'true');
+        document.querySelectorAll('form button:not([type="button"]):not([type="reset"]), form input[type="submit"]').forEach(function (btn, i) {
+            btn.disabled = false;
+            if (buttonHtml[i] !== undefined) btn.innerHTML = buttonHtml[i];
+        });
+    });
+})();
 </script>
 </body>
 </html>
