@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\SystemSetting;
 
 /**
- * Makes the system installable on phones ("Add to Home Screen"): a web app manifest
- * and square home-screen icons generated from the organisation logo in Settings, so
- * each deployment shows its own name and logo. Public - the phone fetches these
- * before anyone logs in.
+ * Makes the system installable as a phone/desktop app (PWA): web app manifest, square
+ * app icons drawn from the organisation logo in Settings, and the public /install page
+ * the "Install app" QR code points to. All public - fetched before anyone logs in.
+ * (public/sw.js is the service worker; it deliberately caches nothing.)
  */
 class AppManifestController extends Controller
 {
@@ -18,35 +18,31 @@ class AppManifestController extends Controller
     public function manifest()
     {
         $name = (string) SystemSetting::get('org_name', 'ElTech Finance');
+        $v    = self::iconVersion();
 
         return response()->json([
             'name'             => $name,
-            'short_name'       => mb_strimwidth($name, 0, 12, ''),
+            'short_name'       => mb_substr($name, 0, 15),
             'start_url'        => '/',
             'scope'            => '/',
             'display'          => 'standalone',
-            'background_color' => '#ffffff',
+            'background_color' => self::THEME,
             'theme_color'      => self::THEME,
             'icons'            => [
-                ['src' => route('app-icon', 192), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => route('app-icon', 512), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => route('app-icon', 512), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+                ['src' => route('app-icon', 192) . "?v={$v}", 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => route('app-icon', 512) . "?v={$v}", 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
             ],
-        ], 200, ['Content-Type' => 'application/manifest+json', 'Cache-Control' => 'public, max-age=3600']);
+        ], 200, ['Content-Type' => 'application/manifest+json', 'Cache-Control' => 'public, max-age=3600'], JSON_UNESCAPED_SLASHES);
     }
 
     public function icon(int $size)
     {
         abort_unless(in_array($size, self::SIZES, true), 404);
 
-        $logo     = (string) SystemSetting::get('org_logo', '');
-        $logoPath = $logo !== '' ? public_path($logo) : null;
+        $logoPath = self::logoPath();
         $orgName  = (string) SystemSetting::get('org_name', 'ElTech Finance');
 
-        // Cached per logo file + size; a new logo upload gets a new filename, so a new icon.
-        $key   = md5(($logoPath && is_file($logoPath) ? $logoPath . filemtime($logoPath) : 'initials:' . $orgName) . $size);
-        $cache = storage_path("app/app-icons/{$key}.png");
-
+        $cache = storage_path('app/app-icons/' . md5(self::iconVersion() . $orgName . $size . 'navy') . '.png');
         if (!is_file($cache)) {
             if (!is_dir(dirname($cache))) {
                 mkdir(dirname($cache), 0755, true);
@@ -59,10 +55,34 @@ class AppManifestController extends Controller
         return response()->file($cache, ['Content-Type' => 'image/png', 'Cache-Control' => 'public, max-age=86400']);
     }
 
-    /** Logo centred on white, inside the safe zone phones keep when they round/crop icons. */
+    /** The page the "Install app" QR code opens on a phone. */
+    public function install()
+    {
+        return view('install', [
+            'orgName' => (string) SystemSetting::get('org_name', 'ElTech Finance'),
+        ]);
+    }
+
+    /** Changes whenever the logo file changes, so icon URLs (?v=) refresh on phones. */
+    public static function iconVersion(): string
+    {
+        $path = self::logoPath();
+
+        return substr(md5(($path ?? 'none') . ($path ? filemtime($path) : '')), 0, 10);
+    }
+
+    private static function logoPath(): ?string
+    {
+        $logo = (string) SystemSetting::get('org_logo', '');
+        $path = $logo !== '' ? public_path($logo) : null;
+
+        return $path && is_file($path) ? $path : null;
+    }
+
+    /** Logo scaled into the centre 76% on the brand navy. */
     private function fromLogo(?string $path, int $size)
     {
-        if (!$path || !is_file($path)) {
+        if (!$path) {
             return null;
         }
         $data = @file_get_contents($path);
@@ -71,10 +91,10 @@ class AppManifestController extends Controller
             return null;
         }
 
-        $canvas = imagecreatetruecolor($size, $size);
-        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
+        $canvas = $this->navyCanvas($size);
+        imagealphablending($canvas, true);
 
-        $box   = (int) round($size * 0.72);
+        $box   = (int) round($size * 0.76);
         $w     = imagesx($src);
         $h     = imagesy($src);
         $scale = min($box / $w, $box / $h);
@@ -89,8 +109,7 @@ class AppManifestController extends Controller
     /** No usable logo: the organisation's initials, white on the brand navy. */
     private function fromInitials(string $name, int $size)
     {
-        $canvas = imagecreatetruecolor($size, $size);
-        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 0x0f, 0x24, 0x44));
+        $canvas = $this->navyCanvas($size);
 
         $words    = preg_split('/\s+/', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: ['E'];
         $initials = strtoupper(mb_substr($words[0], 0, 1) . (isset($words[1]) ? mb_substr($words[1], 0, 1) : ''));
@@ -108,8 +127,16 @@ class AppManifestController extends Controller
         $scale = ($size * 0.42) / $th;
         $dw    = (int) round($tw * $scale);
         $dh    = (int) round($th * $scale);
-        imagecopyresampled($canvas, $small, (int) (($size - $dw) / 2), (int) (($size - $dh) / 2), 0, 0, $dw, $dh, $tw, $th);
+        imagecopyresized($canvas, $small, (int) (($size - $dw) / 2), (int) (($size - $dh) / 2), 0, 0, $dw, $dh, $tw, $th);
         imagedestroy($small);
+
+        return $canvas;
+    }
+
+    private function navyCanvas(int $size)
+    {
+        $canvas = imagecreatetruecolor($size, $size);
+        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 0x0f, 0x24, 0x44));
 
         return $canvas;
     }

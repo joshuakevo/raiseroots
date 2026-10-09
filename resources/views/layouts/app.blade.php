@@ -467,6 +467,7 @@
                 <li><span class="dropdown-item-text text-muted small">{{ auth()->user()?->role_name }}</span></li>
                 <li><hr class="dropdown-divider my-1"></li>
                 <li><a class="dropdown-item" href="{{ route('settings.index') }}"><i class="bi bi-gear me-2"></i>Settings</a></li>
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#installAppModal"><i class="bi bi-phone me-2"></i>Install app / QR code</a></li>
                 <li>
                     <form method="POST" action="{{ route('logout') }}" data-no-block="1">
                         @csrf
@@ -525,6 +526,7 @@ function toggleSidebar(){
 
 // SF is defined in <head> — no duplicate needed here
 </script>
+@include('partials.install-app-modal')
 @stack('scripts')
 <script>
 // Prevent duplicate form submissions — disable submit buttons on submit
