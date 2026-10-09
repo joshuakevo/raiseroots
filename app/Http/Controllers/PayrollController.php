@@ -146,11 +146,10 @@ class PayrollController extends Controller {
 
         $payroll->load('items.employee.paymentSourceAccount', 'items.savingsAccount.product');
 
-        $salaryExpenseAccountId = Account::where('account_code', '5001')->value('id')
-            ?: Account::where('account_code', '5003')->value('id');
+        $salaryExpenseAccountId = $this->salaryExpenseAccountId();
         if (!$salaryExpenseAccountId) {
             throw ValidationException::withMessages([
-                'payment_date' => 'Chart of accounts is missing a salary expense account (codes 5001 or 5003). Add one under Chart of Accounts.',
+                'payment_date' => 'Chart of accounts has no salary expense account. Add an expense account named e.g. "Staff Salaries" (code 5502) under Chart of Accounts.',
             ]);
         }
 
@@ -322,6 +321,31 @@ class PayrollController extends Controller {
         $payroll->items()->delete();
         $payroll->delete();
         return redirect()->route('payroll.index')->with('success', 'Draft payroll run deleted.');
+    }
+
+    /**
+     * The GL account salaries are expensed to. Charts differ between systems (Sipmart:
+     * 5502 Staff Salaries; Raiseroots: 5001 Salary Expense; seeded default: 5003 Staff
+     * Salaries, with 5001 = Interest Expense), so: 5502, else 5001/5003 only if actually
+     * named for salaries, else any active expense account named for salaries.
+     */
+    private function salaryExpenseAccountId(): ?int
+    {
+        $id = Account::where('account_code', '5502')->where('is_active', true)->value('id');
+        if ($id) {
+            return $id;
+        }
+
+        foreach (['5001', '5003'] as $code) {
+            $id = Account::where('account_code', $code)->where('is_active', true)
+                ->where('account_name', 'like', '%salar%')->value('id');
+            if ($id) {
+                return $id;
+            }
+        }
+
+        return Account::where('account_type', 'expense')->where('is_active', true)
+            ->where('account_name', 'like', '%salar%')->orderBy('account_code')->value('id');
     }
 
     private function generateRunNumber(): string {
