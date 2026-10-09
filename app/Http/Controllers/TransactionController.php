@@ -434,6 +434,59 @@ class TransactionController extends Controller
         return view('transactions.show', compact('transaction'));
     }
 
+    /**
+     * Printable client receipt for a journal entry. Loan repayments use the repayment's own
+     * breakdown (principal / interest / admin fee / penalty) and show the loan's balance;
+     * anything else lists the entry's credit lines (what the money went to), leaving out
+     * the internal Unearned Interest & Fees (2006) release.
+     */
+    public function receipt(Transaction $transaction)
+    {
+        $transaction->load('lines.account', 'createdBy');
+
+        // Who it's for: a client tagged on a line, else the record the journal was posted for.
+        $clientId = $transaction->lines->firstWhere('client_id', '!=', null)?->client_id;
+        $loan     = null;
+        if ($transaction->module === 'loan' && $transaction->module_id) {
+            $loan = Loan::withoutGlobalScopes()->find($transaction->module_id);
+            $clientId = $clientId ?: $loan?->client_id;
+        } elseif (!$clientId && $transaction->module_id) {
+            $model = [
+                'savings'       => SavingsAccount::class,
+                'fixed_deposit' => FixedDeposit::class,
+                'member_share'  => MemberShare::class,
+            ][$transaction->module] ?? null;
+            $clientId = $model
+                ? $model::withoutGlobalScopes()->whereKey($transaction->module_id)->value('client_id')
+                : ($transaction->module === 'client' ? $transaction->module_id : null);
+        }
+        $client = $clientId ? Client::withoutGlobalScopes()->find($clientId) : null;
+
+        $repayment = LoanRepayment::where('transaction_id', $transaction->id)->first();
+        if ($repayment) {
+            $items = collect([
+                ['label' => 'Principal',       'amount' => (float) $repayment->principal_paid],
+                ['label' => 'Interest',        'amount' => (float) $repayment->interest_paid],
+                ['label' => 'Admin Fee',       'amount' => (float) $repayment->admin_fee_paid],
+                ['label' => 'Penalty',         'amount' => (float) $repayment->penalty_paid],
+            ])->filter(fn ($i) => $i['amount'] > 0)->values();
+            $total = (float) $repayment->amount;
+        } else {
+            $unearnedId = Account::where('account_code', '2006')->value('id');
+            $items = $transaction->lines
+                ->filter(fn ($l) => $l->credit > 0 && $l->account_id !== $unearnedId)
+                ->map(fn ($l) => ['label' => $l->description ?: $l->account?->account_name, 'amount' => (float) $l->credit])
+                ->values();
+            $total = $items->sum('amount');
+        }
+
+        $loanBalance = $loan && in_array($loan->status, ['active', 'defaulted', 'closed'], true)
+            ? $loan->outstanding_principal + $loan->outstanding_interest + $loan->outstanding_admin_fee + $loan->outstanding_penalty
+            : null;
+
+        return view('transactions.receipt', compact('transaction', 'client', 'loan', 'repayment', 'items', 'total', 'loanBalance'));
+    }
+
     public function edit(Transaction $transaction)
     {
         if ($transaction->isReversed() || $transaction->isReversal()) {
