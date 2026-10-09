@@ -32,6 +32,9 @@
                 <span>Journal Entry — <span class="font-monospace">{{ $transaction->reference }}</span></span>
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">{{ $transaction->date->format('d M Y') }}</span>
+                    <a href="{{ route('transactions.receipt', $transaction) }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-printer me-1"></i>Print Receipt
+                    </a>
                     @if(!$transaction->isReversed() && !$transaction->isReversal())
                     @can('create transactions')
                     <a href="{{ route('transactions.edit', $transaction) }}" class="btn btn-outline-secondary btn-sm">
