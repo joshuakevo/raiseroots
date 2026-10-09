@@ -17,10 +17,12 @@
                 <th class="ps-3">Emp #</th>
                 <th>Name</th>
                 <th>NSSF No.</th>
+                <th>TIN No.</th>
                 <th>Position</th>
                 <th>Department</th>
                 <th class="text-end">Basic Salary</th>
                 <th>Salary Payout</th>
+                <th>Bank</th>
                 <th>Status</th>
                 <th class="pe-3">Actions</th>
             </tr></thead>
@@ -30,6 +32,7 @@
                     <td class="ps-3 font-monospace small">{{ $emp->employee_number }}</td>
                     <td class="fw-semibold">{{ $emp->name }}</td>
                     <td class="font-monospace small">{{ $emp->nssf_number ?? '—' }}</td>
+                    <td class="font-monospace small">{{ $emp->tin_number ?? '—' }}</td>
                     <td>{{ $emp->position ?? '—' }}</td>
                     <td>{{ $emp->department ?? '—' }}</td>
                     <td class="text-end">{{ number_format($emp->basic_salary, 0) }}</td>
@@ -44,6 +47,14 @@
                             <span class="text-danger small">Payout account not set</span>
                         @endif
                     </td>
+                    <td class="small">
+                        @if($emp->bank_name || $emp->bank_account_number)
+                            <div>{{ $emp->bank_name ?? '—' }}</div>
+                            @if($emp->bank_account_number)<div class="font-monospace text-muted" style="font-size:.72rem">{{ $emp->bank_account_number }}</div>@endif
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
                     <td>
                         <span class="badge {{ $emp->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
                             {{ ucfirst($emp->status) }}
@@ -55,7 +66,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="9" class="text-center text-muted py-4">No employees found.</td></tr>
+                <tr><td colspan="11" class="text-center text-muted py-4">No employees found.</td></tr>
             @endforelse
             </tbody>
         </table>
