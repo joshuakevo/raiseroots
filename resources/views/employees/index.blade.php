@@ -23,6 +23,7 @@
                 <th class="text-end">Basic Salary</th>
                 <th>Salary Payout</th>
                 <th>Bank</th>
+                <th>Bank Account No.</th>
                 <th>Status</th>
                 <th class="pe-3">Actions</th>
             </tr></thead>
@@ -47,14 +48,8 @@
                             <span class="text-danger small">Payout account not set</span>
                         @endif
                     </td>
-                    <td class="small">
-                        @if($emp->bank_name || $emp->bank_account_number)
-                            <div>{{ $emp->bank_name ?? '—' }}</div>
-                            @if($emp->bank_account_number)<div class="font-monospace text-muted" style="font-size:.72rem">{{ $emp->bank_account_number }}</div>@endif
-                        @else
-                            <span class="text-muted">—</span>
-                        @endif
-                    </td>
+                    <td class="small">{{ $emp->bank_name ?? '—' }}</td>
+                    <td class="font-monospace small">{{ $emp->bank_account_number ?? '—' }}</td>
                     <td>
                         <span class="badge {{ $emp->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
                             {{ ucfirst($emp->status) }}
@@ -66,7 +61,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="11" class="text-center text-muted py-4">No employees found.</td></tr>
+                <tr><td colspan="12" class="text-center text-muted py-4">No employees found.</td></tr>
             @endforelse
             </tbody>
         </table>

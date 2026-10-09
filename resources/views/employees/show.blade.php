@@ -23,7 +23,8 @@
                     <tr><td class="text-muted">ID Number</td><td>{{ $employee->id_number ?? '—' }}</td></tr>
                     <tr><td class="text-muted">NSSF Number</td><td class="font-monospace">{{ $employee->nssf_number ?? '—' }}</td></tr>
                     <tr><td class="text-muted">TIN Number</td><td class="font-monospace">{{ $employee->tin_number ?? '—' }}</td></tr>
-                    <tr><td class="text-muted">Bank</td><td>{{ $employee->bank_name ?? '—' }}@if($employee->bank_account_number) <span class="font-monospace small text-muted ms-1">{{ $employee->bank_account_number }}</span>@endif</td></tr>
+                    <tr><td class="text-muted">Bank</td><td>{{ $employee->bank_name ?? '—' }}</td></tr>
+                    <tr><td class="text-muted">Bank Account No.</td><td class="font-monospace">{{ $employee->bank_account_number ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Position</td><td>{{ $employee->position ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Department</td><td>{{ $employee->department ?? '—' }}</td></tr>
                     <tr><td class="text-muted">Basic Salary</td><td class="fw-semibold">{{ number_format($employee->basic_salary, 0) }}</td></tr>
