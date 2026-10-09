@@ -9,7 +9,8 @@ class Employee extends Model {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'employee_number', 'client_id', 'name', 'phone', 'email', 'id_number', 'nssf_number',
+        'employee_number', 'client_id', 'name', 'phone', 'email', 'id_number', 'nssf_number', 'tin_number',
+        'bank_name', 'bank_account_number',
         'position', 'department', 'basic_salary',
         'payment_method', 'savings_account_id', 'payment_source_account_id',
         'status', 'notes', 'created_by',

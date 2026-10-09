@@ -28,6 +28,18 @@
         <input type="text" name="nssf_number" class="form-control form-control-sm" maxlength="30" value="{{ old('nssf_number', $employee->nssf_number ?? '') }}">
     </div>
     <div class="col-md-4">
+        <label class="form-label small mb-0 fw-semibold">TIN Number</label>
+        <input type="text" name="tin_number" class="form-control form-control-sm" maxlength="30" value="{{ old('tin_number', $employee->tin_number ?? '') }}">
+    </div>
+    <div class="col-md-4">
+        <label class="form-label small mb-0 fw-semibold">Bank</label>
+        <input type="text" name="bank_name" class="form-control form-control-sm" maxlength="100" placeholder="e.g. Stanbic Bank" value="{{ old('bank_name', $employee->bank_name ?? '') }}">
+    </div>
+    <div class="col-md-4">
+        <label class="form-label small mb-0 fw-semibold">Bank Account Number</label>
+        <input type="text" name="bank_account_number" class="form-control form-control-sm" maxlength="50" value="{{ old('bank_account_number', $employee->bank_account_number ?? '') }}">
+    </div>
+    <div class="col-md-4">
         <label class="form-label small mb-0 fw-semibold">Position</label>
         <input type="text" name="position" class="form-control form-control-sm" value="{{ old('position', $employee->position ?? '') }}">
     </div>
