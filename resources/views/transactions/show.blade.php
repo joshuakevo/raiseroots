@@ -63,6 +63,18 @@
                 <dl class="row mb-3">
                     <dt class="col-3 fw-normal text-muted">Reference</dt><dd class="col-9 font-monospace">{{ $transaction->reference }}</dd>
                     <dt class="col-3 fw-normal text-muted">Description</dt><dd class="col-9">{{ $transaction->description }}</dd>
+                    <dt class="col-3 fw-normal text-muted">Client</dt>
+                    <dd class="col-9">
+                        @if($client)
+                            <a href="{{ route('clients.show', $client) }}" class="fw-semibold text-decoration-none">{{ $client->name }}</a>
+                            <span class="badge bg-light text-secondary border font-monospace fw-normal ms-1">{{ $client->client_number }}</span>
+                            @if($loan)
+                                <span class="text-muted small ms-2">Loan <a href="{{ route('loans.show', $loan) }}" class="font-monospace">{{ $loan->loan_number }}</a></span>
+                            @endif
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </dd>
                     <dt class="col-3 fw-normal text-muted">Module</dt><dd class="col-9"><span class="badge bg-secondary">{{ $transaction->module ?? 'manual' }}</span></dd>
                     <dt class="col-3 fw-normal text-muted">Created By</dt><dd class="col-9">{{ $transaction->createdBy->name ?? '—' }}</dd>
                 </dl>
