@@ -431,7 +431,8 @@ class TransactionController extends Controller
     public function show(Transaction $transaction)
     {
         $transaction->load('lines.account', 'createdBy', 'originalTransaction', 'reversalTransaction');
-        return view('transactions.show', compact('transaction'));
+        [$client, $loan] = $this->documentParty($transaction);
+        return view('transactions.show', compact('transaction', 'client', 'loan'));
     }
 
     /**
