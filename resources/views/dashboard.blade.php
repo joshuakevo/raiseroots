@@ -158,7 +158,7 @@
         <div class="card h-100">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <span class="fw-semibold"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Profitability Analysis</span>
-                <span class="text-muted small">Last 6 months</span>
+                <span class="text-muted small">This month · {{ $periodLabel }}</span>
             </div>
             <div class="card-body">
                 @php

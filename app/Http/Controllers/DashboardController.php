@@ -64,34 +64,42 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // ── Monthly Trends (last 6 months) ───────────────────────────────────
-        $months      = collect();
+        // ── Profitability Analysis: the current month, day by day ───────────
+        // (The $monthly* names are kept for the view; each value is now one day of this month.)
+        $periodStart = now()->startOfMonth()->startOfDay();
+        $periodEnd   = now()->endOfDay();
+        $days        = collect();
         $monthLabels = collect();
-        for ($i = 5; $i >= 0; $i--) {
-            $m = now()->subMonths($i);
-            $months->push($m);
-            $monthLabels->push($m->format('M Y'));
+        for ($d = $periodStart->copy(); $d->lte($periodEnd); $d->addDay()) {
+            $days->push($d->toDateString());
+            $monthLabels->push($d->format('j M'));
         }
+        $periodLabel = now()->format('F Y');
+
+        // One grouped query per series: sum of credit/debit per day for the given accounts.
+        $dailySum = function ($accountIds, string $side) use ($days, $periodStart, $periodEnd) {
+            $accountIds = array_filter(collect($accountIds)->all());
+            if (!$accountIds) {
+                return $days->map(fn () => 0.0);
+            }
+            $byDay = TransactionLine::query()
+                ->join('transactions', 'transactions.id', '=', 'transaction_lines.transaction_id')
+                ->whereIn('transaction_lines.account_id', $accountIds)
+                ->whereBetween('transactions.date', [$periodStart->toDateString(), $periodEnd->toDateString()])
+                ->when(auth()->user()->isBranchScoped(), fn ($q) => $q->where('transactions.branch_id', auth()->user()->branch_id))
+                ->groupBy(DB::raw('DATE(transactions.date)'))
+                ->selectRaw("DATE(transactions.date) as day, SUM(transaction_lines.{$side}) as total")
+                ->pluck('total', 'day');
+
+            return $days->map(fn ($day) => (float) ($byDay[$day] ?? 0));
+        };
 
         // Income vs Expenses (from GL accounts)
         $incomeAccountIds  = Account::where('account_type', 'revenue')->pluck('id');
         $expenseAccountIds = Account::where('account_type', 'expense')->pluck('id');
 
-        $monthlyIncome = $months->map(function ($m) use ($incomeAccountIds) {
-            return (float) TransactionLine::whereIn('account_id', $incomeAccountIds)
-                ->whereHas('transaction', fn($q) => $q
-                    ->whereYear('date', $m->year)
-                    ->whereMonth('date', $m->month))
-                ->sum('credit');
-        });
-
-        $monthlyExpenses = $months->map(function ($m) use ($expenseAccountIds) {
-            return (float) TransactionLine::whereIn('account_id', $expenseAccountIds)
-                ->whereHas('transaction', fn($q) => $q
-                    ->whereYear('date', $m->year)
-                    ->whereMonth('date', $m->month))
-                ->sum('debit');
-        });
+        $monthlyIncome   = $dailySum($incomeAccountIds, 'credit');
+        $monthlyExpenses = $dailySum($expenseAccountIds, 'debit');
 
         $monthlyProfit = $monthlyIncome->zip($monthlyExpenses)->map(fn($pair) => round($pair[0] - $pair[1], 2));
 
@@ -112,17 +120,7 @@ class DashboardController extends Controller
             ->merge(\App\Models\LoanProduct::whereNotNull('penalty_income_account_id')->pluck('penalty_income_account_id'))
             ->unique()->values()->all();
 
-        $monthlyByAccount = function ($accountIds) use ($months) {
-            $accountIds = array_filter((array) $accountIds);
-            if (!$accountIds) {
-                return $months->map(fn () => 0.0);
-            }
-            return $months->map(fn ($m) => (float) TransactionLine::whereIn('account_id', $accountIds)
-                ->whereHas('transaction', fn ($q) => $q
-                    ->whereYear('date', $m->year)
-                    ->whereMonth('date', $m->month))
-                ->sum('credit'));
-        };
+        $monthlyByAccount = fn ($accountIds) => $dailySum((array) $accountIds, 'credit');
 
         $monthlyInterest       = $monthlyByAccount($interestAccountIds);
         $monthlyAdminFees      = $monthlyByAccount($adminFeeAccountId);
@@ -130,12 +128,12 @@ class DashboardController extends Controller
         $monthlyStampDuty      = $monthlyByAccount($stampDutyAccountId);
         $monthlyPenalties      = $monthlyByAccount($penaltyAccountIds);
 
-        $monthlyLoanDisbursements = $months->map(function ($m) {
-            return (float) Loan::whereYear('disbursement_date', $m->year)
-                ->whereMonth('disbursement_date', $m->month)
-                ->whereIn('status', ['active', 'closed', 'defaulted'])
-                ->sum('principal');
-        });
+        $disbursedByDay = Loan::whereBetween('disbursement_date', [$periodStart->toDateString(), $periodEnd->toDateString()])
+            ->whereIn('status', ['active', 'closed', 'defaulted'])
+            ->groupBy(DB::raw('DATE(disbursement_date)'))
+            ->selectRaw('DATE(disbursement_date) as day, SUM(principal) as total')
+            ->pluck('total', 'day');
+        $monthlyLoanDisbursements = $days->map(fn ($day) => (float) ($disbursedByDay[$day] ?? 0));
 
         // ── Risk ───────────────────────────────────────────────────────────────
         $parLoans = Loan::whereIn('status', ['active', 'defaulted'])
@@ -224,7 +222,7 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'officerPerformance',
             'stats', 'loanStatusBreakdown', 'upcomingInstallments', 'topBorrowers',
-            'monthLabels', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit', 'monthlyLoanDisbursements',
+            'monthLabels', 'periodLabel', 'monthlyIncome', 'monthlyExpenses', 'monthlyProfit', 'monthlyLoanDisbursements',
             'monthlyInterest', 'monthlyAdminFees', 'monthlyProcessingFees', 'monthlyStampDuty', 'monthlyPenalties',
             'par30', 'defaultRate',
             'activeBorrowers', 'totalClients',
