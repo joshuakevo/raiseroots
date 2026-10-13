@@ -592,8 +592,7 @@ new Chart(document.getElementById('profitabilityChart'), {
             { label: 'Processing Fees', data: processingFees, backgroundColor: 'rgba(14,165,233,.7)', borderRadius: 4 },
             { label: 'Stamp Duty',      data: stampDuty,      backgroundColor: 'rgba(147,51,234,.7)', borderRadius: 4 },
             { label: 'Penalties',       data: penalties,      backgroundColor: 'rgba(225,29,72,.7)',  borderRadius: 4 },
-            { label: 'Profit',   data: profit,   backgroundColor: 'rgba(59,130,246,.7)', borderRadius: 4, type: 'line',
-              borderColor: 'rgba(59,130,246,.9)', tension: 0.4, fill: false, pointRadius: 3 },
+            { label: 'Profit',   data: profit,   backgroundColor: 'rgba(59,130,246,.7)', borderRadius: 4 },
         ]
     },
     options: {

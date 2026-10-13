@@ -64,34 +64,27 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // ── Profitability Analysis: the current month, day by day ───────────
-        // (The $monthly* names are kept for the view; each value is now one day of this month.)
-        $periodStart = now()->startOfMonth()->startOfDay();
-        $periodEnd   = now()->endOfDay();
-        $days        = collect();
-        $monthLabels = collect();
-        for ($d = $periodStart->copy(); $d->lte($periodEnd); $d->addDay()) {
-            $days->push($d->toDateString());
-            $monthLabels->push($d->format('j M'));
-        }
+        // ── Profitability Analysis: totals for the current month ─────────────
+        // (The $monthly* names are kept for the view; each holds this month's single total.)
+        $periodStart = now()->startOfMonth()->toDateString();
+        $periodEnd   = now()->toDateString();
         $periodLabel = now()->format('F Y');
+        $monthLabels = collect([$periodLabel]);
 
-        // One grouped query per series: sum of credit/debit per day for the given accounts.
-        $dailySum = function ($accountIds, string $side) use ($days, $periodStart, $periodEnd) {
+        // Sum of credit/debit on the given accounts this month, as a one-value collection.
+        $dailySum = function ($accountIds, string $side) use ($periodStart, $periodEnd) {
             $accountIds = array_filter(collect($accountIds)->all());
             if (!$accountIds) {
-                return $days->map(fn () => 0.0);
+                return collect([0.0]);
             }
-            $byDay = TransactionLine::query()
+            $total = TransactionLine::query()
                 ->join('transactions', 'transactions.id', '=', 'transaction_lines.transaction_id')
                 ->whereIn('transaction_lines.account_id', $accountIds)
-                ->whereBetween('transactions.date', [$periodStart->toDateString(), $periodEnd->toDateString()])
+                ->whereBetween('transactions.date', [$periodStart, $periodEnd])
                 ->when(auth()->user()->isBranchScoped(), fn ($q) => $q->where('transactions.branch_id', auth()->user()->branch_id))
-                ->groupBy(DB::raw('DATE(transactions.date)'))
-                ->selectRaw("DATE(transactions.date) as day, SUM(transaction_lines.{$side}) as total")
-                ->pluck('total', 'day');
+                ->sum("transaction_lines.{$side}");
 
-            return $days->map(fn ($day) => (float) ($byDay[$day] ?? 0));
+            return collect([(float) $total]);
         };
 
         // Income vs Expenses (from GL accounts)
@@ -128,12 +121,9 @@ class DashboardController extends Controller
         $monthlyStampDuty      = $monthlyByAccount($stampDutyAccountId);
         $monthlyPenalties      = $monthlyByAccount($penaltyAccountIds);
 
-        $disbursedByDay = Loan::whereBetween('disbursement_date', [$periodStart->toDateString(), $periodEnd->toDateString()])
+        $monthlyLoanDisbursements = collect([(float) Loan::whereBetween('disbursement_date', [$periodStart, $periodEnd])
             ->whereIn('status', ['active', 'closed', 'defaulted'])
-            ->groupBy(DB::raw('DATE(disbursement_date)'))
-            ->selectRaw('DATE(disbursement_date) as day, SUM(principal) as total')
-            ->pluck('total', 'day');
-        $monthlyLoanDisbursements = $days->map(fn ($day) => (float) ($disbursedByDay[$day] ?? 0));
+            ->sum('principal')]);
 
         // ── Risk ───────────────────────────────────────────────────────────────
         $parLoans = Loan::whereIn('status', ['active', 'defaulted'])
