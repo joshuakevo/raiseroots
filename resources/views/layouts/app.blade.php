@@ -554,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('select.ts-select').forEach(function(el) {
         if (!el.tomselect) {
-            new TomSelect(el, { allowEmptyOption: true, maxOptions: null });
+            new TomSelect(el, { allowEmptyOption: true, maxOptions: null, plugins: el.multiple ? ['remove_button'] : [] });
         }
     });
 });

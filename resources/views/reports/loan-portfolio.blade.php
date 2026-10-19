@@ -20,11 +20,10 @@
         <form class="row g-2 align-items-end" method="GET">
             <div class="col-md-2">
                 <label class="form-label small fw-semibold">Status</label>
-                <select name="status" class="form-select">
-                    <option value="">All Statuses</option>
-                    <option value="outstanding" @selected(request('status')=='outstanding')>Active + Defaulted</option>
-                    @foreach(['pending','active','closed','defaulted'] as $s)
-                        <option value="{{ $s }}" @selected(request('status')==$s)>{{ ucfirst($s) }}</option>
+                <select name="status[]" class="form-select ts-select" multiple placeholder="All statuses">
+                    @php $selStatuses = \App\Models\Loan::expandStatuses(request('status')); @endphp
+                    @foreach(['pending','approved','active','closed','defaulted'] as $s)
+                        <option value="{{ $s }}" @selected(in_array($s, $selStatuses, true))>{{ ucfirst($s) }}</option>
                     @endforeach
                 </select>
             </div>

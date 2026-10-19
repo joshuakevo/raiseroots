@@ -19,15 +19,11 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label small fw-semibold">Status</label>
-                <select name="status" class="form-select">
-                    <option value="">All Statuses</option>
-                    <option value="outstanding" @selected(request('status')=='outstanding')>Active + Defaulted</option>
-                    <option value="issued" @selected(request('status')=='issued')>Issued (Active/Closed/Defaulted)</option>
-                    <option value="pending" @selected(request('status')=='pending')>Pending</option>
-                    <option value="approved" @selected(request('status')=='approved')>Approved</option>
-                    <option value="active" @selected(request('status')=='active')>Active</option>
-                    <option value="closed" @selected(request('status')=='closed')>Closed</option>
-                    <option value="defaulted" @selected(request('status')=='defaulted')>Defaulted</option>
+                <select name="status[]" class="form-select ts-select" multiple placeholder="All statuses">
+                    @php $selStatuses = \App\Models\Loan::expandStatuses(request('status')); @endphp
+                    @foreach(['pending','approved','active','closed','defaulted'] as $s)
+                        <option value="{{ $s }}" @selected(in_array($s, $selStatuses, true))>{{ ucfirst($s) }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="col-md-3">
