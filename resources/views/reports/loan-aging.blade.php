@@ -26,6 +26,7 @@
                 <label class="form-label small fw-semibold">Status</label>
                 <select name="status" class="form-select">
                     <option value="">All Statuses</option>
+                    <option value="outstanding" @selected(request('status')=='outstanding')>Active + Defaulted</option>
                     @foreach(['pending','active','closed','defaulted'] as $s)
                         <option value="{{ $s }}" @selected(request('status')==$s)>{{ ucfirst($s) }}</option>
                     @endforeach
