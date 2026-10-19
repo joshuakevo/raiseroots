@@ -73,16 +73,26 @@ class Loan extends Model
         'issued'      => ['active', 'closed', 'defaulted'], // ever disbursed
     ];
 
-    /** Filter by a single status, or a group from STATUS_GROUPS; blank = no filter. */
-    public function scopeFilterStatus($query, ?string $status)
+    /**
+     * Statuses selected in a filter: a single status, a group from STATUS_GROUPS, or a list
+     * of either (multi-select dropdown, ?status[]=active&status[]=defaulted). Blank = none.
+     */
+    public static function expandStatuses($status): array
     {
-        if (!$status) {
-            return $query;
-        }
+        return collect((array) $status)
+            ->filter()
+            ->flatMap(fn ($s) => self::STATUS_GROUPS[$s] ?? [$s])
+            ->unique()->values()->all();
+    }
 
-        return isset(self::STATUS_GROUPS[$status])
-            ? $query->whereIn($query->getModel()->getTable() . '.status', self::STATUS_GROUPS[$status])
-            : $query->where($query->getModel()->getTable() . '.status', $status);
+    /** Filter by the statuses selected (see expandStatuses); nothing selected = no filter. */
+    public function scopeFilterStatus($query, $status)
+    {
+        $statuses = self::expandStatuses($status);
+
+        return $statuses
+            ? $query->whereIn($query->getModel()->getTable() . '.status', $statuses)
+            : $query;
     }
 
     public function repayments()
