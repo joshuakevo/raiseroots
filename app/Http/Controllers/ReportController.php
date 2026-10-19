@@ -274,7 +274,7 @@ class ReportController extends Controller
     public function loanPortfolio(Request $request)
     {
         $loans = Loan::with('client.relationshipManager', 'product')
-            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->filterStatus($request->status)
             ->when($request->relationship_manager_id, fn($q) => $q->whereHas(
                 'client', fn($q2) => $q2->where('relationship_manager_id', $request->relationship_manager_id)
             ))
@@ -393,7 +393,7 @@ class ReportController extends Controller
             ->where('due_date', '<', $asOf)
             ->whereIn('status', ['pending', 'partial', 'overdue'])
             ->when($request->status, fn($q) => $q->whereHas(
-                'loan', fn($q2) => $q2->where('status', $request->status)
+                'loan', fn($q2) => $q2->filterStatus($request->status)
             ))
             ->when($request->relationship_manager_id, fn($q) => $q->whereHas(
                 'loan.client', fn($q2) => $q2->where('relationship_manager_id', $request->relationship_manager_id)

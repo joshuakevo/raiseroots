@@ -67,6 +67,24 @@ class Loan extends Model
         return $this->hasMany(LoanSchedule::class)->orderBy('installment_no');
     }
 
+    /** Status filter values that stand for several statuses at once (list/report dropdowns). */
+    public const STATUS_GROUPS = [
+        'outstanding' => ['active', 'defaulted'],           // still owing: Active + Defaulted
+        'issued'      => ['active', 'closed', 'defaulted'], // ever disbursed
+    ];
+
+    /** Filter by a single status, or a group from STATUS_GROUPS; blank = no filter. */
+    public function scopeFilterStatus($query, ?string $status)
+    {
+        if (!$status) {
+            return $query;
+        }
+
+        return isset(self::STATUS_GROUPS[$status])
+            ? $query->whereIn($query->getModel()->getTable() . '.status', self::STATUS_GROUPS[$status])
+            : $query->where($query->getModel()->getTable() . '.status', $status);
+    }
+
     public function repayments()
     {
         return $this->hasMany(LoanRepayment::class)->orderBy('payment_date');
