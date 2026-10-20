@@ -11,7 +11,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h6 class="fw-semibold mb-0"><i class="bi bi-patch-check text-primary me-2"></i>Document Stamp</h6>
-        <small class="text-muted">Upload a PDF or image, place a dated stamp on it, and download it. The document never leaves this browser; nothing is uploaded or stored.</small>
+        <small class="text-muted">Upload a PDF, Word document (.docx) or image, place a dated stamp on it, and download it. The document never leaves this browser; nothing is uploaded or stored.</small>
     </div>
 </div>
 
@@ -21,8 +21,8 @@
         <div class="card mb-3">
             <div class="card-header small fw-semibold py-2">1. Document</div>
             <div class="card-body">
-                <input type="file" id="docFile" class="form-control form-control-sm" accept="application/pdf,image/png,image/jpeg">
-                <div class="form-text">PDF, PNG or JPG.</div>
+                <input type="file" id="docFile" class="form-control form-control-sm" accept="application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg">
+                <div class="form-text">PDF, Word (.docx), PNG or JPG. A Word document comes back as a Word document.</div>
                 <div id="docError" class="alert alert-danger small py-2 mt-2 mb-0 d-none"></div>
             </div>
         </div>
@@ -101,7 +101,7 @@
             <div class="card-body small">
                 <label class="form-label fw-semibold mb-1">Stamp which pages?</label>
                 <select id="stPages" class="form-select form-select-sm mb-3">
-                    <option value="current">This page only (the one shown)</option>
+                    <option value="current" id="optCurrent">This page only (the one shown)</option>
                     <option value="first">First page</option>
                     <option value="last">Last page</option>
                     <option value="all">Every page</option>
@@ -110,6 +110,7 @@
                     <i class="bi bi-download me-1"></i>Download stamped document
                 </button>
                 <div class="form-text">Drag the stamp on the preview to place it. The same position is used on every stamped page.</div>
+                <div class="form-text d-none" id="docxNote"><i class="bi bi-info-circle me-1"></i>Word decides the final page layout, so the preview is close but not exact. "Every page" puts the stamp in the page header.</div>
             </div>
         </div>
     </div>
@@ -131,6 +132,7 @@
                 </div>
                 <div id="stage" class="position-relative d-none shadow-sm" style="line-height:0">
                     <canvas id="pageCanvas"></canvas>
+                    <div id="docxHost" class="d-none"></div>
                     <img id="stampOverlay" alt="Stamp" draggable="false">
                 </div>
             </div>
@@ -145,7 +147,9 @@
     .stamp-swatch.active { box-shadow: 0 0 0 2px #2563eb; }
     #stage { max-width: 100%; background: #fff; touch-action: none; }
     #pageCanvas { max-width: 100%; height: auto; display: block; }
-    #stampOverlay { position: absolute; cursor: grab; user-select: none; touch-action: none; }
+    #stampOverlay { position: absolute; cursor: grab; user-select: none; touch-action: none; z-index: 5; }
+    #docxHost { line-height: normal; background: #fff; }
+    #docxHost section.docx { margin: 0 !important; box-shadow: none !important; }
     #stampOverlay.dragging { cursor: grabbing; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
 </style>
 @endpush
@@ -153,13 +157,17 @@
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
 <script>
 (function () {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
     const $ = id => document.getElementById(id);
     const state = {
-        kind: null,          // 'pdf' | 'image'
+        kind: null,          // 'pdf' | 'image' | 'docx'
+        docxBytes: null,     // original .docx bytes
+        pgW: 11906, pgH: 16838, // Word page size (twips), from the document's section settings
         fileName: 'document',
         mime: null,
         pdfBytes: null,      // original PDF bytes (kept for pdf-lib)
@@ -351,21 +359,33 @@
 
     function sizeFraction() { return Number($('stSize').value) / 100; }
 
+    // The page shown in the preview, in screen pixels. A Word page's height comes from its real
+    // paper size (the preview section can be taller when content overflows).
+    function pageScreenRect() {
+        if (state.kind === 'docx') {
+            const sec = visibleDocxSection();
+            if (!sec) return canvas.getBoundingClientRect();
+            const r = sec.getBoundingClientRect();
+            return { left: r.left, top: r.top, width: r.width, height: r.width * state.pgH / state.pgW };
+        }
+        return canvas.getBoundingClientRect();
+    }
+
     function placeOverlay() {
         if (!state.stampCanvas || stage.classList.contains('d-none')) return;
-        const rect = canvas.getBoundingClientRect();
+        const rect = pageScreenRect(), st = stage.getBoundingClientRect();
         const w = rect.width * sizeFraction();
         const h = w * state.stampCanvas.height / state.stampCanvas.width;
         overlay.style.width = w + 'px';
         overlay.style.height = h + 'px';
-        overlay.style.left = (state.cx * rect.width - w / 2) + 'px';
-        overlay.style.top = (state.cy * rect.height - h / 2) + 'px';
+        overlay.style.left = (rect.left - st.left + state.cx * rect.width - w / 2) + 'px';
+        overlay.style.top = (rect.top - st.top + state.cy * rect.height - h / 2) + 'px';
     }
 
     let drag = null;
     overlay.addEventListener('pointerdown', e => {
         e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
+        const rect = pageScreenRect();
         drag = { rect, dx: e.clientX - (rect.left + state.cx * rect.width), dy: e.clientY - (rect.top + state.cy * rect.height) };
         overlay.setPointerCapture(e.pointerId);
         overlay.classList.add('dragging');
@@ -379,7 +399,24 @@
     overlay.addEventListener('pointerup', () => { drag = null; overlay.classList.remove('dragging'); });
     window.addEventListener('resize', placeOverlay);
 
+    function docxSections() { return [...$('docxHost').querySelectorAll('section.docx')]; }
+    function visibleDocxSection() { return docxSections().find(s => s.style.display !== 'none'); }
+
     async function renderPage() {
+        if (state.kind === 'docx') {
+            // Preview the page being stamped: the last one for "Last page", otherwise the first.
+            const secs = docxSections();
+            const show = $('stPages').value === 'last' ? secs.length - 1 : 0;
+            secs.forEach((s, i) => { s.style.display = i === show ? '' : 'none'; });
+            const sec = secs[show];
+            if (sec) {
+                $('docxHost').style.zoom = '';
+                const avail = stage.parentElement.clientWidth - 32;
+                if (sec.offsetWidth > avail) $('docxHost').style.zoom = avail / sec.offsetWidth;
+            }
+            placeOverlay();
+            return;
+        }
         if (state.kind === 'pdf') {
             const page = await state.pdf.getPage(state.page);
             const base = page.getViewport({ scale: 1 });
@@ -411,6 +448,23 @@
                 state.pdfBytes = bytes;
                 state.pdf = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
                 state.kind = 'pdf'; state.pageCount = state.pdf.numPages; state.page = 1;
+            } else if (/\.docx$/i.test(file.name)) {
+                const bytes = new Uint8Array(await file.arrayBuffer());
+                const zip = await JSZip.loadAsync(bytes);
+                const docXml = await readXml(zip, 'word/document.xml');
+                if (!docXml) throw new Error('not a docx');
+                const pgSz = bodySectPr(docXml).getElementsByTagNameNS(W_NS, 'pgSz')[0];
+                state.pgW = Number(pgSz?.getAttributeNS(W_NS, 'w')) || 11906;
+                state.pgH = Number(pgSz?.getAttributeNS(W_NS, 'h')) || 16838;
+                state.docxBytes = bytes;
+                $('docxHost').innerHTML = '';
+                await docx.renderAsync(bytes.slice().buffer, $('docxHost'), null, {
+                    inWrapper: false, breakPages: true, ignoreLastRenderedPageBreak: false,
+                    renderHeaders: true, renderFooters: true, experimental: true,
+                });
+                state.kind = 'docx'; state.pageCount = 1; state.page = 1;
+            } else if (/\.doc$/i.test(file.name)) {
+                return showError('Old Word (.doc) files are not supported. Open it in Word and "Save As" .docx, then stamp that.');
             } else if (['image/png', 'image/jpeg'].includes(file.type)) {
                 state.image = await new Promise((res, rej) => {
                     const img = new Image();
@@ -427,15 +481,22 @@
                 ? 'This PDF is password-protected. Remove the password first, then stamp it.'
                 : 'Could not open this file. It may be damaged or in an unsupported format.');
         }
+        const isDocx = state.kind === 'docx';
+        $('pageCanvas').classList.toggle('d-none', isDocx);
+        $('docxHost').classList.toggle('d-none', !isDocx);
+        $('docxNote').classList.toggle('d-none', !isDocx);
+        $('optCurrent').disabled = isDocx;
+        if (isDocx && $('stPages').value === 'current') $('stPages').value = 'first';
         $('emptyState').classList.add('d-none');
         stage.classList.remove('d-none');
         $('pageNav').classList.toggle('d-none', state.kind !== 'pdf' || state.pageCount < 2);
-        $('stPages').disabled = state.kind !== 'pdf';
+        $('stPages').disabled = !['pdf', 'docx'].includes(state.kind);
         $('downloadBtn').disabled = false;
         await renderPage();
         buildStamp();
     });
 
+    $('stPages').addEventListener('change', () => { if (state.kind === 'docx') renderPage(); });
     $('prevPage').addEventListener('click', () => { if (state.page > 1) { state.page--; renderPage(); } });
     $('nextPage').addEventListener('click', () => { if (state.page < state.pageCount) { state.page++; renderPage(); } });
 
@@ -512,12 +573,161 @@
         c.toBlob(b => download(b, state.fileName + '-stamped.' + (jpeg ? 'jpg' : 'png')), jpeg ? 'image/jpeg' : 'image/png', 0.95);
     }
 
+    // ── Word (.docx): insert the stamp as a floating picture ─────────────────
+    const W_NS   = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const R_NS   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const REL_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
+    const CT_NS  = 'http://schemas.openxmlformats.org/package/2006/content-types';
+    const REL_IMAGE  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
+    const REL_HEADER = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/header';
+    const HEADER_CT  = 'application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml';
+
+    async function readXml(zip, path) {
+        const f = zip.file(path);
+        return f ? new DOMParser().parseFromString(await f.async('string'), 'application/xml') : null;
+    }
+    // createFolders:false - no bare folder entries in the zip, which strict readers dislike.
+    const writeXml = (zip, path, xml) => zip.file(path, new XMLSerializer().serializeToString(xml), { createFolders: false });
+    const relsPath = part => part.replace(/([^/]+)$/, '_rels/$1.rels');
+    const kids = (el, name) => [...el.children].filter(c => c.namespaceURI === W_NS && c.localName === name);
+
+    function bodySectPr(docXml) {
+        const body = docXml.getElementsByTagNameNS(W_NS, 'body')[0];
+        let sect = kids(body, 'sectPr').pop();
+        if (!sect) { sect = docXml.createElementNS(W_NS, 'w:sectPr'); body.appendChild(sect); }
+        return sect;
+    }
+    async function loadRels(zip, part) {
+        return await readXml(zip, relsPath(part)) || new DOMParser().parseFromString(
+            `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${REL_NS}"></Relationships>`, 'application/xml');
+    }
+    function addRel(rels, type, target) {
+        const ids = [...rels.documentElement.children].map(r => r.getAttribute('Id'));
+        let n = 1;
+        while (ids.includes('rIdStamp' + n)) n++;
+        const el = rels.createElementNS(REL_NS, 'Relationship');
+        el.setAttribute('Id', 'rIdStamp' + n);
+        el.setAttribute('Type', type);
+        el.setAttribute('Target', target);
+        rels.documentElement.appendChild(el);
+        return 'rIdStamp' + n;
+    }
+    function ensureContentType(ct, extension, override, contentType) {
+        const root = ct.documentElement;
+        if (extension && ![...root.children].some(c => c.localName === 'Default' && (c.getAttribute('Extension') || '').toLowerCase() === extension)) {
+            const d = ct.createElementNS(CT_NS, 'Default');
+            d.setAttribute('Extension', extension); d.setAttribute('ContentType', contentType);
+            root.insertBefore(d, root.firstChild);
+        }
+        if (override) {
+            const o = ct.createElementNS(CT_NS, 'Override');
+            o.setAttribute('PartName', override); o.setAttribute('ContentType', contentType);
+            root.appendChild(o);
+        }
+    }
+
+    let drawingId = 91000;
+    function stampRun(xml, rId, pos) {
+        const id = ++drawingId;
+        const frag = new DOMParser().parseFromString(
+            `<w:r xmlns:w="${W_NS}"><w:drawing><wp:anchor xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="251659264" behindDoc="0" locked="0" layoutInCell="0" allowOverlap="1">`
+            + `<wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:posOffset>${pos.x}</wp:posOffset></wp:positionH>`
+            + `<wp:positionV relativeFrom="page"><wp:posOffset>${pos.y}</wp:posOffset></wp:positionV>`
+            + `<wp:extent cx="${pos.cx}" cy="${pos.cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/>`
+            + `<wp:docPr id="${id}" name="Stamp ${id}"/><wp:cNvGraphicFramePr/>`
+            + `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">`
+            + `<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="stamp.png"/><pic:cNvPicPr/></pic:nvPicPr>`
+            + `<pic:blipFill><a:blip xmlns:r="${R_NS}" r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>`
+            + `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${pos.cx}" cy="${pos.cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>`
+            + `</pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>`, 'application/xml');
+        return xml.importNode(frag.documentElement, true);
+    }
+    // Put the run at the start of a paragraph (after its properties).
+    function insertRun(p, run) {
+        const pPr = kids(p, 'pPr')[0];
+        p.insertBefore(run, pPr ? pPr.nextSibling : p.firstChild);
+    }
+
+    async function exportDocx() {
+        const zip = await JSZip.loadAsync(state.docxBytes);
+        const docPath = 'word/document.xml';
+        const docXml = await readXml(zip, docPath);
+        const docRels = await loadRels(zip, docPath);
+        const ct = await readXml(zip, '[Content_Types].xml');
+
+        const media = `media/stamp-${Date.now()}.png`;
+        zip.file('word/' + media, await new Promise(r => state.stampCanvas.toBlob(b => b.arrayBuffer().then(r), 'image/png')), { createFolders: false });
+        ensureContentType(ct, 'png', null, 'image/png');
+
+        // Position on the page, in EMU (1 twip = 635 EMU).
+        const pageW = state.pgW * 635, pageH = state.pgH * 635;
+        const cx = Math.round(pageW * sizeFraction());
+        const cy = Math.round(cx * state.stampCanvas.height / state.stampCanvas.width);
+        const pos = { cx, cy, x: Math.round(state.cx * pageW - cx / 2), y: Math.round(state.cy * pageH - cy / 2) };
+
+        const which = $('stPages').value;
+        if (which === 'all') {
+            // Every page: the stamp goes in the section's page header(s).
+            const sect = bodySectPr(docXml);
+            const refs = kids(sect, 'headerReference');
+            const settings = await readXml(zip, 'word/settings.xml');
+            const types = new Set(refs.map(r => r.getAttributeNS(W_NS, 'type') || 'default'));
+            const want = ['default'];
+            if (kids(sect, 'titlePg').length) want.push('first');
+            if (settings && settings.getElementsByTagNameNS(W_NS, 'evenAndOddHeaders').length) want.push('even');
+            let n = 1;
+            for (const type of want.filter(t => !types.has(t))) {
+                while (zip.file(`word/header-stamp${n}.xml`)) n++;
+                const name = `header-stamp${n}.xml`;
+                zip.file('word/' + name, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="${W_NS}" xmlns:r="${R_NS}"><w:p/></w:hdr>`, { createFolders: false });
+                ensureContentType(ct, null, '/word/' + name, HEADER_CT);
+                const ref = docXml.createElementNS(W_NS, 'w:headerReference');
+                ref.setAttributeNS(W_NS, 'w:type', type);
+                ref.setAttributeNS(R_NS, 'r:id', addRel(docRels, REL_HEADER, name));
+                sect.insertBefore(ref, sect.firstChild);
+            }
+            const rels = [...docRels.documentElement.children];
+            for (const ref of kids(sect, 'headerReference')) {
+                const rel = rels.find(r => r.getAttribute('Id') === ref.getAttributeNS(R_NS, 'id'));
+                if (!rel) continue;
+                const hdrPath = 'word/' + rel.getAttribute('Target').replace(/^\/?word\//, '').replace(/^\//, '');
+                const hdr = await readXml(zip, hdrPath);
+                if (!hdr) continue;
+                const hdrRels = await loadRels(zip, hdrPath);
+                const rId = addRel(hdrRels, REL_IMAGE, media);
+                let p = kids(hdr.documentElement, 'p')[0];
+                if (!p) { p = hdr.createElementNS(W_NS, 'w:p'); hdr.documentElement.appendChild(p); }
+                insertRun(p, stampRun(hdr, rId, pos));
+                writeXml(zip, hdrPath, hdr);
+                writeXml(zip, relsPath(hdrPath), hdrRels);
+            }
+        } else {
+            // First / last page: anchor to the body's first / last paragraph.
+            const body = docXml.getElementsByTagNameNS(W_NS, 'body')[0];
+            const paras = kids(body, 'p');
+            let p = which === 'last' ? paras[paras.length - 1] : paras[0];
+            if (!p) {
+                p = docXml.createElementNS(W_NS, 'w:p');
+                body.insertBefore(p, which === 'last' ? kids(body, 'sectPr')[0] || null : body.firstChild);
+            }
+            insertRun(p, stampRun(docXml, addRel(docRels, REL_IMAGE, media), pos));
+        }
+
+        writeXml(zip, docPath, docXml);
+        writeXml(zip, relsPath(docPath), docRels);
+        writeXml(zip, '[Content_Types].xml', ct);
+        const out = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        download(out, state.fileName + '-stamped.docx');
+    }
+
     $('downloadBtn').addEventListener('click', async () => {
         const btn = $('downloadBtn'), html = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Stamping…';
         try {
-            if (state.kind === 'pdf') await exportPdf(); else exportImage();
+            if (state.kind === 'pdf') await exportPdf();
+            else if (state.kind === 'docx') await exportDocx();
+            else exportImage();
         } catch (err) {
             console.error(err);
             showError('Could not stamp this document. If it is a protected or unusual PDF, try printing it to a new PDF first.');
