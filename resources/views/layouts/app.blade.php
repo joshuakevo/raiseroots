@@ -385,7 +385,7 @@
         @endcan
 
         @canany(['manage branches', 'manage users', 'manage settings', 'manage backup'])
-        @php $adminGroupActive = request()->routeIs('branches.*') || request()->routeIs('users.*') || request()->routeIs('roles.*') || request()->routeIs('settings.*') || request()->routeIs('audit.*') || request()->routeIs('backup.*'); @endphp
+        @php $adminGroupActive = request()->routeIs('branches.*') || request()->routeIs('users.*') || request()->routeIs('roles.*') || request()->routeIs('settings.*') || request()->routeIs('audit.*') || request()->routeIs('backup.*') || request()->routeIs('document-stamp'); @endphp
         <button class="nav-collapse-btn" data-bs-toggle="collapse" data-bs-target="#adminMenu" aria-expanded="{{ $adminGroupActive ? 'true' : 'false' }}">
             <i class="bi bi-gear-fill"></i> Administration
             <i class="bi bi-chevron-right chevron"></i>
@@ -404,6 +404,9 @@
             @role('super_admin')
             <a href="{{ route('roles.index') }}" class="nav-link-item {{ request()->routeIs('roles.*') ? 'active' : '' }}">
                 <i class="bi bi-shield-shaded"></i> Roles &amp; Permissions
+            </a>
+            <a href="{{ route('document-stamp') }}" class="nav-link-item {{ request()->routeIs('document-stamp') ? 'active' : '' }}">
+                <i class="bi bi-patch-check-fill"></i> Document Stamp
             </a>
             @endrole
             @can('manage settings')

@@ -382,6 +382,9 @@ Route::middleware('auth')->group(function () {
         Route::post('settings/collateral-categories/{collateralCategory}/toggle', [App\Http\Controllers\LoanCollateralCategoryController::class, 'toggle'])->name('settings.collateral-categories.toggle');
     });
 
+    // Document stamp: stamps a PDF/image entirely in the browser (nothing is uploaded) - super admin only.
+    Route::view('document-stamp', 'stamp.index')->name('document-stamp')->middleware('role:super_admin');
+
     // One-time loan-receivable GL correction — extra-gated beyond 'manage settings'.
     Route::middleware('role:super_admin')->group(function () {
         Route::post('settings/loan-receivable-fix-preview', [SettingsController::class, 'previewLoanReceivableFix'])->name('settings.loan-receivable-fix-preview');
